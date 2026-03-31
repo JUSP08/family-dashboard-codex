@@ -1,0 +1,98 @@
+/* App.css */
+/* App.css */
+
+#root {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+
+
+/* (optional) if you still want centered text somewhere, use a class instead
+   of putting text-align on #root */
+
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+.theme-bg-morning {
+  background-image: url("/bg/bg-morning.jpg");
+}
+
+.theme-bg-afternoon {
+  background-image: url("/bg/bg-afternoon.jpg");
+  /*background-color: red;*/
+}
+
+.theme-bg-evening {
+  background-image: url("/bg/bg-evening.jpg");
+}
+
+.theme-bg {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  transition: opacity 1s ease, background-image 1s ease;
+}
+
+
+@keyframes fadeSmooth {
+  0% { opacity: 0.15; }
+  100% { opacity: 0; }
+}
+
+.animate-fadeSmooth {
+  animation: fadeSmooth 1s ease-out;
+}
+
+
+/* Shared translucent panel */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-radius: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.theme-evening .glass-panel {
+  background: rgba(20, 20, 30, 0.45);
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
+}
