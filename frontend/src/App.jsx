@@ -84,8 +84,8 @@ const CHILDREN = [
 // --- CONFIGURATION CONSTANTS ---
 
 const COACH_TIME_RANGES = {
-  morning: { start: 6, end: 12 },    // 6am - 9am
-  afternoon: { start: 12, end: 18 }, // 3pm - 6pm
+  morning: { start: 6, end: 9 },    // 6am - 9am
+  afternoon: { start: 2, end: 18 }, // 3pm - 6pm
   evening: { start: 18, end: 22 }    // 6pm - 11pm
 };
 
