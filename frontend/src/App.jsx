@@ -70,10 +70,10 @@ const HA_URL = "http://192.168.50.50:8123"; // ⚠️ Replace with your real IP
 -------------------------------------------------- */
 const CHILDREN = [
   { id: "c7", name: "Blake", role: "child", color: "bg-blue-500", avatar: "🧢", img: "/kids/blake.jpg", qustodioUid: "e4fb6de0dde041c5a5d927b0c29ef433" },
-  { id: "c8", name: "Hannah", role: "child", color: "bg-pink-500", avatar: "👱‍♀️", img: "/kids/hannah.jpg", qustodioUid: "" },
+  { id: "c8", name: "Hannah", role: "child", color: "bg-pink-500", avatar: "👱‍♀️", img: "/kids/hannah.jpg", qustodioUid: "f8da9355b3fe490fa9fb3862f519429a" },
   { id: "c3", name: "Tristan", role: "child", color: "bg-emerald-500", avatar: "🦖", img: "/kids/tristan.jpg", qustodioUid: "34f4ad13cbaf49b8ba8441ea807685b3" },
-  { id: "c4", name: "Sloane", role: "child", color: "bg-rose-500", avatar: "🦄", img: "/kids/sloane.jpg", qustodioUid: "" },
-  { id: "c5", name: "Emerson", role: "child", color: "bg-orange-500", avatar: "🦁", img: "/kids/emerson.jpg", qustodioUid: "" },
+  { id: "c4", name: "Sloane", role: "child", color: "bg-rose-500", avatar: "🦄", img: "/kids/sloane.jpg", qustodioUid: "591bca889e894f28b821a32a90ecab34" },
+  { id: "c5", name: "Emerson", role: "child", color: "bg-orange-500", avatar: "🦁", img: "/kids/emerson.jpg", qustodioUid: "ffdc32e0c9204db586e3f170f458fa4b" },
   { id: "c6", name: "Guinevere", role: "child", color: "bg-cyan-500", avatar: "👶", img: "/kids/guinevere.jpg", qustodioUid: "" },
   { id: "p1", name: "Dad", role: "parent", color: "bg-slate-600", avatar: "👨" },
   { id: "p2", name: "Mom", role: "parent", color: "bg-slate-600", avatar: "👩" },
@@ -84,8 +84,8 @@ const CHILDREN = [
 // --- CONFIGURATION CONSTANTS ---
 
 const COACH_TIME_RANGES = {
-  morning: { start: 6, end: 9 },    // 6am - 9am
-  afternoon: { start: 15, end: 18 }, // 3pm - 6pm
+  morning: { start: 6, end: 12 },    // 6am - 9am
+  afternoon: { start: 12, end: 18 }, // 3pm - 6pm
   evening: { start: 18, end: 22 }    // 6pm - 11pm
 };
 
@@ -94,10 +94,10 @@ const COACH_DEADLINES = {
   morning: {
     c7: '06:40', // Blake
     c8: '07:40', // Hannah
-    c3: '08:15', // Tristan
-    c4: '08:15', // Sloane
-    c5: '08:15', // Emerson
-    c6: '08:15'  // Guinevere
+    c3: '08:20', // Tristan
+    c4: '08:20', // Sloane
+    c5: '08:20', // Emerson
+    c6: '08:20'  // Guinevere
   },
   evening: {
     c7: '21:00', // Blake (9:30 PM)
