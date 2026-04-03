@@ -636,8 +636,7 @@ const DashboardView = ({
   useEffect(() => { fetchSparkle(false); }, []);
   const regenerateSparkle = () => fetchSparkle(true);
 
-  const todayKey = currentTime.toISOString().split("T")[0];
-  const dow = currentTime.getDay();
+const todayKey = currentTime.toLocaleDateString("en-CA");  const dow = currentTime.getDay();
   const weekday = dow === 0 ? 7 : dow;
   const getTodayTasksForChild = (childId) => masterTasks.filter((t) => { const isAssigned = t.assignees.includes("all") || t.assignees.includes(childId); if (!isAssigned) return false; if (t.recurrence === "schooldays") return t.days?.includes(weekday); return true; });
   const childProgress = (childrenData || []).filter((c) => c.role === "child").map((child) => { const { completed, total } = getProgress(child.id); const todaysTasks = getTodayTasksForChild(child.id); let completionTime = null; if (total > 0 && completed === total) { const timestamps = todaysTasks.map((t) => { const key = `${todayKey}-${child.id}-${t.id}`; return completedTasks[key]; }).filter(Boolean); if (timestamps.length > 0) completionTime = Math.max(...timestamps); } const pct = total === 0 ? 0 : Math.round((completed / total) * 100); return { child, completed, total, pct, completionTime }; });
@@ -2480,9 +2479,9 @@ const SettingsView = ({
 const BalancesView = ({ theme, childrenData, wallet, setWallet }) => {
   // REDEMPTION STATE
   const [redeemingChildId, setRedeemingChildId] = useState(null);
-  const [redeemType, setRedeemType] = useState("time"); // 'time' or 'money'
-  const [redeemAmount, setRedeemAmount] = useState("");
-  const [redeemTarget, setRedeemTarget] = useState("Xbox");
+const [redeemType, setRedeemType] = useState("time"); // 'time' or 'money'
+const [redeemAmount, setRedeemAmount] = useState("");
+const [redeemTarget, setRedeemTarget] = useState("Tablet");
 
   // Helper: Send Notification
   // --- HELPER: Send Notification ---
@@ -2532,71 +2531,74 @@ const handleRedeemSubmit = async (e) => {
     return;
   }
 
-  if (window.confirm(`Confirm: Deduct ${amount} from ${child.name}?`)) {
-    // 1. Update Local Wallet (authoritative local redemption)
-    setWallet(prev => ({
-      ...prev,
-      [redeemingChildId]: {
-        ...prev[redeemingChildId],
-        [redeemType]: currentBalance - amount
-      }
-    }));
-
-    // 2. Send backend notification
-    try {
-      await sendNotification(child.name, redeemType, amount, redeemTarget);
-      console.log("✅ Redemption notification sent");
-    } catch (err) {
-      console.error("❌ Notification failed:", err);
+  // 1. Update Local Wallet (authoritative local redemption)
+  setWallet(prev => ({
+    ...prev,
+    [redeemingChildId]: {
+      ...prev[redeemingChildId],
+      [redeemType]: currentBalance - amount
     }
+  }));
 
-    // 3. Send Qustodio grant only for tablet time
-    const normalizedTarget = String(redeemTarget || "").toLowerCase();
-    const isTabletRedemption =
-      redeemType === "time" &&
-      (normalizedTarget.includes("tablet") || normalizedTarget.includes("ipad"));
-
-    const qUid = child.qustodioUid || "";
-
-    if (isTabletRedemption && qUid) {
-      try {
-        const response = await fetch("/api/qustodio", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            child_id: child.id,
-            uid: qUid,
-            name: child.name.toLowerCase(),
-            minutes: amount
-          })
-        });
-
-        const data = await response.json().catch(() => ({}));
-
-        if (!response.ok) {
-          console.error("❌ Qustodio HTTP error:", response.status, data);
-        } else {
-          console.log("✅ Qustodio response:", data);
-        }
-      } catch (err) {
-        console.error("❌ Qustodio fetch error:", err);
-      }
-    } else {
-      console.log("Qustodio skipped", {
-        redeemType,
-        redeemTarget,
-        hasUid: !!qUid
-      });
-    }
-
-    // 4. Reset Form
-    setRedeemingChildId(null);
-    setRedeemAmount("");
+  // 2. Send backend notification
+  try {
+    await sendNotification(child.name, redeemType, amount, redeemTarget);
+    console.log("✅ Redemption notification sent");
+  } catch (err) {
+    console.error("❌ Notification failed:", err);
   }
+
+  // 3. Send Qustodio grant only for tablet time
+  const normalizedTarget = String(redeemTarget || "").toLowerCase();
+  const isTabletRedemption =
+    redeemType === "time" &&
+    (normalizedTarget.includes("tablet") || normalizedTarget.includes("ipad"));
+
+  const qUid = child.qustodioUid || "";
+
+  if (isTabletRedemption && qUid) {
+    try {
+      const response = await fetch("/api/qustodio", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          child_id: child.id,
+          uid: qUid,
+          name: child.name.toLowerCase(),
+          minutes: amount
+        })
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        console.error("❌ Qustodio HTTP error:", response.status, data);
+      } else {
+        console.log("✅ Qustodio response:", data);
+      }
+    } catch (err) {
+      console.error("❌ Qustodio fetch error:", err);
+    }
+  } else {
+    console.log("Qustodio skipped", {
+      redeemType,
+      redeemTarget,
+      hasUid: !!qUid
+    });
+  }
+
+  // 4. Reset Form
+  setRedeemingChildId(null);
+  setRedeemAmount("");
 };
 
   const redeemingChild = childrenData.find(c => c.id === redeemingChildId);
   const kids = childrenData.filter(c => c.role === 'child');
+  const adjustRedeemMinutes = (delta) => {
+  const current = Number(redeemAmount) || 0;
+  const next = Math.max(0, current + delta);
+  setRedeemAmount(next === 0 ? "" : String(next));
+  };
 
   return (
     <div className="h-full w-full p-6 flex flex-col items-center">
@@ -2654,36 +2656,110 @@ const handleRedeemSubmit = async (e) => {
             </div>
 
             <form onSubmit={handleRedeemSubmit} className="space-y-5">
-              <div className="grid grid-cols-2 bg-slate-900/50 rounded-xl p-1">
-                <button type="button" onClick={() => { setRedeemType("time"); setRedeemTarget("Xbox"); }} className={`py-2 rounded-lg text-sm font-bold transition-all ${redeemType === "time" ? "bg-purple-600 text-white shadow-lg" : "text-slate-500 hover:text-slate-300"}`}>Time</button>
-                <button type="button" onClick={() => { setRedeemType("money"); setRedeemTarget("Greenlight"); }} className={`py-2 rounded-lg text-sm font-bold transition-all ${redeemType === "money" ? "bg-emerald-600 text-white shadow-lg" : "text-slate-500 hover:text-slate-300"}`}>Money</button>
-              </div>
+<div className="grid grid-cols-2 bg-slate-900/50 rounded-xl p-1">
+  <button
+    type="button"
+    onClick={() => { setRedeemType("time"); setRedeemTarget("Tablet"); }}
+    className={`py-2 rounded-lg text-sm font-bold transition-all ${
+      redeemType === "time"
+        ? "bg-purple-600 text-white shadow-lg"
+        : "text-slate-500 hover:text-slate-300"
+    }`}
+  >
+    Time
+  </button>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-400 mb-1 ml-1 uppercase tracking-wider">Amount to Redeem</label>
-                <div className="relative">
-                  <input
-                    type="number" autoFocus
-                    className="w-full rounded-xl bg-slate-900 border border-white/10 text-white px-4 py-3 text-lg font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="0" value={redeemAmount} onChange={(e) => setRedeemAmount(e.target.value)}
-                  />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">{redeemType === "money" ? "$" : "min"}</span>
-                </div>
-              </div>
+  <button
+    type="button"
+    onClick={() => { setRedeemType("money"); setRedeemTarget("Greenlight"); }}
+    className={`py-2 rounded-lg text-sm font-bold transition-all ${
+      redeemType === "money"
+        ? "bg-emerald-600 text-white shadow-lg"
+        : "text-slate-500 hover:text-slate-300"
+    }`}
+  >
+    Money
+  </button>
+</div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-400 mb-1 ml-1 uppercase tracking-wider">Destination</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(redeemType === "time" ? ["TV", "Tablet", "PC", "Xbox"] : ["Greenlight", "Cash", "Amazon"]).map(t => (
-                    <button
-                      key={t} type="button" onClick={() => setRedeemTarget(t)}
-                      className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all ${redeemTarget === t ? "bg-blue-600/20 border-blue-500 text-blue-400" : "bg-slate-900 border-transparent text-slate-500 hover:bg-slate-800"}`}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-              </div>
+<div>
+  <label className="block text-xs font-bold text-slate-400 mb-1 ml-1 uppercase tracking-wider">
+    Amount to Redeem
+  </label>
+
+{redeemType === "time" ? (
+  <div className="flex items-center gap-2">
+    <button
+      type="button"
+      onClick={() => adjustRedeemMinutes(-5)}
+      className="w-12 h-12 rounded-xl bg-rose-600 border border-rose-400/30 text-white flex items-center justify-center hover:bg-rose-500 active:scale-95 transition-all shadow-lg"
+      aria-label="Subtract 5 minutes"
+    >
+      <span className="text-2xl font-bold leading-none">−</span>
+    </button>
+
+    <div className="relative flex-1">
+      <input
+        type="text"
+        inputMode="numeric"
+        autoFocus
+        className="w-full rounded-xl bg-slate-900 border border-white/10 text-white px-4 py-3 text-lg font-mono text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+        placeholder="0"
+        value={redeemAmount}
+        onChange={(e) => {
+          const digitsOnly = e.target.value.replace(/[^\d]/g, "");
+          setRedeemAmount(digitsOnly);
+        }}
+      />
+      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-bold pointer-events-none">
+        min
+      </span>
+    </div>
+
+    <button
+      type="button"
+      onClick={() => adjustRedeemMinutes(5)}
+      className="w-12 h-12 rounded-xl bg-emerald-600 border border-emerald-400/30 text-white flex items-center justify-center hover:bg-emerald-500 active:scale-95 transition-all shadow-lg"
+      aria-label="Add 5 minutes"
+    >
+      <span className="text-2xl font-bold leading-none">+</span>
+    </button>
+  </div>
+) : (
+    <div className="relative">
+      <input
+        type="number"
+        autoFocus
+        min="0"
+        className="w-full rounded-xl bg-slate-900 border border-white/10 text-white px-4 py-3 text-lg font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+        placeholder="0"
+        value={redeemAmount}
+        onChange={(e) => setRedeemAmount(e.target.value)}
+      />
+      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">
+        $
+      </span>
+    </div>
+  )}
+</div>
+
+<div>
+  <label className="block text-xs font-bold text-slate-400 mb-1 ml-1 uppercase tracking-wider">
+    Destination
+  </label>
+  <div className="grid grid-cols-3 gap-2">
+    {(redeemType === "time" ? ["Tablet", "PC"] : ["Greenlight", "Cash", "Amazon"]).map(t => (
+      <button
+        key={t}
+        type="button"
+        onClick={() => setRedeemTarget(t)}
+        className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all ${redeemTarget === t ? "bg-blue-600/20 border-blue-500 text-blue-400" : "bg-slate-900 border-transparent text-slate-500 hover:bg-slate-800"}`}
+      >
+        {t}
+      </button>
+    ))}
+  </div>
+</div>
 
               <button type="submit" className="w-full py-4 mt-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl shadow-xl shadow-blue-900/20 transition-all flex items-center justify-center gap-2">
                 <span>Redeem Now</span> <ArrowRight className="w-5 h-5" />
@@ -2774,7 +2850,21 @@ function FamilyDashboard() {
   const [rewardThreshold, setRewardThreshold] = useState(100);
   const [dailyRewards, setDailyRewards] = useState({});
 
-  // --- Shared (Pi) persistence ---
+
+  const [completedTasks, setCompletedTasks] = useState(() => {
+  try {
+    const saved = localStorage.getItem("familyCompletedTasks");
+    return saved ? JSON.parse(saved) : {};
+  } catch {
+    return {};
+  }
+});
+
+useEffect(() => {
+  localStorage.setItem("familyCompletedTasks", JSON.stringify(completedTasks));
+}, [completedTasks]);
+
+  // --- Shared  persistence ---
   // We bootstrap from localStorage (fast/offline), then hydrate from the RPI4 via /api/state.
   // After hydration, we debounce-save back to the server so every device stays in sync.
   const serverHydratedRef = useRef(false);
@@ -2830,7 +2920,7 @@ function FamilyDashboard() {
     };
   }, []);
 
-  const [completedTasks, setCompletedTasks] = useState({});
+
   const [calendarView, setCalendarView] = useState("week");
   const [weather, setWeather] = useState(null);
   const [selectedSchool, setSelectedSchool] = useState("2607"); // Default to JES
@@ -2840,8 +2930,6 @@ function FamilyDashboard() {
   useEffect(() => { const i = setInterval(() => setThemePhase(getDayPhase()), 60000); return () => clearInterval(i); }, []);
   const [calendarDate, setCalendarDate] = useState(new Date());
   const resetTimerRef = useRef(null);
-  // OLD (Incorrect - uses UTC):
-  // const todayKey = currentTime.toISOString().split("T")[0];
 
   // NEW (Correct - uses Local Device Time):
   const todayKey = currentTime.toLocaleDateString("en-CA"); // Returns "YYYY-MM-DD" in local time
@@ -2876,6 +2964,7 @@ function FamilyDashboard() {
       calendarSources,
       calendarFilters,
       // ✅ ADD THESE TWO LINES:
+      completedTasks,
       dailyRewards,
       rewardThreshold
     };
@@ -2909,7 +2998,7 @@ function FamilyDashboard() {
 
     const today = new Date();
     const dayOfWeek = today.getDay(); // 0=Sun, 6=Sat
-    const dateKey = today.toISOString().split("T")[0];
+    const dateKey = today.toLocaleDateString("en-CA");
 
     // 2. SATURDAY RULE: Skip rewards on Saturday (Optional)
     if (dayOfWeek !== 6) {
@@ -3013,7 +3102,7 @@ function FamilyDashboard() {
   useEffect(() => {
     const today = new Date();
     const dayOfWeek = today.getDay(); // 0=Sun, 6=Sat
-    const dateKey = today.toISOString().split("T")[0];
+    const dateKey = today.toLocaleDateString("en-CA");
 
     // 1. SATURDAY RULE: Do not accumulate minutes on Saturday
     if (dayOfWeek === 6) return;
