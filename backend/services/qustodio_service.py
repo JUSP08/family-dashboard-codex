@@ -50,7 +50,7 @@ def enqueue_qustodio_request(
         )
 
 
-def _run_exact_add_time(name: str, minutes: int) -> tuple[bool, str, str]:
+def _run_exact_add_time(name: str, minutes: int, uid: str | None = None) -> tuple[bool, str, str]:
     controller = QustodioController()
 
     stdout_buffer = io.StringIO()
@@ -58,9 +58,13 @@ def _run_exact_add_time(name: str, minutes: int) -> tuple[bool, str, str]:
 
     try:
         with redirect_stdout(stdout_buffer), redirect_stderr(stderr_buffer):
-            result = controller.add_time(name=name, minutes=minutes)
+            result = controller.add_time(name=name, minutes=minutes, uid=uid)
     except Exception as exc:
-        return False, f"{type(exc).__name__}: {exc}", stdout_buffer.getvalue() + stderr_buffer.getvalue()
+        return (
+            False,
+            f"{type(exc).__name__}: {exc}",
+            stdout_buffer.getvalue() + stderr_buffer.getvalue(),
+        )
 
     captured = stdout_buffer.getvalue() + stderr_buffer.getvalue()
 
@@ -76,7 +80,11 @@ def grant_tablet_time(
     minutes: int,
     child_id: str | None = None,
 ) -> dict:
-    success, detail, captured_output = _run_exact_add_time(name=name, minutes=minutes)
+    success, detail, captured_output = _run_exact_add_time(
+        name=name,
+        minutes=minutes,
+        uid=uid,
+    )
 
     payload = {
         "uid": uid,
@@ -154,6 +162,7 @@ def retry_qustodio_queue_once() -> None:
         success, detail, captured_output = _run_exact_add_time(
             name=child_name,
             minutes=minutes,
+            uid=None,
         )
 
         with get_connection() as conn:
@@ -167,7 +176,9 @@ def retry_qustodio_queue_once() -> None:
                     ("sent", None, queue_id),
                 )
             else:
-                next_retry_at = (datetime.datetime.now(timezone.utc) + timedelta(hours=6)).isoformat()
+                next_retry_at = (
+                    datetime.datetime.now(timezone.utc) + timedelta(hours=6)
+                ).isoformat()
                 conn.execute(
                     """
                     UPDATE qustodio_queue
