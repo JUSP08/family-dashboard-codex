@@ -2783,7 +2783,7 @@ function FamilyDashboard() {
   const [calendarErrors, setCalendarErrors] = useState([]);
 
   // 1. LOAD SAVED DATA
-  const [childrenData, setChildrenData] = useState(() => {
+const [childrenData, setChildrenData] = useState(() => {
   try {
     const saved = localStorage.getItem("familyChildren");
     if (!saved) return CHILDREN;
@@ -2793,7 +2793,13 @@ function FamilyDashboard() {
 
     return CHILDREN.map(defaultChild => {
       const savedChild = parsed.find(c => c.id === defaultChild.id);
-      return savedChild ? { ...defaultChild, ...savedChild } : defaultChild;
+      return savedChild
+        ? {
+            ...defaultChild,
+            ...savedChild,
+            qustodioUid: savedChild.qustodioUid || defaultChild.qustodioUid || ""
+          }
+        : defaultChild;
     });
   } catch {
     return CHILDREN;
@@ -2895,8 +2901,20 @@ useEffect(() => {
         // Only set if present; otherwise keep what localStorage/defaults provided.
         if (cancelled) return;
 
-        if (Array.isArray(data.childrenData)) setChildrenData(data.childrenData);
-        if (isPlainObject(data.wallet)) setWallet(data.wallet);
+if (Array.isArray(data.childrenData)) {
+  setChildrenData(
+    CHILDREN.map(defaultChild => {
+      const serverChild = data.childrenData.find(c => c.id === defaultChild.id);
+      return serverChild
+        ? {
+            ...defaultChild,
+            ...serverChild,
+            qustodioUid: serverChild.qustodioUid || defaultChild.qustodioUid || ""
+          }
+        : defaultChild;
+    })
+  );
+}        if (isPlainObject(data.wallet)) setWallet(data.wallet);
         if (Array.isArray(data.customEvents)) setCustomEvents(data.customEvents);
         if (Array.isArray(data.hiddenEventIds)) setHiddenEventIds(data.hiddenEventIds);
         if (Array.isArray(data.masterTasks)) setMasterTasks(data.masterTasks);
