@@ -2784,11 +2784,21 @@ function FamilyDashboard() {
 
   // 1. LOAD SAVED DATA
   const [childrenData, setChildrenData] = useState(() => {
-    try {
-      const saved = localStorage.getItem("familyChildren");
-      return saved ? JSON.parse(saved) : CHILDREN;
-    } catch { return CHILDREN; }
-  });
+  try {
+    const saved = localStorage.getItem("familyChildren");
+    if (!saved) return CHILDREN;
+
+    const parsed = JSON.parse(saved);
+    if (!Array.isArray(parsed)) return CHILDREN;
+
+    return CHILDREN.map(defaultChild => {
+      const savedChild = parsed.find(c => c.id === defaultChild.id);
+      return savedChild ? { ...defaultChild, ...savedChild } : defaultChild;
+    });
+  } catch {
+    return CHILDREN;
+  }
+});
 
   const [wallet, setWallet] = useState(() => {
     try {
