@@ -2866,13 +2866,6 @@ const [childrenData, setChildrenData] = useState(() => {
   const [rewardThreshold, setRewardThreshold] = useState(100);
   const [dailyRewards, setDailyRewards] = useState({});
 
-  const getTieredRewardMinutes = (pct) => {
-    if (pct > 90) return 75;
-    if (pct >= 61) return 60;
-    if (pct >= 31) return 40;
-    if (pct >= 10) return 20;
-    return 0;
-  };
 
   const [completedTasks, setCompletedTasks] = useState(() => {
   try {
@@ -2887,8 +2880,8 @@ useEffect(() => {
   localStorage.setItem("familyCompletedTasks", JSON.stringify(completedTasks));
 }, [completedTasks]);
 
-  // --- Shared persistence ---
-  // We bootstrap from localStorage (fast/offline), then hydrate from /api/state.
+  // --- Shared  persistence ---
+  // We bootstrap from localStorage (fast/offline), then hydrate from the RPI4 via /api/state.
   // After hydration, we debounce-save back to the server so every device stays in sync.
   const serverHydratedRef = useRef(false);
   const serverSaveTimerRef = useRef(null);
@@ -2928,12 +2921,11 @@ if (Array.isArray(data.childrenData)) {
         if (Array.isArray(data.gigs)) setGigs(data.gigs);
         if (Array.isArray(data.gigTemplates)) setGigTemplates(data.gigTemplates);
         if (Array.isArray(data.calendarSources)) setCalendarSources(data.calendarSources);
-        if (Array.isArray(data.calendarFilters)) setCalendarFilters(data.calendarFilters);
-        if (isPlainObject(data.completedTasks)) setCompletedTasks(data.completedTasks);
+if (Array.isArray(data.calendarFilters)) setCalendarFilters(data.calendarFilters);
 
-        // ✅ Load Reward Settings
-        if (isPlainObject(data.dailyRewards)) setDailyRewards(data.dailyRewards);
-        if (typeof data.rewardThreshold === 'number') setRewardThreshold(data.rewardThreshold);
+// ✅ Load Reward Settings from Pi
+if (isPlainObject(data.dailyRewards)) setDailyRewards(data.dailyRewards);
+if (typeof data.rewardThreshold === 'number') setRewardThreshold(data.rewardThreshold);
 
         serverHydratedRef.current = true;
       } catch (e) {
@@ -3021,18 +3013,9 @@ if (Array.isArray(data.childrenData)) {
       if (serverSaveTimerRef.current) clearTimeout(serverSaveTimerRef.current);
     };
   }, [
-    childrenData,
-    wallet,
-    customEvents,
-    hiddenEventIds,
-    masterTasks,
-    gigs,
-    gigTemplates,
-    calendarSources,
-    calendarFilters,
-    completedTasks,
-    dailyRewards,
-    rewardThreshold
+    childrenData, wallet, customEvents, hiddenEventIds, masterTasks, gigs, completedTasks,
+    gigTemplates, calendarSources, calendarFilters,
+    dailyRewards, rewardThreshold // 👈 ADD THESE HERE
   ]);
 
   // --- AUTOMATION: Daily Percentage Reward ---
@@ -3073,18 +3056,16 @@ if (Array.isArray(data.childrenData)) {
 
         const currentPct = (completedCount / childTasks.length) * 100;
 
-        // 5. TRIGGER TIERED REWARD
-        const rewardMinutes = getTieredRewardMinutes(currentPct);
+        // 5. TRIGGER REWARD (If Percentage >= Threshold)
+        if (currentPct >= rewardThreshold) {
+          console.log(`🎉 Nightly Check: ${child.name} passed ${rewardThreshold}%! Awarding 1 hour.`);
 
-        if (rewardMinutes > 0) {
-          console.log(`🎉 Nightly Check: ${child.name} earned ${rewardMinutes} minutes at ${Math.round(currentPct)}%.`);
-
-          // A. Add reward mins to Wallet
+          // A. Add 60 mins to Wallet
           setWallet(prev => ({
             ...prev,
             [child.id]: {
               ...prev[child.id],
-              time: ((prev[child.id]?.time) || 0) + rewardMinutes,
+              time: ((prev[child.id]?.time) || 0) + 60,
               money: (prev[child.id]?.money) || 0
             }
           }));
@@ -3096,8 +3077,8 @@ if (Array.isArray(data.childrenData)) {
           const payload = {
             child_id: child.id,
             child_name: child.name,
-            amount: rewardMinutes,
-            reason: `Nightly Tiered Reward (${Math.round(currentPct)}%)`
+            amount: 60,
+            reason: `Nightly Success > ${rewardThreshold}%`
           };
 
           if (typeof HA_URL !== 'undefined') {
@@ -3180,18 +3161,16 @@ if (Array.isArray(data.childrenData)) {
 
       const currentPct = (completedCount / childTasks.length) * 100;
 
-      // 4. TRIGGER TIERED REWARD
-      const rewardMinutes = getTieredRewardMinutes(currentPct);
+      // 4. TRIGGER REWARD (If Percentage >= Threshold)
+      if (currentPct >= rewardThreshold) {
+        console.log(`🎉 ${child.name} passed ${rewardThreshold}%! Awarding 1 hour.`);
 
-      if (rewardMinutes > 0) {
-        console.log(`🎉 ${child.name} earned ${rewardMinutes} minutes at ${Math.round(currentPct)}%.`);
-
-        // A. Add reward mins to Wallet
+        // A. Add 60 mins to Wallet
         setWallet(prev => ({
           ...prev,
           [child.id]: {
             ...prev[child.id],
-            time: ((prev[child.id]?.time) || 0) + rewardMinutes,
+            time: ((prev[child.id]?.time) || 0) + 60,
             money: (prev[child.id]?.money) || 0
           }
         }));
@@ -3203,8 +3182,8 @@ if (Array.isArray(data.childrenData)) {
         const payload = {
           child_id: child.id,
           child_name: child.name,
-          amount: rewardMinutes,
-          reason: `Daily Tiered Reward (${Math.round(currentPct)}%)`
+          amount: 60,
+          reason: `Daily Progress > ${rewardThreshold}%`
         };
 
         if (typeof HA_URL !== 'undefined') {
