@@ -3,15 +3,24 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   Sun,
+  Moon,
   Calendar as CalendarIcon,
   Settings,
   Clock,
   Coffee,
   BookOpen,
+  Award,
+  Bell,
   Banknote,
   AlertTriangle,
+  Sparkles,
   ChevronLeft,
   ChevronRight,
+  Trophy,
+  GraduationCap,
+  Home,
+  Users,
+  Bus,
   ArrowUp,
   ArrowDown,
   Check,
@@ -20,12 +29,19 @@ import {
   X,
   Pencil,
   Trash,
+  CloudSun,
+  Play,
+  Pause,
+  StopCircle,
   ArrowRight,
   Copy,
   Edit2,
+  Plus,
+  Minus,
   RefreshCw,
   CreditCard,
-  DollarSign
+  DollarSign,
+  Save
 } from "lucide-react";
 import "./index.css";
 import "./App.css";
@@ -33,10 +49,17 @@ import "./App.css";
 // Determine which theme to use based on time
 export function getDayPhase(date = new Date()) {
   const h = date.getHours();
-  if (h >= 6 && h < 12) return "morning";    // 6am–11:59am
-  if (h >= 12 && h < 18) return "afternoon"; // 12pm–5:59pm
-  return "evening";                          // 6pm–5:59am
+  if (h >= 5 && h < 12) return "morning";    // 5am–11:59am
+  if (h >= 12 && h < 17) return "afternoon"; // 12pm–4:59pm
+  return "evening";                          // 5pm–4:59am
 }
+
+// Mapping theme → class (Updated for Dark Glass aesthetic)
+export const THEME_CLASSES = {
+  morning: "theme-bg theme-bg-morning",
+  afternoon: "theme-bg theme-bg-afternoon",
+  evening: "theme-bg theme-bg-evening",
+};
 
 /* --------------------------------------------------
    CONSTANTS
@@ -59,10 +82,12 @@ const CHILDREN = [
 
 // --- CONFIGURATION CONSTANTS ---
 
+// --- CONFIGURATION CONSTANTS ---
+
 const COACH_TIME_RANGES = {
-  morning: { start: 6, end: 9 },     // 6am - 9am
-  afternoon: { start: 14, end: 18 }, // 2pm - 6pm
-  evening: { start: 18, end: 23 }    // 6pm - 11pm
+  morning: { start: 6, end: 9 },    // 6am - 9am
+  afternoon: { start: 2, end: 18 }, // 3pm - 6pm
+  evening: { start: 18, end: 22 }    // 6pm - 11pm
 };
 
 // ✅ RENAMED to avoid conflict
@@ -76,8 +101,8 @@ const COACH_DEADLINES = {
     c6: '08:20'  // Guinevere
   },
   evening: {
-    c7: '21:00', // Blake (9:00 PM)
-    c8: '21:00', // Hannah (9:00 PM)
+    c7: '21:00', // Blake (9:30 PM)
+    c8: '21:00', // Hannah (9:30 PM)
     c3: '21:00', // Tristan (9:00 PM)
     c4: '21:00', // Sloane (9:00 PM)
     c5: '21:00', // Emerson (9:00 PM)
@@ -106,6 +131,28 @@ const INITIAL_MASTER_TASKS = [
   { id: "bt3", label: "Pick Clothes for Tomorrow", icon: "👕", category: "evening", recurrence: "daily", days: [], assignees: ["all"] },
 ];
 
+
+/* --------------------------------------------------
+   TIMELINE CONFIGURATION
+-------------------------------------------------- */
+const PHASE_BOUNDARIES = {
+  morning: { start: 6, end: 8.5 }, // 6:00 AM – 8:30 AM
+  afternoon: { start: 14.5, end: 18 },  // 2:30 PM – 6:00 PM
+  evening: { start: 18, end: 22 },  // 6:00 PM – 9:00 PM
+};
+
+const CHILD_DEADLINES = {
+  morning: {
+    c7: "06:40", // Blake
+    c8: "07:40", // Hannah
+    c3: "08:15", // Tristan
+    c4: "08:15", // Sloane
+    c5: "08:15", // Emerson
+    c6: "08:15", // Guinevere
+  },
+  afternoon: {},
+  evening: {}
+};
 
 // --------------------------------------------------
 // DAY PHASE + THEMES (REDESIGNED FOR DARK GLASS)
@@ -155,6 +202,51 @@ const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || "";
    HELPERS
 -------------------------------------------------- */
 
+// Simple ICS parser
+const parseICS = (icsData) => {
+  const events = [];
+  const lines = icsData.replace(/\r\n/g, "\n").split("\n");
+  let currentEvent = null;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (line.startsWith("BEGIN:VEVENT")) {
+      currentEvent = {};
+    } else if (line.startsWith("END:VEVENT")) {
+      if (currentEvent && currentEvent.start) events.push(currentEvent);
+      currentEvent = null;
+    } else if (currentEvent) {
+      const [keyPart, ...valueParts] = line.split(":");
+      if (!keyPart) continue;
+      const value = valueParts.join(":");
+      const key = keyPart.split(";")[0];
+
+      if (key === "SUMMARY") {
+        currentEvent.title = value;
+      } else if (key === "LOCATION") {
+        currentEvent.location = value;
+      } else if (key === "DTSTART" || key.startsWith("DTSTART")) {
+        const dateStr = value.replace("Z", "");
+        const year = parseInt(dateStr.slice(0, 4), 10);
+        const month = parseInt(dateStr.slice(4, 6), 10) - 1;
+        const day = parseInt(dateStr.slice(6, 8), 10);
+        if (dateStr.length > 8) {
+          const hour = parseInt(dateStr.slice(9, 11) || "0", 10);
+          const min = parseInt(dateStr.slice(11, 13) || "0", 10);
+          currentEvent.start = new Date(Date.UTC(year, month, day, hour, min));
+          currentEvent.allDay = false;
+        } else {
+          currentEvent.start = new Date(Date.UTC(year, month, day));
+          currentEvent.allDay = true;
+        }
+      } else if (key === "UID") {
+        currentEvent.id = value;
+      }
+    }
+  }
+  return events;
+};
+
 // Gemini
 const callGemini = async (prompt) => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY || "";
@@ -201,22 +293,6 @@ const fromLocalDateString = (isoDateStr) => {
   return new Date(year, month - 1, day);
 };
 
-// Local date key used by tasks, rewards, menus, and daily records.
-// Avoids UTC drift around midnight.
-const getLocalDateKey = (date = new Date()) =>
-  date.toLocaleDateString("en-CA");
-
-// Sliding daily payout model:
-// 0–9% = 0 min, 10–30% = 20, 31–60% = 40, 61–90% = 60, >90% = 75.
-const calculateDailyMinutes = (completionPct) => {
-  const pct = Number(completionPct) || 0;
-  if (pct < 10) return 0;
-  if (pct <= 30) return 20;
-  if (pct <= 60) return 40;
-  if (pct <= 90) return 60;
-  return 75;
-};
-
 const shortDay = (date) =>
   date.toLocaleDateString("en-US", { weekday: "short" });
 
@@ -230,7 +306,41 @@ const CHILD_EVENT_COLOR_RULES = [
   { name: "Guinevere", colorClass: "border-fuchsia-500" },
 ];
 
+const getChildEventColor = (summary, defaultColor) => {
+  if (!summary) return defaultColor;
+  const lower = summary.toLowerCase();
 
+  for (const rule of CHILD_EVENT_COLOR_RULES) {
+    if (lower.includes(rule.name.toLowerCase())) {
+      return rule.colorClass;
+    }
+  }
+  return defaultColor;
+};
+
+// --- NEW SOURCE ICON HELPER ---
+const getSourceIcon = (label) => {
+  if (!label) return null;
+  const l = label.toLowerCase();
+
+  // Sports -> Gold Trophy
+  if (l.includes("wrestling") || l.includes("sport") || l.includes("football") || l.includes("soccer") || l.includes("basketball")) {
+    return <Trophy className="w-3.5 h-3.5 text-amber-400 drop-shadow-[0_0_5px_rgba(251,191,36,0.5)]" />;
+  }
+
+  // Schools -> Indigo Graduation Cap
+  if (l.includes("bhs") || l.includes("bms") || l.includes("jes") || l.includes("res") || l.includes("school") || l.includes("elementary") || l.includes("middle") || l.includes("high")) {
+    return <GraduationCap className="w-3.5 h-3.5 text-indigo-300 drop-shadow-[0_0_5px_rgba(165,180,252,0.5)]" />;
+  }
+
+  // Family -> Cyan Home
+  if (l.includes("family")) {
+    return <Home className="w-3.5 h-3.5 text-cyan-300 drop-shadow-[0_0_5px_rgba(103,232,249,0.5)]" />;
+  }
+
+  // Fallback -> Slate User
+  return <Users className="w-3.5 h-3.5 text-slate-400" />;
+};
 
 /* --------------------------------------------------
    NAV BUTTON (bottom nav)
@@ -262,6 +372,93 @@ const NavButton = ({ view, target, icon, label, setView, color }) => {
   );
 };
 
+/* --------------------------------------------------
+   TIMELINE COMPONENT (COACH)
+-------------------------------------------------- */
+const TimelineTrack = ({ phase, childId, currentTime }) => {
+  const boundaries = PHASE_BOUNDARIES[phase] || { start: 6, end: 21 }; // Default fallback
+  const deadlineStr = CHILD_DEADLINES[phase]?.[childId];
+
+  // 1. Calculate Total Window Duration (minutes)
+  const startTotalMinutes = boundaries.start * 60;
+  const endTotalMinutes = boundaries.end * 60;
+  const totalDuration = endTotalMinutes - startTotalMinutes;
+
+  // 2. Calculate Current Position (%)
+  const currentTotalMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
+
+  // Clamp the progress between 0 and 100
+  let currentPct = ((currentTotalMinutes - startTotalMinutes) / totalDuration) * 100;
+  currentPct = Math.max(0, Math.min(100, currentPct));
+
+  // 3. Calculate Deadline Position (%) - if one exists
+  let deadlinePct = null;
+  let isLate = false;
+
+  if (deadlineStr) {
+    const [dH, dM] = deadlineStr.split(":").map(Number);
+    const deadlineTotalMinutes = dH * 60 + dM;
+    deadlinePct = ((deadlineTotalMinutes - startTotalMinutes) / totalDuration) * 100;
+
+    // Check if we passed the deadline
+    if (currentTotalMinutes > deadlineTotalMinutes) {
+      isLate = true;
+    }
+  }
+
+  // Only render if we are somewhat near the timeframe (or just always render for consistency)
+  return (
+    <div className="relative w-full h-8 mt-4 mb-1">
+      {/* Background Track */}
+      <div className="absolute top-1/2 -translate-y-1/2 left-0 w-full h-2 bg-slate-700/50 rounded-full border border-white/5 overflow-hidden">
+        {/* Time Passed Gradient (Gray/Blue) */}
+        <div
+          className="h-full bg-slate-500/30 transition-all duration-1000"
+          style={{ width: `${currentPct}%` }}
+        />
+      </div>
+
+      {/* DEADLINE MARKER (The Bus) */}
+      {deadlinePct !== null && (
+        <div
+          className="absolute top-0 bottom-0 flex flex-col items-center group z-10"
+          style={{ left: `${deadlinePct}%`, transform: 'translateX(-50%)' }}
+        >
+          {/* Dashed Line */}
+          <div className={`h-full w-px border-l-2 border-dashed ${isLate ? "border-rose-500/50" : "border-emerald-500/50"}`} />
+
+          {/* Icon Flag */}
+          <div className={`absolute -top-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-lg backdrop-blur-md
+            ${isLate
+              ? "bg-rose-900/80 text-rose-200 border border-rose-500"
+              : "bg-emerald-900/80 text-emerald-200 border border-emerald-500"}`}
+          >
+            <Bus className="w-3 h-3" />
+            <span>{deadlineStr}</span>
+          </div>
+        </div>
+      )}
+
+      {/* CURRENT TIME NEEDLE */}
+      <div
+        className="absolute top-0 bottom-0 z-20 transition-all duration-1000 ease-linear"
+        style={{ left: `${currentPct}%`, transform: 'translateX(-50%)' }}
+      >
+        {/* Glowing Line */}
+        <div className={`h-full w-0.5 shadow-[0_0_10px_currentColor] ${isLate ? "bg-rose-500 text-rose-500" : "bg-cyan-400 text-cyan-400"}`} />
+
+        {/* "You are Here" Dot */}
+        <div className={`absolute top-1/2 -translate-y-1/2 -left-[3px] w-2 h-2 rounded-full ring-2 ring-slate-900 ${isLate ? "bg-rose-500" : "bg-cyan-400"}`} />
+      </div>
+
+      {/* Start/End Labels (Optional) */}
+      <div className="absolute -bottom-4 w-full flex justify-between text-[9px] text-slate-500 font-mono">
+        <span>{boundaries.start}:00</span>
+        <span>{boundaries.end}:00</span>
+      </div>
+    </div>
+  );
+};
 
 
 /* --------------------------------------------------
@@ -440,7 +637,7 @@ const DashboardView = ({
   useEffect(() => { fetchSparkle(false); }, []);
   const regenerateSparkle = () => fetchSparkle(true);
 
-  const todayKey = getLocalDateKey(currentTime);
+  const todayKey = currentTime.toISOString().split("T")[0];
   const dow = currentTime.getDay();
   const weekday = dow === 0 ? 7 : dow;
   const getTodayTasksForChild = (childId) => masterTasks.filter((t) => { const isAssigned = t.assignees.includes("all") || t.assignees.includes(childId); if (!isAssigned) return false; if (t.recurrence === "schooldays") return t.days?.includes(weekday); return true; });
@@ -735,15 +932,10 @@ const DashboardView = ({
 /* --------------------------------------------------
    COACH VIEW (Updated with Timeline)
 -------------------------------------------------- */
-const getCoachPhaseFromHour = (h) => {
-  if (h >= 6 && h < 9) return "morning";
-  if (h >= 14 && h < 18) return "afternoon";
-  if (h >= 18 && h < 23) return "evening";
-
-  // Outside active coach windows, keep the nearest practical phase selected.
-  if (h >= 23 || h < 6) return "evening";
-  if (h < 14) return "morning";
-  return "afternoon";
+const getPhaseFromHour = (h) => {
+  if (h >= 5 && h < 12) return "morning";
+  if (h >= 12 && h < 16) return "afternoon";
+  return "evening";
 };
 
 /* --------------------------------------------------
@@ -802,6 +994,47 @@ const SweepingLine = ({ phase, currentTime }) => {
         {currentTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
       </div>
     </div>
+  );
+};
+
+const EveningDeadlineBand = ({ phase }) => {
+  // Only show this in the Evening phase
+  if (phase !== "evening") return null;
+
+  // Hardcoded for 9:00 PM (75% of the 4-hour window)
+  const leftPct = 75;
+  const widthPct = 2.0833; // 5 minutes width
+
+  return (
+    <>
+      {/* 1. THE RED BAND (Background Layer) */}
+      <div
+        className="absolute top-8 bottom-0 z-0 bg-rose-500/10 border-l border-r border-rose-500/30 pointer-events-none"
+        style={{ left: `${leftPct}%`, width: `${widthPct}%` }}
+      >
+        <div className="w-full h-full bg-[repeating-linear-gradient(45deg,transparent,transparent_2px,rgba(244,63,94,0.1)_2px,rgba(244,63,94,0.1)_4px)]" />
+      </div>
+
+      {/* 2. THE FLOATING BED (Image Layer) 
+          - Decoupled from the band div
+          - Positioned exactly at the center of the band (leftPct + half width)
+          - Centered vertically (top: 50%)
+      */}
+      <div
+        className="absolute z-50 pointer-events-none flex justify-center items-center"
+        style={{
+          left: `${leftPct + (widthPct / 2)}%`,
+          top: '50%',
+          transform: 'translate(-50%, -50%)' // Perfect centering
+        }}
+      >
+        <img
+          src="/bed.png"
+          alt="Bedtime"
+          className="w-40 h-40 object-contain drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)]"
+        />
+      </div>
+    </>
   );
 };
 
@@ -868,7 +1101,7 @@ const CoachView = ({
   getProgress,
   childrenData
 }) => {
-  const initialPhase = getCoachPhaseFromHour(currentTime.getHours());
+  const initialPhase = getPhaseFromHour(currentTime.getHours());
   const [phase, setPhase] = useState(initialPhase);
 
   // Header Phase Icons
@@ -887,7 +1120,11 @@ const CoachView = ({
     return isCorrectPhase && isCorrectDay;
   });
 
-  const todayKey = getLocalDateKey(currentTime);
+  // OLD (Incorrect - uses UTC):
+  // const todayKey = currentTime.toISOString().split("T")[0];
+
+  // NEW (Correct - uses Local Device Time):
+  const todayKey = currentTime.toLocaleDateString("en-CA"); // Returns "YYYY-MM-DD" in local time
   const kidOrder = ["c7", "c8", "c3", "c4", "c5", "c6"];
   const orderedKids = kidOrder.map((id) => childrenData.find((c) => c.id === id)).filter(Boolean);
 
@@ -1240,9 +1477,21 @@ const SCHOOL_LOOKUP = {
 };
 
 const SchoolMenuView = ({ theme, schoolMenu, selectedSchool, setSelectedSchool, currentTime }) => {
+  const getLocalDateKey = (date) => {
+    const d = date instanceof Date ? date : new Date(date);
+    if (Number.isNaN(d.getTime())) return "";
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+
   const menuByKey = new Map(
-    (schoolMenu || []).filter((d) => d && d.date instanceof Date && !isNaN(d.date)).map((d) => [getLocalDateKey(d.date), d])
+    (schoolMenu || [])
+      .filter((d) => d && d.date instanceof Date && !Number.isNaN(d.date.getTime()))
+      .map((d) => [getLocalDateKey(d.date), d])
   );
+
   const todayKey = getLocalDateKey(currentTime);
   const getMonday = (date) => {
     const d = new Date(date);
@@ -1282,7 +1531,7 @@ const SchoolMenuView = ({ theme, schoolMenu, selectedSchool, setSelectedSchool, 
               {/* Increased Title (2xl -> 3xl) */}
               <h1 className="text-3xl font-bold text-white">School Lunch</h1>
               {/* Increased Subtitle (xs -> sm) */}
-              <p className="text-sm text-slate-400">Monday–Friday Entrées</p>
+              <p className="text-sm text-slate-400">Monday–Friday lunch items</p>
             </div>
           </div>
           <div className="relative">
@@ -1347,7 +1596,7 @@ const SchoolMenuView = ({ theme, schoolMenu, selectedSchool, setSelectedSchool, 
                           </ul>
                         ) : (
                           // Increased 'No menu' text (xs -> sm)
-                          <p className="text-sm text-slate-600 italic">No menu</p>
+                          <p className="text-sm text-slate-600 italic">No lunch items</p>
                         )}
                       </div>
                     );
@@ -1374,8 +1623,7 @@ const SettingsView = ({
   calendarFilters, setCalendarFilters,
   childrenData, setChildrenData,
   wallet, setWallet,
-  hiddenEventIds, setHiddenEventIds,
-  rewardThreshold, setRewardThreshold
+  hiddenEventIds, setHiddenEventIds
 }) => {
 
   // --- ADMIN LOCK STATE ---
@@ -1625,6 +1873,7 @@ const SettingsView = ({
 
   const handlePhotoUpload = (e, childId) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (event) => { const img = new Image(); img.onload = () => { const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d'); const MAX_SIZE = 150; let width = img.width; let height = img.height; if (width > height) { if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } } else { if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; } } canvas.width = width; canvas.height = height; ctx.drawImage(img, 0, 0, width, height); const dataUrl = canvas.toDataURL('image/jpeg', 0.7); setChildrenData(prev => prev.map(c => c.id === childId ? { ...c, img: dataUrl } : c)); }; img.src = event.target.result; }; reader.readAsDataURL(file); };
   const removePhoto = (childId) => { if (window.confirm("Remove this photo?")) { setChildrenData(prev => prev.map(c => c.id === childId ? { ...c, img: null } : c)); } };
+  const adjustBalance = (childId, type, amount) => { setWallet(prev => { const current = prev[childId] || { money: 0, time: 0 }; const newValue = type === 'money' ? current.money + amount : current.time + amount; return { ...prev, [childId]: { ...current, [type]: newValue } }; }); };
   const unhideAll = () => { if (window.confirm(`Restore ${hiddenEventIds.length} hidden events?`)) { setHiddenEventIds([]); } };
 
   // --- COLUMN HELPER FOR TASKS ---
@@ -2203,32 +2452,35 @@ const SettingsView = ({
           </div>
         )}
       </section>
-      {/* --- GLOBAL SETTINGS SECTION --- */}
+      {/* --- DAILY REWARD SCALE SECTION --- */}
       {isAdmin && (
         <section className="p-6 rounded-[2rem] bg-slate-800/40 backdrop-blur-xl border border-white/10 mb-8">
           <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">
-            Global Automation Settings
+            Daily Reward Scale
           </h2>
-          <div className="flex items-center gap-6">
-            <div className="flex-1">
-              <label className="block text-sm font-bold text-slate-200 mb-1">
-                Legacy Daily Threshold
-              </label>
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm font-bold text-slate-200 mb-1">
+                Automatic end-of-day screen-time payout
+              </p>
               <p className="text-xs text-slate-500">
-                Sliding payout is active: 10–30% = 20m, 31–60% = 40m, 61–90% = 60m, &gt;90% = 75m. This value is retained for backwards compatibility.
+                The old success threshold has been removed. Rewards now follow the fixed sliding scale below and are still skipped on Saturdays.
               </p>
             </div>
 
-            <div className="flex items-center gap-2 bg-slate-900 rounded-xl p-2 border border-white/10">
-              <input
-                type="number"
-                min="1"
-                max="100"
-                value={rewardThreshold}
-                onChange={(e) => setRewardThreshold(Number(e.target.value))}
-                className="bg-transparent text-white font-bold text-xl w-16 text-center focus:outline-none"
-              />
-              <span className="text-slate-500 font-bold pr-2">%</span>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              {[
+                { range: "0–9%", minutes: "0m", tone: "text-slate-400" },
+                { range: "10–30%", minutes: "20m", tone: "text-cyan-300" },
+                { range: "31–60%", minutes: "40m", tone: "text-blue-300" },
+                { range: "61–90%", minutes: "60m", tone: "text-purple-300" },
+                { range: ">90%", minutes: "75m", tone: "text-emerald-300" },
+              ].map((tier) => (
+                <div key={tier.range} className="rounded-2xl bg-slate-900/50 border border-white/5 p-4 text-center">
+                  <div className={`text-2xl font-black font-mono ${tier.tone}`}>{tier.minutes}</div>
+                  <div className="text-[10px] text-slate-500 uppercase tracking-widest mt-1">{tier.range}</div>
+                </div>
+              ))}
             </div>
           </div>
         </section>
@@ -2238,127 +2490,166 @@ const SettingsView = ({
 };
 
 /* --------------------------------------------------
-   BALANCES VIEW (New Home for Redemption)
+   BALANCES VIEW (Wallet + Redemption)
 -------------------------------------------------- */
-const BalancesView = ({ theme, childrenData, wallet, setWallet }) => {
+const BalancesView = ({ theme, childrenData, wallet, setWallet, dailyRewards = {}, currentTime = new Date() }) => {
   // REDEMPTION STATE
   const [redeemingChildId, setRedeemingChildId] = useState(null);
   const [redeemType, setRedeemType] = useState("time"); // 'time' or 'money'
   const [redeemAmount, setRedeemAmount] = useState("");
-  const [redeemTarget, setRedeemTarget] = useState("Xbox");
+  const [redeemTarget, setRedeemTarget] = useState("Tablet");
+
+  const kids = childrenData.filter(c => c.role === 'child');
+  const redeemingChild = childrenData.find(c => c.id === redeemingChildId);
+
+  const getLocalDateKey = (date) => date.toLocaleDateString("en-CA");
+
+  const getYesterdayRewardForChild = (childId) => {
+    const yesterday = new Date(currentTime);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const rewardKey = `${getLocalDateKey(yesterday)}-${childId}`;
+    const record = dailyRewards?.[rewardKey];
+
+    if (!record || typeof record !== "object") return null;
+
+    return {
+      minutes: Number(record.minutes) || 0,
+      pct: typeof record.pct === "number" ? record.pct : null,
+      completed: typeof record.completed === "number" ? record.completed : null,
+      total: typeof record.total === "number" ? record.total : null
+    };
+  };
+
+  const openRedemption = (childId) => {
+    setRedeemingChildId(childId);
+    setRedeemType("time");
+    setRedeemTarget("Tablet");
+    setRedeemAmount("");
+  };
+
+  const adjustRedeemMinutes = (delta) => {
+    const current = Number(redeemAmount) || 0;
+    const next = Math.max(0, current + delta);
+    setRedeemAmount(next === 0 ? "" : String(next));
+  };
 
   // --- HELPER: Send Notification ---
   const sendNotification = async (childName, type, amount, target) => {
-  const BACKEND_ORIGIN = window.location.origin;
+    const PI_IP = window.location.origin;
 
-  const payload = {
-    child_name: childName,
-    amount,
-    type: type === "time" ? "minutes" : type,
-    target,
-  };
+    const payload = {
+      child_name: childName,
+      amount,
+      type: type === "time" ? "minutes" : type,
+      target,
+    };
 
-  const response = await fetch(`${BACKEND_ORIGIN}/api/notify`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+    const response = await fetch(`${PI_IP}/api/notify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
 
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Notify failed: ${response.status} ${text}`);
-  }
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Notify failed: ${response.status} ${text}`);
+    }
 
-  return response.json();
+    return response.json();
   };
 
   const handleRedeemSubmit = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  const amount = Number(redeemAmount);
-  if (!amount || amount <= 0) return;
+    const amount = Number(redeemAmount);
+    if (!amount || amount <= 0) return;
 
-  const child =
-    childrenData.find(c => c.id === redeemingChildId) ||
-    CHILDREN.find(c => c.id === redeemingChildId);
+    const child =
+      childrenData.find(c => c.id === redeemingChildId) ||
+      CHILDREN.find(c => c.id === redeemingChildId);
 
-  if (!child) {
-    alert("Could not find child.");
-    return;
-  }
-
-  const currentBalance = wallet[redeemingChildId]?.[redeemType] || 0;
-
-  if (amount > currentBalance) {
-    alert(`Insufficient funds! You only have ${currentBalance}.`);
-    return;
-  }
-
-  if (window.confirm(`Confirm: Deduct ${amount} from ${child.name}?`)) {
-    // 1. Update Local Wallet (authoritative local redemption)
-    setWallet(prev => ({
-      ...prev,
-      [redeemingChildId]: {
-        ...prev[redeemingChildId],
-        [redeemType]: currentBalance - amount
-      }
-    }));
-
-    // 2. Send backend notification
-    try {
-      await sendNotification(child.name, redeemType, amount, redeemTarget);
-      console.log("✅ Redemption notification sent");
-    } catch (err) {
-      console.error("❌ Notification failed:", err);
+    if (!child) {
+      alert("Could not find child.");
+      return;
     }
 
-    // 3. Send Qustodio grant only for tablet time
-    const normalizedTarget = String(redeemTarget || "").toLowerCase();
-    const isTabletRedemption =
-      redeemType === "time" &&
-      (normalizedTarget.includes("tablet") || normalizedTarget.includes("ipad"));
+    const currentBalance = wallet[redeemingChildId]?.[redeemType] || 0;
 
-    const qUid = child.qustodioUid || "";
+    if (amount > currentBalance) {
+      const unit = redeemType === "time" ? "minutes" : "dollars";
+      alert(`Insufficient funds! You only have ${currentBalance} ${unit}.`);
+      return;
+    }
 
-    if (isTabletRedemption && qUid) {
-      try {
-        const response = await fetch("/api/qustodio", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            child_id: child.id,
-            uid: qUid,
-            name: child.name.toLowerCase(),
-            minutes: amount
-          })
-        });
+    const confirmLabel = redeemType === "time"
+      ? `${amount} minutes of screen time`
+      : `$${amount.toFixed(2)}`;
 
-        const data = await response.json().catch(() => ({}));
-
-        if (!response.ok) {
-          console.error("❌ Qustodio HTTP error:", response.status, data);
-        } else {
-          console.log("✅ Qustodio response:", data);
+    if (window.confirm(`Confirm: Deduct ${confirmLabel} from ${child.name}?`)) {
+      // 1. Update Local Wallet (authoritative local redemption)
+      setWallet(prev => ({
+        ...prev,
+        [redeemingChildId]: {
+          ...prev[redeemingChildId],
+          [redeemType]: currentBalance - amount
         }
+      }));
+
+      // 2. Send backend notification
+      try {
+        await sendNotification(child.name, redeemType, amount, redeemTarget);
+        console.log("✅ Redemption notification sent");
       } catch (err) {
-        console.error("❌ Qustodio fetch error:", err);
+        console.error("❌ Notification failed:", err);
       }
-    } else {
-      console.log("Qustodio skipped", {
-        redeemType,
-        redeemTarget,
-        hasUid: !!qUid
-      });
+
+      // 3. Send Qustodio grant only for tablet time
+      const normalizedTarget = String(redeemTarget || "").toLowerCase();
+      const isTabletRedemption =
+        redeemType === "time" &&
+        (normalizedTarget.includes("tablet") || normalizedTarget.includes("ipad"));
+
+      const qUid = child.qustodioUid || "";
+
+      if (isTabletRedemption && qUid) {
+        try {
+          const response = await fetch("/api/qustodio", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              child_id: child.id,
+              uid: qUid,
+              name: child.name.toLowerCase(),
+              minutes: amount
+            })
+          });
+
+          const data = await response.json().catch(() => ({}));
+
+          if (!response.ok) {
+            console.error("❌ Qustodio HTTP error:", response.status, data);
+          } else {
+            console.log("✅ Qustodio response:", data);
+          }
+        } catch (err) {
+          console.error("❌ Qustodio fetch error:", err);
+        }
+      } else {
+        console.log("Qustodio skipped", {
+          redeemType,
+          redeemTarget,
+          hasUid: !!qUid
+        });
+      }
+
+      // 4. Reset Form
+      setRedeemingChildId(null);
+      setRedeemAmount("");
     }
+  };
 
-    // 4. Reset Form
-    setRedeemingChildId(null);
-    setRedeemAmount("");
-  }
-};
-
-  const redeemingChild = childrenData.find(c => c.id === redeemingChildId);
-  const kids = childrenData.filter(c => c.role === 'child');
+  const amountNumber = Number(redeemAmount) || 0;
 
   return (
     <div className="h-full w-full p-6 flex flex-col items-center">
@@ -2373,23 +2664,51 @@ const BalancesView = ({ theme, childrenData, wallet, setWallet }) => {
       <div className="grid grid-cols-2 md:grid-cols-3 gap-6 w-full max-w-4xl">
         {kids.map(kid => {
           const balance = wallet[kid.id] || { money: 0, time: 0 };
+          const yesterdayReward = getYesterdayRewardForChild(kid.id);
+
           return (
             <button
               key={kid.id}
-              onClick={() => setRedeemingChildId(kid.id)}
+              onClick={() => openRedemption(kid.id)}
               className="relative flex flex-col items-center gap-4 bg-slate-800/40 hover:bg-slate-700/60 border border-white/5 hover:border-white/20 rounded-[2rem] p-6 transition-all duration-300 group active:scale-95"
             >
               <ChildAvatar child={kid} className="w-24 h-24 shadow-2xl ring-4 ring-transparent group-hover:ring-emerald-500 transition-all" textSize="text-4xl" />
 
-              <div className="text-center">
+              <div className="text-center w-full">
                 <h3 className="text-xl font-bold text-white mb-1">{kid.name}</h3>
-                <div className="flex flex-col gap-1">
-                  <div className="px-3 py-1 bg-emerald-500/10 rounded-lg border border-emerald-500/20 text-emerald-400 font-bold font-mono text-lg">
+                <div className="flex flex-col gap-1 items-center">
+                  <div className="px-3 py-1 bg-emerald-500/10 rounded-lg border border-emerald-500/20 text-emerald-400 font-bold font-mono text-lg min-w-[7.5rem]">
                     ${balance.money.toFixed(2)}
                   </div>
-                  <div className="px-3 py-1 bg-purple-500/10 rounded-lg border border-purple-500/20 text-purple-400 font-bold font-mono text-lg">
+                  <div className="px-3 py-1 bg-purple-500/10 rounded-lg border border-purple-500/20 text-purple-400 font-bold font-mono text-lg min-w-[7.5rem]">
                     {balance.time}m
                   </div>
+                </div>
+
+                <div className={`mt-3 rounded-2xl border px-3 py-2 text-left transition-all ${
+                  yesterdayReward
+                    ? "bg-cyan-500/10 border-cyan-400/20 text-cyan-200"
+                    : "bg-slate-900/50 border-white/5 text-slate-500"
+                }`}>
+                  <div className="flex items-center justify-center gap-1.5 text-[10px] font-bold uppercase tracking-widest">
+                    <Clock className="w-3 h-3" />
+                    <span>Yesterday</span>
+                  </div>
+
+                  {yesterdayReward ? (
+                    <div className="mt-1 flex items-baseline justify-center gap-2">
+                      <span className="text-base font-black text-white">+{yesterdayReward.minutes}m</span>
+                      {yesterdayReward.pct !== null && (
+                        <span className="text-[10px] font-bold text-cyan-300">
+                          {yesterdayReward.pct}% complete
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="mt-1 text-center text-[11px] font-bold">
+                      No reward record
+                    </div>
+                  )}
                 </div>
               </div>
             </button>
@@ -2400,14 +2719,14 @@ const BalancesView = ({ theme, childrenData, wallet, setWallet }) => {
       {/* REDEMPTION POPUP */}
       {redeemingChild && (
         <div className="absolute inset-0 z-50 bg-slate-900/90 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setRedeemingChildId(null)}>
-          <div className="bg-slate-800 border border-white/10 rounded-3xl p-6 shadow-2xl w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-slate-800 border border-white/10 rounded-3xl p-6 shadow-2xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <ChildAvatar child={redeemingChild} className="w-12 h-12" textSize="text-lg" />
                 <div>
                   <h3 className="text-xl font-bold text-white">{redeemingChild.name}</h3>
                   <div className="flex gap-3 text-xs font-mono mt-1">
-                    <span className="text-purple-400">{(wallet && wallet[redeemingChildId]?.time) || 0}m Time</span>
+                    <span className="text-purple-400">{(wallet && wallet[redeemingChildId]?.time) || 0}m Screen Time</span>
                     <span className="text-emerald-400">${((wallet && wallet[redeemingChildId]?.money) || 0).toFixed(2)} Cash</span>
                   </div>
                 </div>
@@ -2417,29 +2736,94 @@ const BalancesView = ({ theme, childrenData, wallet, setWallet }) => {
 
             <form onSubmit={handleRedeemSubmit} className="space-y-5">
               <div className="grid grid-cols-2 bg-slate-900/50 rounded-xl p-1">
-                <button type="button" onClick={() => { setRedeemType("time"); setRedeemTarget("Xbox"); }} className={`py-2 rounded-lg text-sm font-bold transition-all ${redeemType === "time" ? "bg-purple-600 text-white shadow-lg" : "text-slate-500 hover:text-slate-300"}`}>Time</button>
-                <button type="button" onClick={() => { setRedeemType("money"); setRedeemTarget("Greenlight"); }} className={`py-2 rounded-lg text-sm font-bold transition-all ${redeemType === "money" ? "bg-emerald-600 text-white shadow-lg" : "text-slate-500 hover:text-slate-300"}`}>Money</button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRedeemType("time");
+                    setRedeemTarget("Tablet");
+                    setRedeemAmount("");
+                  }}
+                  className={`py-2 rounded-lg text-sm font-bold transition-all ${redeemType === "time" ? "bg-purple-600 text-white shadow-lg" : "text-slate-500 hover:text-slate-300"}`}
+                >
+                  Screen Time
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRedeemType("money");
+                    setRedeemTarget("Greenlight");
+                    setRedeemAmount("");
+                  }}
+                  className={`py-2 rounded-lg text-sm font-bold transition-all ${redeemType === "money" ? "bg-emerald-600 text-white shadow-lg" : "text-slate-500 hover:text-slate-300"}`}
+                >
+                  Money
+                </button>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-400 mb-1 ml-1 uppercase tracking-wider">Amount to Redeem</label>
-                <div className="relative">
-                  <input
-                    type="number" autoFocus
-                    className="w-full rounded-xl bg-slate-900 border border-white/10 text-white px-4 py-3 text-lg font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="0" value={redeemAmount} onChange={(e) => setRedeemAmount(e.target.value)}
-                  />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">{redeemType === "money" ? "$" : "min"}</span>
-                </div>
-              </div>
+              {redeemType === "time" ? (
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-2 ml-1 uppercase tracking-wider">
+                    Amount to Redeem
+                  </label>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-400 mb-1 ml-1 uppercase tracking-wider">Destination</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(redeemType === "time" ? ["TV", "Tablet", "PC", "Xbox"] : ["Greenlight", "Cash", "Amazon"]).map(t => (
+                  <div className="grid grid-cols-[72px_1fr_72px] gap-3 items-center">
                     <button
-                      key={t} type="button" onClick={() => setRedeemTarget(t)}
-                      className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all ${redeemTarget === t ? "bg-blue-600/20 border-blue-500 text-blue-400" : "bg-slate-900 border-transparent text-slate-500 hover:bg-slate-800"}`}
+                      type="button"
+                      onClick={() => adjustRedeemMinutes(5)}
+                      className="h-16 rounded-2xl bg-emerald-600/20 border border-emerald-400/40 text-emerald-300 flex items-center justify-center hover:bg-emerald-600/30 active:scale-95 transition-all"
+                      aria-label="Add 5 minutes"
+                    >
+                      <Plus className="w-7 h-7" />
+                    </button>
+
+                    <div className="h-16 rounded-2xl bg-slate-900 border border-blue-500/80 flex items-center justify-center text-white font-mono text-2xl font-black shadow-[0_0_0_1px_rgba(59,130,246,0.3)]">
+                      {amountNumber}
+                      <span className="text-slate-500 text-base ml-2">min</span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => adjustRedeemMinutes(-5)}
+                      className="h-16 rounded-2xl bg-rose-600/20 border border-rose-400/40 text-rose-300 flex items-center justify-center hover:bg-rose-600/30 active:scale-95 transition-all"
+                      aria-label="Remove 5 minutes"
+                    >
+                      <Minus className="w-7 h-7" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-1 ml-1 uppercase tracking-wider">
+                    Amount to Redeem
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      autoFocus
+                      min="0"
+                      className="w-full rounded-xl bg-slate-900 border border-white/10 text-white px-4 py-3 text-lg font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="0"
+                      value={redeemAmount}
+                      onChange={(e) => setRedeemAmount(e.target.value)}
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">
+                      $
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-slate-400 mb-1 ml-1 uppercase tracking-wider">
+                  Destination
+                </label>
+                <div className={redeemType === "time" ? "grid grid-cols-2 gap-2" : "grid grid-cols-3 gap-2"}>
+                  {(redeemType === "time" ? ["Tablet", "PC"] : ["Greenlight", "Cash", "Amazon"]).map(t => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setRedeemTarget(t)}
+                      className={`py-3 px-1 rounded-xl text-xs font-bold border transition-all ${redeemTarget === t ? "bg-blue-600/20 border-blue-500 text-blue-400" : "bg-slate-900 border-transparent text-slate-500 hover:bg-slate-800"}`}
                     >
                       {t}
                     </button>
@@ -2448,7 +2832,14 @@ const BalancesView = ({ theme, childrenData, wallet, setWallet }) => {
               </div>
 
               <button type="submit" className="w-full py-4 mt-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl shadow-xl shadow-blue-900/20 transition-all flex items-center justify-center gap-2">
-                <span>Redeem Now</span> <ArrowRight className="w-5 h-5" />
+                <span>
+                  {redeemType === "time" && amountNumber > 0
+                    ? `Redeem ${amountNumber} min Screen Time`
+                    : redeemType === "money" && amountNumber > 0
+                      ? `Redeem $${amountNumber.toFixed(2)}`
+                      : "Redeem Now"}
+                </span>
+                <ArrowRight className="w-5 h-5" />
               </button>
             </form>
           </div>
@@ -2459,7 +2850,7 @@ const BalancesView = ({ theme, childrenData, wallet, setWallet }) => {
 };
 
 /* --------------------------------------------------
-   MAIN APP (Phase 2 cleanup + Phase 1 payout/persistence fixes)
+   MAIN APP (Updated: Header with Dynamic Pizzazz)
 -------------------------------------------------- */
 
 function FamilyDashboard() {
@@ -2532,33 +2923,11 @@ function FamilyDashboard() {
     } catch { return []; }
   });
 
-  const [completedTasks, setCompletedTasks] = useState(() => {
-    try {
-      const saved = localStorage.getItem("familyCompletedTasks");
-      return saved ? JSON.parse(saved) : {};
-    } catch { return {}; }
-  });
+  // --- DAILY REWARD TRACKING ---
+  const [dailyRewards, setDailyRewards] = useState({});
 
-  // --- Daily reward history and legacy threshold setting ---
-  const [rewardThreshold, setRewardThreshold] = useState(() => {
-    try {
-      const saved = localStorage.getItem("familyRewardThreshold");
-      return saved ? Number(JSON.parse(saved)) || 100 : 100;
-    } catch { return 100; }
-  });
-
-  const [dailyRewards, setDailyRewards] = useState(() => {
-    try {
-      const saved = localStorage.getItem("familyDailyRewards");
-      return saved ? JSON.parse(saved) : {};
-    } catch { return {}; }
-  });
-
-  // Guards reward processing during the active 11:55 PM minute, including React StrictMode/dev replays.
-  const rewardProcessingRef = useRef(new Set());
-
-  // --- Shared server persistence ---
-  // We bootstrap from localStorage (fast/offline), then hydrate from the Windows backend via /api/state.
+  // --- Shared (Pi) persistence ---
+  // We bootstrap from localStorage (fast/offline), then hydrate from the RPI4 via /api/state.
   // After hydration, we debounce-save back to the server so every device stays in sync.
   const serverHydratedRef = useRef(false);
   const serverSaveTimerRef = useRef(null);
@@ -2587,11 +2956,10 @@ function FamilyDashboard() {
         if (Array.isArray(data.gigTemplates)) setGigTemplates(data.gigTemplates);
         if (Array.isArray(data.calendarSources)) setCalendarSources(data.calendarSources);
         if (Array.isArray(data.calendarFilters)) setCalendarFilters(data.calendarFilters);
-        if (isPlainObject(data.completedTasks)) setCompletedTasks(data.completedTasks);
 
-        // ✅ Load reward state from server
+        // ✅ Load daily reward tracking and today's completed task state from server
         if (isPlainObject(data.dailyRewards)) setDailyRewards(data.dailyRewards);
-        if (typeof data.rewardThreshold === 'number') setRewardThreshold(data.rewardThreshold);
+        if (isPlainObject(data.completedTasks)) setCompletedTasks(data.completedTasks);
 
         serverHydratedRef.current = true;
       } catch (e) {
@@ -2614,6 +2982,12 @@ function FamilyDashboard() {
     };
   }, []);
 
+  const [completedTasks, setCompletedTasks] = useState(() => {
+    try {
+      const saved = localStorage.getItem("familyCompletedTasks");
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
   const [calendarView, setCalendarView] = useState("week");
   const [weather, setWeather] = useState(null);
   const [selectedSchool, setSelectedSchool] = useState("2607"); // Default to JES
@@ -2623,7 +2997,11 @@ function FamilyDashboard() {
   useEffect(() => { const i = setInterval(() => setThemePhase(getDayPhase()), 60000); return () => clearInterval(i); }, []);
   const [calendarDate, setCalendarDate] = useState(new Date());
   const resetTimerRef = useRef(null);
-  const todayKey = getLocalDateKey(currentTime);
+  // OLD (Incorrect - uses UTC):
+  // const todayKey = currentTime.toISOString().split("T")[0];
+
+  // NEW (Correct - uses Local Device Time):
+  const todayKey = currentTime.toLocaleDateString("en-CA"); // Returns "YYYY-MM-DD" in local time
   useEffect(() => { const t = setInterval(() => setCurrentTime(new Date()), 1000); return () => clearInterval(t); }, []);
   const theme = THEMES[themePhase];
 
@@ -2638,13 +3016,11 @@ function FamilyDashboard() {
   useEffect(() => { localStorage.setItem("calendarSources", JSON.stringify(calendarSources)); }, [calendarSources]);
   useEffect(() => { localStorage.setItem("calendarFilters", JSON.stringify(calendarFilters)); }, [calendarFilters]);
   useEffect(() => { localStorage.setItem("familyCompletedTasks", JSON.stringify(completedTasks)); }, [completedTasks]);
-  useEffect(() => { localStorage.setItem("familyDailyRewards", JSON.stringify(dailyRewards)); }, [dailyRewards]);
-  useEffect(() => { localStorage.setItem("familyRewardThreshold", JSON.stringify(rewardThreshold)); }, [rewardThreshold]);
 
-  // 2b. PERSIST SHARED DATA — debounced to avoid spam
+  // 2b. PERSIST SHARED DATA (RPI4) — debounced to avoid spam
   useEffect(() => {
     // Don't push anything until we've successfully hydrated from the server.
-    // This prevents overwriting the server saved state with defaults on first load.
+    // This prevents overwriting the Pi's saved state with defaults on first load.
     if (!serverHydratedRef.current) return;
 
     const nextState = {
@@ -2657,9 +3033,8 @@ function FamilyDashboard() {
       gigTemplates,
       calendarSources,
       calendarFilters,
-      completedTasks,
       dailyRewards,
-      rewardThreshold
+      completedTasks
     };
 
     if (serverSaveTimerRef.current) clearTimeout(serverSaveTimerRef.current);
@@ -2679,138 +3054,111 @@ function FamilyDashboard() {
     };
   }, [
     childrenData, wallet, customEvents, hiddenEventIds, masterTasks, gigs,
-    gigTemplates, calendarSources, calendarFilters, completedTasks,
-    dailyRewards, rewardThreshold
+    gigTemplates, calendarSources, calendarFilters,
+    dailyRewards, completedTasks
   ]);
 
-  // --- AUTOMATION: Nightly Sliding-Scale Reward + Task Maintenance ---
+  // --- DAILY SLIDING-SCALE REWARD AUTOMATION ---
+  const getDailyRewardMinutes = (completionPct) => {
+    if (completionPct > 90) return 75;
+    if (completionPct >= 61) return 60;
+    if (completionPct >= 31) return 40;
+    if (completionPct >= 10) return 20;
+    return 0;
+  };
+
   useEffect(() => {
-    // Run once during the 11:55 PM minute. The rewardProcessingRef prevents repeated
-    // processing while the clock updates every second during that minute.
-    if (currentTime.getHours() !== 23 || currentTime.getMinutes() !== 55) return;
+    // Run during the end-of-day payout window.
+    // This gives the dashboard a few minutes of tolerance if it refreshes around payout time.
+    const isPayoutWindow = currentTime.getHours() === 23 && currentTime.getMinutes() >= 55;
+    if (!isPayoutWindow) return;
 
-    const today = currentTime;
-    const dayOfWeek = today.getDay(); // 0=Sun, 6=Sat
-    const dateKey = getLocalDateKey(today);
+    const dayOfWeek = currentTime.getDay(); // 0=Sun, 6=Sat
+    const dateKey = currentTime.toLocaleDateString("en-CA"); // Local YYYY-MM-DD
     const currentDayId = dayOfWeek === 0 ? 7 : dayOfWeek;
-    const processedAt = new Date().toISOString();
 
-    // Saturday rule retained: no daily task payout on Saturday.
+    // Saturday rule: no automatic daily reward on Saturdays.
     if (dayOfWeek !== 6) {
-      const rewardResults = [];
-
-      childrenData.forEach((child) => {
-        if (child.role !== "child") return;
+      childrenData.forEach(child => {
+        if (child.role !== 'child') return;
 
         const rewardKey = `${dateKey}-${child.id}`;
-        if (dailyRewards[rewardKey] || rewardProcessingRef.current.has(rewardKey)) return;
+        if (dailyRewards[rewardKey]) return;
 
-        rewardProcessingRef.current.add(rewardKey);
-
-        const childTasks = masterTasks.filter((t) => {
+        const childTasks = masterTasks.filter(t => {
           const assigned = t.assignees.includes("all") || t.assignees.includes(child.id);
           const scheduled = t.days ? t.days.includes(currentDayId) : true;
           return assigned && scheduled;
         });
 
-        const totalTasks = childTasks.length;
-        const completedCount = childTasks.filter((t) => {
+        if (childTasks.length === 0) return;
+
+        const completedCount = childTasks.filter(t => {
           const key = `${dateKey}-${child.id}-${t.id}`;
           return completedTasks[key];
         }).length;
 
-        const completionPct = totalTasks === 0 ? 0 : Math.round((completedCount / totalTasks) * 100);
-        const minutesEarned = calculateDailyMinutes(completionPct);
+        const completionPct = (completedCount / childTasks.length) * 100;
+        const roundedPct = Math.round(completionPct);
+        const rewardMinutes = getDailyRewardMinutes(completionPct);
 
-        rewardResults.push({
-          child,
-          rewardKey,
-          totalTasks,
-          completedCount,
-          completionPct,
-          minutesEarned,
-        });
-      });
+        if (rewardMinutes > 0) {
+          console.log(`🎉 Daily reward: ${child.name} completed ${roundedPct}% and earned ${rewardMinutes} minutes.`);
 
-      if (rewardResults.length > 0) {
-        const payableResults = rewardResults.filter((r) => r.minutesEarned > 0);
+          setWallet(prev => ({
+            ...prev,
+            [child.id]: {
+              ...prev[child.id],
+              time: ((prev[child.id]?.time) || 0) + rewardMinutes,
+              money: (prev[child.id]?.money) || 0
+            }
+          }));
 
-        if (payableResults.length > 0) {
-          setWallet((prev) => {
-            const next = { ...prev };
-
-            payableResults.forEach(({ child, minutesEarned }) => {
-              const current = next[child.id] || { money: 0, time: 0 };
-              next[child.id] = {
-                ...current,
-                money: current.money || 0,
-                time: (current.time || 0) + minutesEarned,
-              };
-            });
-
-            return next;
-          });
-        }
-
-        setDailyRewards((prev) => {
-          const next = { ...prev };
-
-          rewardResults.forEach(({ child, rewardKey, totalTasks, completedCount, completionPct, minutesEarned }) => {
-            next[rewardKey] = {
-              date: dateKey,
-              child_id: child.id,
-              child_name: child.name,
-              completedTasks: completedCount,
-              totalTasks,
-              completionPct,
-              minutesEarned,
-              payoutModel: "sliding-scale-v1",
-              processedAt,
-            };
-          });
-
-          return next;
-        });
-
-        payableResults.forEach(({ child, completionPct, minutesEarned }) => {
           const payload = {
             child_id: child.id,
             child_name: child.name,
-            amount: minutesEarned,
-            completion_pct: completionPct,
-            reason: `Nightly sliding payout: ${completionPct}% complete`,
+            amount: rewardMinutes,
+            completion_pct: roundedPct,
+            reason: `Daily task completion: ${roundedPct}%`
           };
 
-          if (typeof HA_URL !== "undefined") {
+          if (typeof HA_URL !== 'undefined') {
             fetch(`${HA_URL}/api/webhook/family_dashboard_reward`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(payload),
-            }).catch((err) => console.warn("Failed to notify HA", err));
+              body: JSON.stringify(payload)
+            }).catch(err => console.warn("Failed to notify HA", err));
           }
-        });
-      }
+        }
+
+        setDailyRewards(prev => ({
+          ...prev,
+          [rewardKey]: {
+            paid: true,
+            pct: roundedPct,
+            minutes: rewardMinutes,
+            completed: completedCount,
+            total: childTasks.length,
+            scale: "sliding"
+          }
+        }));
+      });
     }
 
-    // Nightly maintenance: keep 7 days of task history so reboot/crash recovery works
-    // during the current day without letting old task records pile up forever.
+    // Nightly maintenance: prune task records older than 7 days.
     const maintenanceKey = `${dateKey}-maintenance`;
 
-    if (!dailyRewards[maintenanceKey] && !rewardProcessingRef.current.has(maintenanceKey)) {
-      rewardProcessingRef.current.add(maintenanceKey);
-
-      setCompletedTasks((prev) => {
-        const cutoff = new Date(today);
-        cutoff.setHours(0, 0, 0, 0);
+    if (!dailyRewards[maintenanceKey]) {
+      setCompletedTasks(prev => {
+        const cutoff = new Date();
         cutoff.setDate(cutoff.getDate() - 7);
 
         const next = { ...prev };
         let prunedCount = 0;
 
-        Object.keys(next).forEach((key) => {
+        Object.keys(next).forEach(key => {
           const datePart = key.substring(0, 10);
-          const taskDate = fromLocalDateString(datePart);
-          taskDate.setHours(0, 0, 0, 0);
+          const taskDate = new Date(`${datePart}T00:00:00`);
 
           if (taskDate < cutoff) {
             delete next[key];
@@ -2822,20 +3170,117 @@ function FamilyDashboard() {
         return next;
       });
 
-      setDailyRewards((prev) => ({
-        ...prev,
-        [maintenanceKey]: {
-          date: dateKey,
-          type: "maintenance",
-          processedAt,
-        },
-      }));
+      setDailyRewards(prev => ({ ...prev, [maintenanceKey]: true }));
     }
   }, [currentTime, masterTasks, completedTasks, childrenData, dailyRewards]);
 
   // Weather & Menu Fetch (Standard)
   useEffect(() => { const fetchWeather = async () => { try { const url = `https://api.open-meteo.com/v1/forecast?latitude=41.3712&longitude=-73.414&current_weather=true&hourly=temperature_2m,precipitation_probability,relative_humidity_2m,wind_speed_10m,weathercode&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode&temperature_unit=fahrenheit&timezone=America%2FNew_York`; const res = await fetch(url); const data = await res.json(); if (!data.current_weather) return; const daily = data.daily.time.map((iso, i) => ({ date: fromLocalDateString(iso), high: data.daily.temperature_2m_max[i], low: data.daily.temperature_2m_min[i], code: data.daily.weathercode[i], })).slice(0, 7); setWeather({ current: { temperature: data.current_weather.temperature, code: data.current_weather.weathercode }, daily, unit: "F" }); } catch (e) { } }; fetchWeather(); }, []);
-  useEffect(() => { const fetchMenu = async () => { try { const year = currentTime.getFullYear(); const month = String(currentTime.getMonth() + 1).padStart(2, "0"); const url = `https://apiservicelocatorstenant.fdmealplanner.com/api/v1/data-locator-webapi/3/meals?menuId=0&accountId=651&locationId=${selectedSchool}&mealPeriodId=2&tenantId=3&monthId=${month}&startDate=${year}/${month}/01&endDate=${year}/${month}/31&timeOffset=300`; const res = await fetch(url); const raw = await res.json(); const rows = Array.isArray(raw?.result) ? raw.result : []; const normalized = rows.map((row) => { const dateStr = row.strMenuForDate || row.menuForDate || row.date; if (!dateStr) return null; let items = []; if (Array.isArray(row.menuRecipiesData)) { items = row.menuRecipiesData.filter((r) => r.isEntreeType === 1 && (r.isShowOnMenu === 1 || r.isShowOnMenu === true || r.isShowOnMenu === "1")).map((r) => r.componentEnglishName || r.name || "").filter(Boolean); items = Array.from(new Set(items)); } return { date: new Date(dateStr), items }; }).filter(Boolean); setSchoolMenu(normalized); } catch (err) { setSchoolMenu([]); } }; fetchMenu(); }, [selectedSchool, currentTime.getFullYear(), currentTime.getMonth()]);
+  useEffect(() => {
+    const fetchMenu = async () => {
+      const isShownOnMenu = (value) => value === 1 || value === true || value === "1" || value === "true";
+
+      const cleanMenuName = (value) => {
+        if (!value) return "";
+        const textarea = document.createElement("textarea");
+        textarea.innerHTML = String(value);
+        return textarea.value.replace(/\s+/g, " ").trim();
+      };
+
+      const getMenuItemName = (item) => cleanMenuName(
+        item?.componentEnglishName ||
+        item?.ComponentEnglishName ||
+        item?.englishAlternateName ||
+        item?.EnglishAlternateName ||
+        item?.name ||
+        item?.componentName ||
+        item?.ComponentName ||
+        ""
+      );
+
+      const uniqueItems = (items) => Array.from(new Set((items || []).map(cleanMenuName).filter(Boolean)));
+
+      const extractItemsFromXml = (xmlText) => {
+        if (!xmlText || typeof DOMParser === "undefined") return [];
+        try {
+          const doc = new DOMParser().parseFromString(xmlText, "text/xml");
+          return Array.from(doc.querySelectorAll("Details, Items"))
+            .filter((node) => {
+              const show = node.getAttribute("IsShowOnMenu") || node.querySelector("IsShowOnMenu")?.textContent;
+              return isShownOnMenu(show);
+            })
+            .map((node) => {
+              const attrName =
+                node.getAttribute("ComponentEnglishName") ||
+                node.getAttribute("EnglishAlternateName") ||
+                node.getAttribute("ComponentName");
+              const childName =
+                node.querySelector("ComponentEnglishName")?.textContent ||
+                node.querySelector("EnglishAlternateName")?.textContent ||
+                node.querySelector("ComponentName")?.textContent;
+              return cleanMenuName(attrName || childName || "");
+            })
+            .filter(Boolean);
+        } catch (err) {
+          console.warn("Lunch XML parse failed:", err);
+          return [];
+        }
+      };
+
+      try {
+        const year = currentTime.getFullYear();
+        const monthNumber = currentTime.getMonth() + 1;
+        const month = String(monthNumber).padStart(2, "0");
+        const lastDay = new Date(year, monthNumber, 0).getDate();
+        const url = `https://apiservicelocatorstenant.fdmealplanner.com/api/v1/data-locator-webapi/3/meals?menuId=0&accountId=651&locationId=${selectedSchool}&mealPeriodId=2&tenantId=3&monthId=${monthNumber}&startDate=${year}/${month}/01&endDate=${year}/${month}/${lastDay}&timeOffset=480`;
+
+        const res = await fetch(url);
+        const raw = await res.json();
+        const rows = Array.isArray(raw?.result) ? raw.result : [];
+
+        const normalized = rows
+          .map((row) => {
+            const dateStr = row.strMenuForDate || row.menuForDate || row.date;
+            if (!dateStr) return null;
+
+            const dateKey = String(dateStr).slice(0, 10);
+            const recipeRows = [
+              ...(Array.isArray(row.menuRecipiesData) ? row.menuRecipiesData : []),
+              ...(Array.isArray(row.menuRecipesData) ? row.menuRecipesData : []),
+            ];
+
+            let items = recipeRows
+              .filter((item) => isShownOnMenu(item?.isShowOnMenu ?? item?.IsShowOnMenu))
+              .sort((a, b) => Number(a.sequenceNumber || a.SequenceNumber || 0) - Number(b.sequenceNumber || b.SequenceNumber || 0))
+              .map(getMenuItemName);
+
+            if (items.length === 0) {
+              items = extractItemsFromXml(row.xmlMenuRecipes || row.allMenuRecipesXML);
+            }
+
+            return {
+              date: fromLocalDateString(dateKey),
+              items: uniqueItems(items),
+            };
+          })
+          .filter(Boolean);
+
+        console.log("Lunch menu parsed", {
+          selectedSchool,
+          rows: rows.length,
+          daysWithItems: normalized.filter((d) => d.items.length > 0).length,
+          firstDay: normalized[0],
+        });
+
+        setSchoolMenu(normalized);
+      } catch (err) {
+        console.warn("Lunch menu fetch/parse failed:", err);
+        setSchoolMenu([]);
+      }
+    };
+
+    fetchMenu();
+  }, [selectedSchool, currentTime.getFullYear(), currentTime.getMonth()]);
 
   const toggleTask = (childId, taskId) => { const key = `${todayKey}-${childId}-${taskId}`; setCompletedTasks((prev) => { const c = { ...prev }; if (c[key]) delete c[key]; else c[key] = Date.now(); return c; }); };
   const getProgress = (childId, category) => { const dow = currentTime.getDay(); const weekday = dow === 0 ? 7 : dow; const tasks = masterTasks.filter((t) => { if (category && t.category !== category) return false; if (!(t.assignees.includes("all") || t.assignees.includes(childId))) return false; if (t.days && t.days.length > 0 && !t.days.includes(weekday)) return false; return true; }); let completed = 0; tasks.forEach((t) => { if (completedTasks[`${todayKey}-${childId}-${t.id}`]) completed++; }); return { completed, total: tasks.length }; };
@@ -3038,6 +3483,8 @@ function FamilyDashboard() {
               childrenData={childrenData}
               wallet={wallet}
               setWallet={setWallet}
+              dailyRewards={dailyRewards}
+              currentTime={currentTime}
             />
           )}
 
@@ -3067,11 +3514,9 @@ function FamilyDashboard() {
               hiddenEventIds={hiddenEventIds}
               setHiddenEventIds={setHiddenEventIds}
 
-              // 5. Wallet & Automation
+              // 5. Wallet
               wallet={wallet}
               setWallet={setWallet}
-              rewardThreshold={rewardThreshold}
-              setRewardThreshold={setRewardThreshold}
             />
           )}
 
