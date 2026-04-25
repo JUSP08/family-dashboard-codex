@@ -3,24 +3,15 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   Sun,
-  Moon,
   Calendar as CalendarIcon,
   Settings,
   Clock,
   Coffee,
   BookOpen,
-  Award,
-  Bell,
   Banknote,
   AlertTriangle,
-  Sparkles,
   ChevronLeft,
   ChevronRight,
-  Trophy,
-  GraduationCap,
-  Home,
-  Users,
-  Bus,
   ArrowUp,
   ArrowDown,
   Check,
@@ -29,18 +20,12 @@ import {
   X,
   Pencil,
   Trash,
-  CloudSun,
-  Play,
-  Pause,
-  StopCircle,
   ArrowRight,
   Copy,
   Edit2,
-  Plus,
   RefreshCw,
   CreditCard,
-  DollarSign,
-  Save
+  DollarSign
 } from "lucide-react";
 import "./index.css";
 import "./App.css";
@@ -48,13 +33,10 @@ import "./App.css";
 // Determine which theme to use based on time
 export function getDayPhase(date = new Date()) {
   const h = date.getHours();
-  if (h >= 6 && h < 12) return "morning";     // 6:00 AM – 11:59 AM
-  if (h >= 12 && h < 18) return "afternoon";  // 12:00 PM – 5:59 PM
-  return "evening";                            // 6:00 PM – 5:59 AM
+  if (h >= 6 && h < 12) return "morning";    // 6am–11:59am
+  if (h >= 12 && h < 18) return "afternoon"; // 12pm–5:59pm
+  return "evening";                          // 6pm–5:59am
 }
-
-// Mapping theme → class (Updated for Dark Glass aesthetic)
-export const THEME_CLASSES = {};
 
 /* --------------------------------------------------
    CONSTANTS
@@ -77,12 +59,10 @@ const CHILDREN = [
 
 // --- CONFIGURATION CONSTANTS ---
 
-// --- CONFIGURATION CONSTANTS ---
-
 const COACH_TIME_RANGES = {
-  morning: { start: 6, end: 9 },     // 6:00 AM - 9:00 AM
-  afternoon: { start: 14, end: 18 }, // 2:00 PM - 6:00 PM
-  evening: { start: 18, end: 23 }    // 6:00 PM - 11:00 PM
+  morning: { start: 6, end: 9 },     // 6am - 9am
+  afternoon: { start: 14, end: 18 }, // 2pm - 6pm
+  evening: { start: 18, end: 23 }    // 6pm - 11pm
 };
 
 // ✅ RENAMED to avoid conflict
@@ -96,8 +76,8 @@ const COACH_DEADLINES = {
     c6: '08:20'  // Guinevere
   },
   evening: {
-    c7: '21:00', // Blake (9:30 PM)
-    c8: '21:00', // Hannah (9:30 PM)
+    c7: '21:00', // Blake (9:00 PM)
+    c8: '21:00', // Hannah (9:00 PM)
     c3: '21:00', // Tristan (9:00 PM)
     c4: '21:00', // Sloane (9:00 PM)
     c5: '21:00', // Emerson (9:00 PM)
@@ -127,28 +107,6 @@ const INITIAL_MASTER_TASKS = [
 ];
 
 
-/* --------------------------------------------------
-   TIMELINE CONFIGURATION
--------------------------------------------------- */
-const PHASE_BOUNDARIES = {
-  morning: { start: 6, end: 8.5 }, // 6:00 AM – 8:30 AM
-  afternoon: { start: 14.5, end: 18 },  // 2:30 PM – 6:00 PM
-  evening: { start: 18, end: 22 },  // 6:00 PM – 9:00 PM
-};
-
-const CHILD_DEADLINES = {
-  morning: {
-    c7: "06:40", // Blake
-    c8: "07:40", // Hannah
-    c3: "08:15", // Tristan
-    c4: "08:15", // Sloane
-    c5: "08:15", // Emerson
-    c6: "08:15", // Guinevere
-  },
-  afternoon: {},
-  evening: {}
-};
-
 // --------------------------------------------------
 // DAY PHASE + THEMES (REDESIGNED FOR DARK GLASS)
 // --------------------------------------------------
@@ -157,46 +115,28 @@ const commonGlass = "backdrop-blur-xl border border-white/10 shadow-2xl";
 
 const THEMES = {
   morning: {
-    bgStyle: {
-      background:
-        "radial-gradient(ellipse at top right, rgba(56,189,248,0.10), transparent 35%), linear-gradient(180deg, #0f172a 0%, #111827 45%, #020617 100%)"
-    },
-    overlayClass: "bg-white/[0.015]",
-    atmospherePrimary: "bg-cyan-300/10",
-    atmosphereSecondary: "bg-sky-400/6",
-    vignette: "bg-[radial-gradient(circle_at_center,_transparent_38%,_rgba(2,6,23,0.22)_100%)]",
-    headerAccent: "from-cyan-300 via-sky-200 to-white",
+    // Deep Teal / Slate Gradient
+    appBg: "bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-teal-900 via-slate-900 to-black",
+    overlayClass: "opacity-20",
     text: "text-slate-100",
-    calendarBg: `bg-slate-950/58 ${commonGlass}`,
-    cardBg: `bg-slate-900/42 ${commonGlass}`,
+    calendarBg: `bg-slate-900/60 ${commonGlass}`,
+    cardBg: `bg-slate-800/40 ${commonGlass}`,
   },
   afternoon: {
-    bgStyle: {
-      background:
-        "radial-gradient(ellipse at top right, rgba(99,102,241,0.10), transparent 35%), linear-gradient(180deg, #0f172a 0%, #111827 45%, #020617 100%)"
-    },
-    overlayClass: "bg-white/[0.012]",
-    atmospherePrimary: "bg-blue-200/8",
-    atmosphereSecondary: "bg-indigo-300/5",
-    vignette: "bg-[radial-gradient(circle_at_center,_transparent_40%,_rgba(2,6,23,0.20)_100%)]",
-    headerAccent: "from-blue-200 via-slate-100 to-white",
+    // Indigo / Violet Gradient
+    appBg: "bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-900 via-slate-900 to-black",
+    overlayClass: "opacity-20",
     text: "text-slate-100",
-    calendarBg: `bg-slate-950/60 ${commonGlass}`,
-    cardBg: `bg-slate-900/44 ${commonGlass}`,
+    calendarBg: `bg-slate-900/60 ${commonGlass}`,
+    cardBg: `bg-slate-800/40 ${commonGlass}`,
   },
   evening: {
-    bgStyle: {
-      background:
-        "radial-gradient(ellipse at top right, rgba(129,140,248,0.08), transparent 30%), linear-gradient(180deg, #020617 0%, #020617 35%, #000000 100%)"
-    },
-    overlayClass: "bg-white/[0.01]",
-    atmospherePrimary: "bg-indigo-400/10",
-    atmosphereSecondary: "bg-violet-400/6",
-    vignette: "bg-[radial-gradient(circle_at_center,_transparent_34%,_rgba(0,0,0,0.30)_100%)]",
-    headerAccent: "from-indigo-200 via-slate-200 to-white",
+    // Midnight / Onyx Gradient
+    appBg: "bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-900 via-black to-black",
+    overlayClass: "opacity-20",
     text: "text-slate-100",
-    calendarBg: `bg-black/62 ${commonGlass}`,
-    cardBg: `bg-white/[0.06] ${commonGlass}`,
+    calendarBg: `bg-black/60 ${commonGlass}`,
+    cardBg: `bg-white/5 ${commonGlass}`,
   },
 };
 
@@ -214,51 +154,6 @@ const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || "";
 /* --------------------------------------------------
    HELPERS
 -------------------------------------------------- */
-
-// Simple ICS parser
-const parseICS = (icsData) => {
-  const events = [];
-  const lines = icsData.replace(/\r\n/g, "\n").split("\n");
-  let currentEvent = null;
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (line.startsWith("BEGIN:VEVENT")) {
-      currentEvent = {};
-    } else if (line.startsWith("END:VEVENT")) {
-      if (currentEvent && currentEvent.start) events.push(currentEvent);
-      currentEvent = null;
-    } else if (currentEvent) {
-      const [keyPart, ...valueParts] = line.split(":");
-      if (!keyPart) continue;
-      const value = valueParts.join(":");
-      const key = keyPart.split(";")[0];
-
-      if (key === "SUMMARY") {
-        currentEvent.title = value;
-      } else if (key === "LOCATION") {
-        currentEvent.location = value;
-      } else if (key === "DTSTART" || key.startsWith("DTSTART")) {
-        const dateStr = value.replace("Z", "");
-        const year = parseInt(dateStr.slice(0, 4), 10);
-        const month = parseInt(dateStr.slice(4, 6), 10) - 1;
-        const day = parseInt(dateStr.slice(6, 8), 10);
-        if (dateStr.length > 8) {
-          const hour = parseInt(dateStr.slice(9, 11) || "0", 10);
-          const min = parseInt(dateStr.slice(11, 13) || "0", 10);
-          currentEvent.start = new Date(Date.UTC(year, month, day, hour, min));
-          currentEvent.allDay = false;
-        } else {
-          currentEvent.start = new Date(Date.UTC(year, month, day));
-          currentEvent.allDay = true;
-        }
-      } else if (key === "UID") {
-        currentEvent.id = value;
-      }
-    }
-  }
-  return events;
-};
 
 // Gemini
 const callGemini = async (prompt) => {
@@ -306,33 +201,20 @@ const fromLocalDateString = (isoDateStr) => {
   return new Date(year, month - 1, day);
 };
 
-const getLocalDateKey = (date = new Date()) => date.toLocaleDateString("en-CA");
+// Local date key used by tasks, rewards, menus, and daily records.
+// Avoids UTC drift around midnight.
+const getLocalDateKey = (date = new Date()) =>
+  date.toLocaleDateString("en-CA");
 
-const getTieredRewardMinutes = (pct) => {
-  if (pct > 90) return 75;
-  if (pct >= 61) return 60;
-  if (pct >= 31) return 40;
-  if (pct >= 10) return 20;
-  return 0;
-};
-
-const getTaskSummaryForChildOnDate = ({ childId, date, masterTasks, completedTasks }) => {
-  const jsDay = date.getDay();
-  const currentDayId = jsDay === 0 ? 7 : jsDay;
-  const dateKey = getLocalDateKey(date);
-
-  const childTasks = (masterTasks || []).filter((t) => {
-    const assigned = t.assignees.includes("all") || t.assignees.includes(childId);
-    const scheduled = t.days ? t.days.includes(currentDayId) : true;
-    return assigned && scheduled;
-  });
-
-  const completedCount = childTasks.filter((t) => completedTasks?.[`${dateKey}-${childId}-${t.id}`]).length;
-  const total = childTasks.length;
-  const pct = total === 0 ? 0 : Math.round((completedCount / total) * 100);
-  const rewardMinutes = getTieredRewardMinutes(pct);
-
-  return { dateKey, completedCount, total, pct, rewardMinutes };
+// Sliding daily payout model:
+// 0–9% = 0 min, 10–30% = 20, 31–60% = 40, 61–90% = 60, >90% = 75.
+const calculateDailyMinutes = (completionPct) => {
+  const pct = Number(completionPct) || 0;
+  if (pct < 10) return 0;
+  if (pct <= 30) return 20;
+  if (pct <= 60) return 40;
+  if (pct <= 90) return 60;
+  return 75;
 };
 
 const shortDay = (date) =>
@@ -348,41 +230,7 @@ const CHILD_EVENT_COLOR_RULES = [
   { name: "Guinevere", colorClass: "border-fuchsia-500" },
 ];
 
-const getChildEventColor = (summary, defaultColor) => {
-  if (!summary) return defaultColor;
-  const lower = summary.toLowerCase();
 
-  for (const rule of CHILD_EVENT_COLOR_RULES) {
-    if (lower.includes(rule.name.toLowerCase())) {
-      return rule.colorClass;
-    }
-  }
-  return defaultColor;
-};
-
-// --- NEW SOURCE ICON HELPER ---
-const getSourceIcon = (label) => {
-  if (!label) return null;
-  const l = label.toLowerCase();
-
-  // Sports -> Gold Trophy
-  if (l.includes("wrestling") || l.includes("sport") || l.includes("football") || l.includes("soccer") || l.includes("basketball")) {
-    return <Trophy className="w-3.5 h-3.5 text-amber-400 drop-shadow-[0_0_5px_rgba(251,191,36,0.5)]" />;
-  }
-
-  // Schools -> Indigo Graduation Cap
-  if (l.includes("bhs") || l.includes("bms") || l.includes("jes") || l.includes("res") || l.includes("school") || l.includes("elementary") || l.includes("middle") || l.includes("high")) {
-    return <GraduationCap className="w-3.5 h-3.5 text-indigo-300 drop-shadow-[0_0_5px_rgba(165,180,252,0.5)]" />;
-  }
-
-  // Family -> Cyan Home
-  if (l.includes("family")) {
-    return <Home className="w-3.5 h-3.5 text-cyan-300 drop-shadow-[0_0_5px_rgba(103,232,249,0.5)]" />;
-  }
-
-  // Fallback -> Slate User
-  return <Users className="w-3.5 h-3.5 text-slate-400" />;
-};
 
 /* --------------------------------------------------
    NAV BUTTON (bottom nav)
@@ -414,93 +262,6 @@ const NavButton = ({ view, target, icon, label, setView, color }) => {
   );
 };
 
-/* --------------------------------------------------
-   TIMELINE COMPONENT (COACH)
--------------------------------------------------- */
-const TimelineTrack = ({ phase, childId, currentTime }) => {
-  const boundaries = PHASE_BOUNDARIES[phase] || { start: 6, end: 21 }; // Default fallback
-  const deadlineStr = CHILD_DEADLINES[phase]?.[childId];
-
-  // 1. Calculate Total Window Duration (minutes)
-  const startTotalMinutes = boundaries.start * 60;
-  const endTotalMinutes = boundaries.end * 60;
-  const totalDuration = endTotalMinutes - startTotalMinutes;
-
-  // 2. Calculate Current Position (%)
-  const currentTotalMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
-
-  // Clamp the progress between 0 and 100
-  let currentPct = ((currentTotalMinutes - startTotalMinutes) / totalDuration) * 100;
-  currentPct = Math.max(0, Math.min(100, currentPct));
-
-  // 3. Calculate Deadline Position (%) - if one exists
-  let deadlinePct = null;
-  let isLate = false;
-
-  if (deadlineStr) {
-    const [dH, dM] = deadlineStr.split(":").map(Number);
-    const deadlineTotalMinutes = dH * 60 + dM;
-    deadlinePct = ((deadlineTotalMinutes - startTotalMinutes) / totalDuration) * 100;
-
-    // Check if we passed the deadline
-    if (currentTotalMinutes > deadlineTotalMinutes) {
-      isLate = true;
-    }
-  }
-
-  // Only render if we are somewhat near the timeframe (or just always render for consistency)
-  return (
-    <div className="relative w-full h-8 mt-4 mb-1">
-      {/* Background Track */}
-      <div className="absolute top-1/2 -translate-y-1/2 left-0 w-full h-2 bg-slate-700/50 rounded-full border border-white/5 overflow-hidden">
-        {/* Time Passed Gradient (Gray/Blue) */}
-        <div
-          className="h-full bg-slate-500/30 transition-all duration-1000"
-          style={{ width: `${currentPct}%` }}
-        />
-      </div>
-
-      {/* DEADLINE MARKER (The Bus) */}
-      {deadlinePct !== null && (
-        <div
-          className="absolute top-0 bottom-0 flex flex-col items-center group z-10"
-          style={{ left: `${deadlinePct}%`, transform: 'translateX(-50%)' }}
-        >
-          {/* Dashed Line */}
-          <div className={`h-full w-px border-l-2 border-dashed ${isLate ? "border-rose-500/50" : "border-emerald-500/50"}`} />
-
-          {/* Icon Flag */}
-          <div className={`absolute -top-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-lg backdrop-blur-md
-            ${isLate
-              ? "bg-rose-900/80 text-rose-200 border border-rose-500"
-              : "bg-emerald-900/80 text-emerald-200 border border-emerald-500"}`}
-          >
-            <Bus className="w-3 h-3" />
-            <span>{deadlineStr}</span>
-          </div>
-        </div>
-      )}
-
-      {/* CURRENT TIME NEEDLE */}
-      <div
-        className="absolute top-0 bottom-0 z-20 transition-all duration-1000 ease-linear"
-        style={{ left: `${currentPct}%`, transform: 'translateX(-50%)' }}
-      >
-        {/* Glowing Line */}
-        <div className={`h-full w-0.5 shadow-[0_0_10px_currentColor] ${isLate ? "bg-rose-500 text-rose-500" : "bg-cyan-400 text-cyan-400"}`} />
-
-        {/* "You are Here" Dot */}
-        <div className={`absolute top-1/2 -translate-y-1/2 -left-[3px] w-2 h-2 rounded-full ring-2 ring-slate-900 ${isLate ? "bg-rose-500" : "bg-cyan-400"}`} />
-      </div>
-
-      {/* Start/End Labels (Optional) */}
-      <div className="absolute -bottom-4 w-full flex justify-between text-[9px] text-slate-500 font-mono">
-        <span>{boundaries.start}:00</span>
-        <span>{boundaries.end}:00</span>
-      </div>
-    </div>
-  );
-};
 
 
 /* --------------------------------------------------
@@ -974,10 +735,15 @@ const DashboardView = ({
 /* --------------------------------------------------
    COACH VIEW (Updated with Timeline)
 -------------------------------------------------- */
-const getPhaseFromHour = (h) => {
+const getCoachPhaseFromHour = (h) => {
   if (h >= 6 && h < 9) return "morning";
   if (h >= 14 && h < 18) return "afternoon";
-  return "evening";
+  if (h >= 18 && h < 23) return "evening";
+
+  // Outside active coach windows, keep the nearest practical phase selected.
+  if (h >= 23 || h < 6) return "evening";
+  if (h < 14) return "morning";
+  return "afternoon";
 };
 
 /* --------------------------------------------------
@@ -1036,47 +802,6 @@ const SweepingLine = ({ phase, currentTime }) => {
         {currentTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
       </div>
     </div>
-  );
-};
-
-const EveningDeadlineBand = ({ phase }) => {
-  // Only show this in the Evening phase
-  if (phase !== "evening") return null;
-
-  // Hardcoded for 9:00 PM (75% of the 4-hour window)
-  const leftPct = 75;
-  const widthPct = 2.0833; // 5 minutes width
-
-  return (
-    <>
-      {/* 1. THE RED BAND (Background Layer) */}
-      <div
-        className="absolute top-8 bottom-0 z-0 bg-rose-500/10 border-l border-r border-rose-500/30 pointer-events-none"
-        style={{ left: `${leftPct}%`, width: `${widthPct}%` }}
-      >
-        <div className="w-full h-full bg-[repeating-linear-gradient(45deg,transparent,transparent_2px,rgba(244,63,94,0.1)_2px,rgba(244,63,94,0.1)_4px)]" />
-      </div>
-
-      {/* 2. THE FLOATING BED (Image Layer) 
-          - Decoupled from the band div
-          - Positioned exactly at the center of the band (leftPct + half width)
-          - Centered vertically (top: 50%)
-      */}
-      <div
-        className="absolute z-50 pointer-events-none flex justify-center items-center"
-        style={{
-          left: `${leftPct + (widthPct / 2)}%`,
-          top: '50%',
-          transform: 'translate(-50%, -50%)' // Perfect centering
-        }}
-      >
-        <img
-          src="/bed.png"
-          alt="Bedtime"
-          className="w-40 h-40 object-contain drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)]"
-        />
-      </div>
-    </>
   );
 };
 
@@ -1143,7 +868,7 @@ const CoachView = ({
   getProgress,
   childrenData
 }) => {
-  const initialPhase = getPhaseFromHour(currentTime.getHours());
+  const initialPhase = getCoachPhaseFromHour(currentTime.getHours());
   const [phase, setPhase] = useState(initialPhase);
 
   // Header Phase Icons
@@ -1162,11 +887,7 @@ const CoachView = ({
     return isCorrectPhase && isCorrectDay;
   });
 
-  // OLD (Incorrect - uses UTC):
-  // const todayKey = currentTime.toISOString().split("T")[0];
-
-  // NEW (Correct - uses Local Device Time):
-  const todayKey = getLocalDateKey(currentTime); // Returns "YYYY-MM-DD" in local time
+  const todayKey = getLocalDateKey(currentTime);
   const kidOrder = ["c7", "c8", "c3", "c4", "c5", "c6"];
   const orderedKids = kidOrder.map((id) => childrenData.find((c) => c.id === id)).filter(Boolean);
 
@@ -1349,7 +1070,7 @@ const CoachView = ({
 /* --------------------------------------------------
    GIGS VIEW (Pure Task Board)
 -------------------------------------------------- */
-const GigsView = ({ theme, gigs, setGigs, childrenData = [], wallet, setWallet, setEarningsLedger }) => {
+const GigsView = ({ theme, gigs, setGigs, childrenData = [], wallet, setWallet }) => {
   const [claimModeId, setClaimModeId] = useState(null);
 
   // PIN STATE (Still needed for "Approve & Pay")
@@ -1387,26 +1108,6 @@ const GigsView = ({ theme, gigs, setGigs, childrenData = [], wallet, setWallet, 
           }
         };
       });
-
-      if (typeof setEarningsLedger === "function") {
-        const amount = Number(gig.compensationAmount) || 0;
-        const entryDate = getLocalDateKey(today);
-        const entryUnit = gig.compensationType === "money" ? "dollars" : "minutes";
-
-        setEarningsLedger(prev => [
-          ...(prev || []),
-          {
-            id: `earn-${Date.now()}-${gig.id}`,
-            childId: gig.claimedBy,
-            date: entryDate,
-            amount,
-            unit: entryUnit,
-            source: "gig",
-            label: gig.title,
-            compensationType: gig.compensationType,
-          }
-        ]);
-      }
     }
 
     // 3. UPDATE GIG STATE
@@ -1540,9 +1241,9 @@ const SCHOOL_LOOKUP = {
 
 const SchoolMenuView = ({ theme, schoolMenu, selectedSchool, setSelectedSchool, currentTime }) => {
   const menuByKey = new Map(
-    (schoolMenu || []).filter((d) => d && d.date instanceof Date && !isNaN(d.date)).map((d) => [d.date.toISOString().slice(0, 10), d])
+    (schoolMenu || []).filter((d) => d && d.date instanceof Date && !isNaN(d.date)).map((d) => [getLocalDateKey(d.date), d])
   );
-  const todayKey = currentTime.toISOString().slice(0, 10);
+  const todayKey = getLocalDateKey(currentTime);
   const getMonday = (date) => {
     const d = new Date(date);
     const day = d.getDay();
@@ -1561,7 +1262,7 @@ const SchoolMenuView = ({ theme, schoolMenu, selectedSchool, setSelectedSchool, 
     for (let i = 0; i < 5; i++) {
       const d = new Date(week.start);
       d.setDate(week.start.getDate() + i);
-      const key = d.toISOString().slice(0, 10);
+      const key = getLocalDateKey(d);
       const menu = menuByKey.get(key) || null;
       days.push({ date: d, key, menu });
     }
@@ -1674,10 +1375,7 @@ const SettingsView = ({
   childrenData, setChildrenData,
   wallet, setWallet,
   hiddenEventIds, setHiddenEventIds,
-  rewardThreshold, setRewardThreshold,
-  completedTasks,
-  earningsLedger,
-  currentTime
+  rewardThreshold, setRewardThreshold
 }) => {
 
   // --- ADMIN LOCK STATE ---
@@ -1851,71 +1549,6 @@ const SettingsView = ({
   const labelClass = "block text-xs font-semibold text-slate-400 mb-1 ml-1";
   const DAY_LABELS = [{ id: 1, L: 'M' }, { id: 2, L: 'T' }, { id: 3, L: 'W' }, { id: 4, L: 'T' }, { id: 5, L: 'F' }, { id: 6, L: 'S' }, { id: 7, L: 'S' }];
 
-  const auditDays = useMemo(() => {
-    const base = new Date(currentTime || new Date());
-    base.setHours(0, 0, 0, 0);
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(base);
-      d.setDate(base.getDate() - (6 - i));
-      return d;
-    });
-  }, [currentTime]);
-
-  const kidsOnly = useMemo(
-    () => (childrenData || []).filter((c) => c.role === "child"),
-    [childrenData]
-  );
-
-  const weeklyAuditByChild = useMemo(() => {
-    return kidsOnly.map((child) => {
-      const days = auditDays.map((date) => {
-        const summary = getTaskSummaryForChildOnDate({
-          childId: child.id,
-          date,
-          masterTasks,
-          completedTasks,
-        });
-
-        const dateKey = summary.dateKey;
-        const ledgerForDay = (earningsLedger || []).filter(
-          (entry) => entry.childId === child.id && entry.date === dateKey
-        );
-
-        const minutesEarned = ledgerForDay
-          .filter((entry) => entry.unit === "minutes")
-          .reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0);
-
-        const dollarsEarned = ledgerForDay
-          .filter((entry) => entry.unit === "dollars")
-          .reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0);
-
-        return {
-          date,
-          dateKey,
-          pct: summary.pct,
-          completedCount: summary.completedCount,
-          total: summary.total,
-          minutesEarned,
-          dollarsEarned,
-        };
-      });
-
-      const totalMinutes = days.reduce((sum, day) => sum + day.minutesEarned, 0);
-      const totalDollars = days.reduce((sum, day) => sum + day.dollarsEarned, 0);
-      const avgPct = days.length
-        ? Math.round(days.reduce((sum, day) => sum + day.pct, 0) / days.length)
-        : 0;
-
-      return {
-        child,
-        days,
-        totalMinutes,
-        totalDollars,
-        avgPct,
-      };
-    });
-  }, [kidsOnly, auditDays, masterTasks, completedTasks, earningsLedger]);
-
   // Helper functions
   const updateChildColor = (childId, newColor) => { setChildrenData(prev => prev.map(c => c.id === childId ? { ...c, color: newColor } : c)); };
   const handleChange = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
@@ -1992,7 +1625,6 @@ const SettingsView = ({
 
   const handlePhotoUpload = (e, childId) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (event) => { const img = new Image(); img.onload = () => { const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d'); const MAX_SIZE = 150; let width = img.width; let height = img.height; if (width > height) { if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } } else { if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; } } canvas.width = width; canvas.height = height; ctx.drawImage(img, 0, 0, width, height); const dataUrl = canvas.toDataURL('image/jpeg', 0.7); setChildrenData(prev => prev.map(c => c.id === childId ? { ...c, img: dataUrl } : c)); }; img.src = event.target.result; }; reader.readAsDataURL(file); };
   const removePhoto = (childId) => { if (window.confirm("Remove this photo?")) { setChildrenData(prev => prev.map(c => c.id === childId ? { ...c, img: null } : c)); } };
-  const adjustBalance = (childId, type, amount) => { setWallet(prev => { const current = prev[childId] || { money: 0, time: 0 }; const newValue = type === 'money' ? current.money + amount : current.time + amount; return { ...prev, [childId]: { ...current, [type]: newValue } }; }); };
   const unhideAll = () => { if (window.confirm(`Restore ${hiddenEventIds.length} hidden events?`)) { setHiddenEventIds([]); } };
 
   // --- COLUMN HELPER FOR TASKS ---
@@ -2176,85 +1808,6 @@ const SettingsView = ({
       )}
 
       {isAdmin && <div className="w-full h-px bg-white/10" />}
-
-      {isAdmin && (
-        <section className="p-6 rounded-[2rem] bg-slate-800/40 backdrop-blur-xl border border-white/10">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="p-2 bg-cyan-500/20 rounded-lg text-cyan-400">
-              <CalendarIcon className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-white">Weekly Audit</h2>
-              <p className="text-xs text-slate-400">
-                Last 7 days of completion, minutes earned, and dollars earned
-              </p>
-            </div>
-          </div>
-
-          <div className="space-y-5">
-            {weeklyAuditByChild.map(({ child, days, totalMinutes, totalDollars, avgPct }) => (
-              <div
-                key={child.id}
-                className="bg-slate-900/50 border border-white/5 rounded-2xl p-4"
-              >
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-4">
-                  <div className="flex items-center gap-3">
-                    <ChildAvatar child={child} className="w-10 h-10" textSize="text-sm" />
-                    <div>
-                      <div className="text-base font-bold text-white">{child.name}</div>
-                      <div className="text-xs text-slate-500">
-                        7-day average completion: {avgPct}%
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 flex-wrap">
-                    <div className="px-3 py-1 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-bold">
-                      {totalMinutes}m earned
-                    </div>
-                    <div className="px-3 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs font-bold">
-                      ${totalDollars.toFixed(2)} earned
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-7 gap-2">
-                  {days.map((day) => (
-                    <div
-                      key={day.dateKey}
-                      className="rounded-xl bg-slate-800/60 border border-white/5 p-3"
-                    >
-                      <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">
-                        {day.date.toLocaleDateString([], { weekday: "short" })}
-                      </div>
-                      <div className="text-[11px] text-slate-600 mb-2">
-                        {day.date.toLocaleDateString([], { month: "numeric", day: "numeric" })}
-                      </div>
-
-                      <div className="text-lg font-bold text-white mb-1">
-                        {day.pct}%
-                      </div>
-
-                      <div className="text-[11px] text-slate-400 mb-2">
-                        {day.completedCount}/{day.total} tasks
-                      </div>
-
-                      <div className="space-y-1 text-[11px]">
-                        <div className="text-purple-300 font-semibold">
-                          +{day.minutesEarned}m
-                        </div>
-                        <div className="text-emerald-300 font-semibold">
-                          +${day.dollarsEarned.toFixed(2)}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
 
       <div className="w-full h-px bg-white/10" />
 
@@ -2659,10 +2212,10 @@ const SettingsView = ({
           <div className="flex items-center gap-6">
             <div className="flex-1">
               <label className="block text-sm font-bold text-slate-200 mb-1">
-                Daily Success Threshold
+                Legacy Daily Threshold
               </label>
               <p className="text-xs text-slate-500">
-                Children must complete this percentage of their daily tasks to earn the 1-hour bonus (Disabled on Saturdays).
+                Sliding payout is active: 10–30% = 20m, 31–60% = 40m, 61–90% = 60m, &gt;90% = 75m. This value is retained for backwards compatibility.
               </p>
             </div>
 
@@ -2687,17 +2240,16 @@ const SettingsView = ({
 /* --------------------------------------------------
    BALANCES VIEW (New Home for Redemption)
 -------------------------------------------------- */
-const BalancesView = ({ theme, childrenData, wallet, setWallet, masterTasks, completedTasks, currentTime }) => {
+const BalancesView = ({ theme, childrenData, wallet, setWallet }) => {
   // REDEMPTION STATE
   const [redeemingChildId, setRedeemingChildId] = useState(null);
   const [redeemType, setRedeemType] = useState("time"); // 'time' or 'money'
   const [redeemAmount, setRedeemAmount] = useState("");
-  const [redeemTarget, setRedeemTarget] = useState("Tablet");
+  const [redeemTarget, setRedeemTarget] = useState("Xbox");
 
-  // Helper: Send Notification
   // --- HELPER: Send Notification ---
-const sendNotification = async (childName, type, amount, target) => {
-  const PI_IP = window.location.origin;
+  const sendNotification = async (childName, type, amount, target) => {
+  const BACKEND_ORIGIN = window.location.origin;
 
   const payload = {
     child_name: childName,
@@ -2706,7 +2258,7 @@ const sendNotification = async (childName, type, amount, target) => {
     target,
   };
 
-  const response = await fetch(`${PI_IP}/api/notify`, {
+  const response = await fetch(`${BACKEND_ORIGIN}/api/notify`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -2718,9 +2270,9 @@ const sendNotification = async (childName, type, amount, target) => {
   }
 
   return response.json();
-};
+  };
 
-const handleRedeemSubmit = async (e) => {
+  const handleRedeemSubmit = async (e) => {
   e.preventDefault();
 
   const amount = Number(redeemAmount);
@@ -2742,93 +2294,71 @@ const handleRedeemSubmit = async (e) => {
     return;
   }
 
-  // 1. Update Local Wallet (authoritative local redemption)
-  setWallet(prev => ({
-    ...prev,
-    [redeemingChildId]: {
-      ...prev[redeemingChildId],
-      [redeemType]: currentBalance - amount
-    }
-  }));
-
-  // 2. Send backend notification
-  try {
-    await sendNotification(child.name, redeemType, amount, redeemTarget);
-    console.log("✅ Redemption notification sent");
-  } catch (err) {
-    console.error("❌ Notification failed:", err);
-  }
-
-  // 3. Send Qustodio grant only for tablet time
-  const normalizedTarget = String(redeemTarget || "").toLowerCase();
-  const isTabletRedemption =
-    redeemType === "time" &&
-    (normalizedTarget.includes("tablet") || normalizedTarget.includes("ipad"));
-
-  const qUid = child.qustodioUid || "";
-
-  if (isTabletRedemption && qUid) {
-    try {
-      const response = await fetch("/api/qustodio", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          child_id: child.id,
-          uid: qUid,
-          name: child.name.toLowerCase(),
-          minutes: amount
-        })
-      });
-
-      const data = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        console.error("❌ Qustodio HTTP error:", response.status, data);
-      } else {
-        console.log("✅ Qustodio response:", data);
+  if (window.confirm(`Confirm: Deduct ${amount} from ${child.name}?`)) {
+    // 1. Update Local Wallet (authoritative local redemption)
+    setWallet(prev => ({
+      ...prev,
+      [redeemingChildId]: {
+        ...prev[redeemingChildId],
+        [redeemType]: currentBalance - amount
       }
-    } catch (err) {
-      console.error("❌ Qustodio fetch error:", err);
-    }
-  } else {
-    console.log("Qustodio skipped", {
-      redeemType,
-      redeemTarget,
-      hasUid: !!qUid
-    });
-  }
+    }));
 
-  // 4. Reset Form
-  setRedeemingChildId(null);
-  setRedeemAmount("");
+    // 2. Send backend notification
+    try {
+      await sendNotification(child.name, redeemType, amount, redeemTarget);
+      console.log("✅ Redemption notification sent");
+    } catch (err) {
+      console.error("❌ Notification failed:", err);
+    }
+
+    // 3. Send Qustodio grant only for tablet time
+    const normalizedTarget = String(redeemTarget || "").toLowerCase();
+    const isTabletRedemption =
+      redeemType === "time" &&
+      (normalizedTarget.includes("tablet") || normalizedTarget.includes("ipad"));
+
+    const qUid = child.qustodioUid || "";
+
+    if (isTabletRedemption && qUid) {
+      try {
+        const response = await fetch("/api/qustodio", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            child_id: child.id,
+            uid: qUid,
+            name: child.name.toLowerCase(),
+            minutes: amount
+          })
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          console.error("❌ Qustodio HTTP error:", response.status, data);
+        } else {
+          console.log("✅ Qustodio response:", data);
+        }
+      } catch (err) {
+        console.error("❌ Qustodio fetch error:", err);
+      }
+    } else {
+      console.log("Qustodio skipped", {
+        redeemType,
+        redeemTarget,
+        hasUid: !!qUid
+      });
+    }
+
+    // 4. Reset Form
+    setRedeemingChildId(null);
+    setRedeemAmount("");
+  }
 };
 
   const redeemingChild = childrenData.find(c => c.id === redeemingChildId);
   const kids = childrenData.filter(c => c.role === 'child');
-  const yesterday = useMemo(() => {
-    const d = new Date(currentTime || new Date());
-    d.setDate(d.getDate() - 1);
-    return d;
-  }, [currentTime]);
-
-  const yesterdayByChild = useMemo(() => {
-    const result = {};
-    kids.forEach((child) => {
-      result[child.id] = getTaskSummaryForChildOnDate({
-        childId: child.id,
-        date: yesterday,
-        masterTasks,
-        completedTasks,
-      });
-    });
-    return result;
-  }, [kids, yesterday, masterTasks, completedTasks]);
-
-  const adjustRedeemMinutes = (delta) => {
-    const current = Number(redeemAmount) || 0;
-    const next = Math.max(0, current + delta);
-    setRedeemAmount(next === 0 ? "" : String(next));
-  };
 
   return (
     <div className="h-full w-full p-6 flex flex-col items-center">
@@ -2858,12 +2388,7 @@ const handleRedeemSubmit = async (e) => {
                     ${balance.money.toFixed(2)}
                   </div>
                   <div className="px-3 py-1 bg-purple-500/10 rounded-lg border border-purple-500/20 text-purple-400 font-bold font-mono text-lg">
-                    <div className="flex items-center justify-center gap-2">
-                      <span>{balance.time}m</span>
-                      <span className="text-[10px] font-bold tracking-wide text-slate-300 normal-case font-sans border-l border-white/10 pl-2">
-                        Y:{yesterdayByChild[kid.id]?.pct ?? 0}% / +{yesterdayByChild[kid.id]?.rewardMinutes ?? 0}m
-                      </span>
-                    </div>
+                    {balance.time}m
                   </div>
                 </div>
               </div>
@@ -2892,68 +2417,26 @@ const handleRedeemSubmit = async (e) => {
 
             <form onSubmit={handleRedeemSubmit} className="space-y-5">
               <div className="grid grid-cols-2 bg-slate-900/50 rounded-xl p-1">
-                <button type="button" onClick={() => { setRedeemType("time"); setRedeemTarget("Tablet"); }} className={`py-2 rounded-lg text-sm font-bold transition-all ${redeemType === "time" ? "bg-purple-600 text-white shadow-lg" : "text-slate-500 hover:text-slate-300"}`}>Time</button>
+                <button type="button" onClick={() => { setRedeemType("time"); setRedeemTarget("Xbox"); }} className={`py-2 rounded-lg text-sm font-bold transition-all ${redeemType === "time" ? "bg-purple-600 text-white shadow-lg" : "text-slate-500 hover:text-slate-300"}`}>Time</button>
                 <button type="button" onClick={() => { setRedeemType("money"); setRedeemTarget("Greenlight"); }} className={`py-2 rounded-lg text-sm font-bold transition-all ${redeemType === "money" ? "bg-emerald-600 text-white shadow-lg" : "text-slate-500 hover:text-slate-300"}`}>Money</button>
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-400 mb-1 ml-1 uppercase tracking-wider">Amount to Redeem</label>
-                {redeemType === "time" ? (
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => adjustRedeemMinutes(-5)}
-                      className="w-12 h-12 rounded-xl bg-rose-600 border border-rose-400/30 text-white flex items-center justify-center hover:bg-rose-500 active:scale-95 transition-all shadow-lg"
-                      aria-label="Subtract 5 minutes"
-                    >
-                      <span className="text-2xl font-bold leading-none">−</span>
-                    </button>
-
-                    <div className="relative flex-1">
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        autoFocus
-                        className="w-full rounded-xl bg-slate-900 border border-white/10 text-white px-4 py-3 text-lg font-mono text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="0"
-                        value={redeemAmount}
-                        onChange={(e) => {
-                          const digitsOnly = e.target.value.replace(/[^\d]/g, "");
-                          setRedeemAmount(digitsOnly);
-                        }}
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-bold pointer-events-none">min</span>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => adjustRedeemMinutes(5)}
-                      className="w-12 h-12 rounded-xl bg-emerald-600 border border-emerald-400/30 text-white flex items-center justify-center hover:bg-emerald-500 active:scale-95 transition-all shadow-lg"
-                      aria-label="Add 5 minutes"
-                    >
-                      <span className="text-2xl font-bold leading-none">+</span>
-                    </button>
-                  </div>
-                ) : (
-                  <div className="relative">
-                    <input
-                      type="number"
-                      autoFocus
-                      min="0"
-                      className="w-full rounded-xl bg-slate-900 border border-white/10 text-white px-4 py-3 text-lg font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="0"
-                      value={redeemAmount}
-                      onChange={(e) => setRedeemAmount(e.target.value)}
-                    />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">$</span>
-                  </div>
-                )}
+                <div className="relative">
+                  <input
+                    type="number" autoFocus
+                    className="w-full rounded-xl bg-slate-900 border border-white/10 text-white px-4 py-3 text-lg font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="0" value={redeemAmount} onChange={(e) => setRedeemAmount(e.target.value)}
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">{redeemType === "money" ? "$" : "min"}</span>
+                </div>
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-400 mb-1 ml-1 uppercase tracking-wider">Destination</label>
                 <div className="grid grid-cols-3 gap-2">
-                  {(redeemType === "time" ? ["Tablet", "PC"] : ["Greenlight", "Cash", "Amazon"]).map(t => (
+                  {(redeemType === "time" ? ["TV", "Tablet", "PC", "Xbox"] : ["Greenlight", "Cash", "Amazon"]).map(t => (
                     <button
                       key={t} type="button" onClick={() => setRedeemTarget(t)}
                       className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all ${redeemTarget === t ? "bg-blue-600/20 border-blue-500 text-blue-400" : "bg-slate-900 border-transparent text-slate-500 hover:bg-slate-800"}`}
@@ -2976,7 +2459,7 @@ const handleRedeemSubmit = async (e) => {
 };
 
 /* --------------------------------------------------
-   MAIN APP (Updated: Header with Dynamic Pizzazz)
+   MAIN APP (Phase 2 cleanup + Phase 1 payout/persistence fixes)
 -------------------------------------------------- */
 
 function FamilyDashboard() {
@@ -2989,24 +2472,8 @@ function FamilyDashboard() {
   const [childrenData, setChildrenData] = useState(() => {
     try {
       const saved = localStorage.getItem("familyChildren");
-      if (!saved) return CHILDREN;
-
-      const parsed = JSON.parse(saved);
-      if (!Array.isArray(parsed)) return CHILDREN;
-
-      return CHILDREN.map(defaultChild => {
-        const savedChild = parsed.find(c => c.id === defaultChild.id);
-        return savedChild
-          ? {
-              ...defaultChild,
-              ...savedChild,
-              qustodioUid: savedChild.qustodioUid || defaultChild.qustodioUid || ""
-            }
-          : defaultChild;
-      });
-    } catch {
-      return CHILDREN;
-    }
+      return saved ? JSON.parse(saved) : CHILDREN;
+    } catch { return CHILDREN; }
   });
 
   const [wallet, setWallet] = useState(() => {
@@ -3065,20 +2532,33 @@ function FamilyDashboard() {
     } catch { return []; }
   });
 
-  // --- NEW STATE: Daily Rewards & Threshold ---
-  const [rewardThreshold, setRewardThreshold] = useState(100);
-  const [dailyRewards, setDailyRewards] = useState({});
-  const [earningsLedger, setEarningsLedger] = useState(() => {
+  const [completedTasks, setCompletedTasks] = useState(() => {
     try {
-      const saved = localStorage.getItem("familyEarningsLedger");
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
+      const saved = localStorage.getItem("familyCompletedTasks");
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
   });
 
-  // --- Shared (Pi) persistence ---
-  // We bootstrap from localStorage (fast/offline), then hydrate from the RPI4 via /api/state.
+  // --- Daily reward history and legacy threshold setting ---
+  const [rewardThreshold, setRewardThreshold] = useState(() => {
+    try {
+      const saved = localStorage.getItem("familyRewardThreshold");
+      return saved ? Number(JSON.parse(saved)) || 100 : 100;
+    } catch { return 100; }
+  });
+
+  const [dailyRewards, setDailyRewards] = useState(() => {
+    try {
+      const saved = localStorage.getItem("familyDailyRewards");
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
+
+  // Guards reward processing during the active 11:55 PM minute, including React StrictMode/dev replays.
+  const rewardProcessingRef = useRef(new Set());
+
+  // --- Shared server persistence ---
+  // We bootstrap from localStorage (fast/offline), then hydrate from the Windows backend via /api/state.
   // After hydration, we debounce-save back to the server so every device stays in sync.
   const serverHydratedRef = useRef(false);
   const serverSaveTimerRef = useRef(null);
@@ -3098,20 +2578,7 @@ function FamilyDashboard() {
         // Only set if present; otherwise keep what localStorage/defaults provided.
         if (cancelled) return;
 
-        if (Array.isArray(data.childrenData)) {
-          setChildrenData(
-            CHILDREN.map(defaultChild => {
-              const serverChild = data.childrenData.find(c => c.id === defaultChild.id);
-              return serverChild
-                ? {
-                    ...defaultChild,
-                    ...serverChild,
-                    qustodioUid: serverChild.qustodioUid || defaultChild.qustodioUid || ""
-                  }
-                : defaultChild;
-            })
-          );
-        }
+        if (Array.isArray(data.childrenData)) setChildrenData(data.childrenData);
         if (isPlainObject(data.wallet)) setWallet(data.wallet);
         if (Array.isArray(data.customEvents)) setCustomEvents(data.customEvents);
         if (Array.isArray(data.hiddenEventIds)) setHiddenEventIds(data.hiddenEventIds);
@@ -3121,9 +2588,8 @@ function FamilyDashboard() {
         if (Array.isArray(data.calendarSources)) setCalendarSources(data.calendarSources);
         if (Array.isArray(data.calendarFilters)) setCalendarFilters(data.calendarFilters);
         if (isPlainObject(data.completedTasks)) setCompletedTasks(data.completedTasks);
-        if (Array.isArray(data.earningsLedger)) setEarningsLedger(data.earningsLedger);
 
-        // ✅ Load Reward Settings
+        // ✅ Load reward state from server
         if (isPlainObject(data.dailyRewards)) setDailyRewards(data.dailyRewards);
         if (typeof data.rewardThreshold === 'number') setRewardThreshold(data.rewardThreshold);
 
@@ -3148,14 +2614,6 @@ function FamilyDashboard() {
     };
   }, []);
 
-  const [completedTasks, setCompletedTasks] = useState(() => {
-    try {
-      const saved = localStorage.getItem("familyCompletedTasks");
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
-  });
   const [calendarView, setCalendarView] = useState("week");
   const [weather, setWeather] = useState(null);
   const [selectedSchool, setSelectedSchool] = useState("2607"); // Default to JES
@@ -3165,18 +2623,13 @@ function FamilyDashboard() {
   useEffect(() => { const i = setInterval(() => setThemePhase(getDayPhase()), 60000); return () => clearInterval(i); }, []);
   const [calendarDate, setCalendarDate] = useState(new Date());
   const resetTimerRef = useRef(null);
-  // OLD (Incorrect - uses UTC):
-  // const todayKey = currentTime.toISOString().split("T")[0];
-
-  // NEW (Correct - uses Local Device Time):
-  const todayKey = getLocalDateKey(currentTime); // Returns "YYYY-MM-DD" in local time
+  const todayKey = getLocalDateKey(currentTime);
   useEffect(() => { const t = setInterval(() => setCurrentTime(new Date()), 1000); return () => clearInterval(t); }, []);
   const theme = THEMES[themePhase];
 
   // 2. PERSIST DATA
   useEffect(() => { localStorage.setItem("familyChildren", JSON.stringify(childrenData)); }, [childrenData]);
   useEffect(() => { localStorage.setItem("familyWallet", JSON.stringify(wallet)); }, [wallet]);
-  useEffect(() => { localStorage.setItem("familyCompletedTasks", JSON.stringify(completedTasks)); }, [completedTasks]);
   useEffect(() => { localStorage.setItem("familyCustomEvents", JSON.stringify(customEvents)); }, [customEvents]);
   useEffect(() => { localStorage.setItem("familyHiddenEvents", JSON.stringify(hiddenEventIds)); }, [hiddenEventIds]);
   useEffect(() => { localStorage.setItem("familyMasterTasks", JSON.stringify(masterTasks)); }, [masterTasks]);
@@ -3184,12 +2637,14 @@ function FamilyDashboard() {
   useEffect(() => { localStorage.setItem("gigTemplates", JSON.stringify(gigTemplates)); }, [gigTemplates]);
   useEffect(() => { localStorage.setItem("calendarSources", JSON.stringify(calendarSources)); }, [calendarSources]);
   useEffect(() => { localStorage.setItem("calendarFilters", JSON.stringify(calendarFilters)); }, [calendarFilters]);
-  useEffect(() => { localStorage.setItem("familyEarningsLedger", JSON.stringify(earningsLedger)); }, [earningsLedger]);
+  useEffect(() => { localStorage.setItem("familyCompletedTasks", JSON.stringify(completedTasks)); }, [completedTasks]);
+  useEffect(() => { localStorage.setItem("familyDailyRewards", JSON.stringify(dailyRewards)); }, [dailyRewards]);
+  useEffect(() => { localStorage.setItem("familyRewardThreshold", JSON.stringify(rewardThreshold)); }, [rewardThreshold]);
 
-  // 2b. PERSIST SHARED DATA (RPI4) — debounced to avoid spam
+  // 2b. PERSIST SHARED DATA — debounced to avoid spam
   useEffect(() => {
     // Don't push anything until we've successfully hydrated from the server.
-    // This prevents overwriting the Pi's saved state with defaults on first load.
+    // This prevents overwriting the server saved state with defaults on first load.
     if (!serverHydratedRef.current) return;
 
     const nextState = {
@@ -3204,8 +2659,7 @@ function FamilyDashboard() {
       calendarFilters,
       completedTasks,
       dailyRewards,
-      rewardThreshold,
-      earningsLedger
+      rewardThreshold
     };
 
     if (serverSaveTimerRef.current) clearTimeout(serverSaveTimerRef.current);
@@ -3225,89 +2679,138 @@ function FamilyDashboard() {
     };
   }, [
     childrenData, wallet, customEvents, hiddenEventIds, masterTasks, gigs,
-    gigTemplates, calendarSources, calendarFilters,
-    completedTasks, dailyRewards, rewardThreshold, earningsLedger
+    gigTemplates, calendarSources, calendarFilters, completedTasks,
+    dailyRewards, rewardThreshold
   ]);
 
-  // --- AUTOMATION: Nightly Tiered Reward + Cleanup (11:55 PM) ---
+  // --- AUTOMATION: Nightly Sliding-Scale Reward + Task Maintenance ---
   useEffect(() => {
+    // Run once during the 11:55 PM minute. The rewardProcessingRef prevents repeated
+    // processing while the clock updates every second during that minute.
     if (currentTime.getHours() !== 23 || currentTime.getMinutes() !== 55) return;
 
-    const today = new Date();
+    const today = currentTime;
     const dayOfWeek = today.getDay(); // 0=Sun, 6=Sat
     const dateKey = getLocalDateKey(today);
+    const currentDayId = dayOfWeek === 0 ? 7 : dayOfWeek;
+    const processedAt = new Date().toISOString();
 
+    // Saturday rule retained: no daily task payout on Saturday.
     if (dayOfWeek !== 6) {
-      childrenData.forEach(child => {
-        if (child.role !== 'child') return;
+      const rewardResults = [];
+
+      childrenData.forEach((child) => {
+        if (child.role !== "child") return;
 
         const rewardKey = `${dateKey}-${child.id}`;
-        if (dailyRewards[rewardKey]) return;
+        if (dailyRewards[rewardKey] || rewardProcessingRef.current.has(rewardKey)) return;
 
-        const { pct: currentPct, rewardMinutes } = getTaskSummaryForChildOnDate({
-          childId: child.id,
-          date: today,
-          masterTasks,
-          completedTasks,
+        rewardProcessingRef.current.add(rewardKey);
+
+        const childTasks = masterTasks.filter((t) => {
+          const assigned = t.assignees.includes("all") || t.assignees.includes(child.id);
+          const scheduled = t.days ? t.days.includes(currentDayId) : true;
+          return assigned && scheduled;
         });
 
-        if (rewardMinutes > 0) {
-          console.log(`🎉 Nightly Check: ${child.name} earned ${rewardMinutes} minutes at ${Math.round(currentPct)}%.`);
+        const totalTasks = childTasks.length;
+        const completedCount = childTasks.filter((t) => {
+          const key = `${dateKey}-${child.id}-${t.id}`;
+          return completedTasks[key];
+        }).length;
 
-          setWallet(prev => ({
-            ...prev,
-            [child.id]: {
-              ...prev[child.id],
-              time: ((prev[child.id]?.time) || 0) + rewardMinutes,
-              money: (prev[child.id]?.money) || 0
-            }
-          }));
+        const completionPct = totalTasks === 0 ? 0 : Math.round((completedCount / totalTasks) * 100);
+        const minutesEarned = calculateDailyMinutes(completionPct);
 
-          setDailyRewards(prev => ({ ...prev, [rewardKey]: true }));
-          setEarningsLedger(prev => [
-            ...(prev || []),
-            {
-              id: `reward-${dateKey}-${child.id}`,
-              childId: child.id,
+        rewardResults.push({
+          child,
+          rewardKey,
+          totalTasks,
+          completedCount,
+          completionPct,
+          minutesEarned,
+        });
+      });
+
+      if (rewardResults.length > 0) {
+        const payableResults = rewardResults.filter((r) => r.minutesEarned > 0);
+
+        if (payableResults.length > 0) {
+          setWallet((prev) => {
+            const next = { ...prev };
+
+            payableResults.forEach(({ child, minutesEarned }) => {
+              const current = next[child.id] || { money: 0, time: 0 };
+              next[child.id] = {
+                ...current,
+                money: current.money || 0,
+                time: (current.time || 0) + minutesEarned,
+              };
+            });
+
+            return next;
+          });
+        }
+
+        setDailyRewards((prev) => {
+          const next = { ...prev };
+
+          rewardResults.forEach(({ child, rewardKey, totalTasks, completedCount, completionPct, minutesEarned }) => {
+            next[rewardKey] = {
               date: dateKey,
-              amount: rewardMinutes,
-              unit: "minutes",
-              source: "daily_tasks",
-              label: `Nightly Tiered Reward (${Math.round(currentPct)}%)`
-            }
-          ]);
+              child_id: child.id,
+              child_name: child.name,
+              completedTasks: completedCount,
+              totalTasks,
+              completionPct,
+              minutesEarned,
+              payoutModel: "sliding-scale-v1",
+              processedAt,
+            };
+          });
 
+          return next;
+        });
+
+        payableResults.forEach(({ child, completionPct, minutesEarned }) => {
           const payload = {
             child_id: child.id,
             child_name: child.name,
-            amount: rewardMinutes,
-            reason: `Nightly Tiered Reward (${Math.round(currentPct)}%)`
+            amount: minutesEarned,
+            completion_pct: completionPct,
+            reason: `Nightly sliding payout: ${completionPct}% complete`,
           };
 
-          if (typeof HA_URL !== 'undefined') {
+          if (typeof HA_URL !== "undefined") {
             fetch(`${HA_URL}/api/webhook/family_dashboard_reward`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(payload)
-            }).catch(err => console.warn("Failed to notify HA", err));
+              body: JSON.stringify(payload),
+            }).catch((err) => console.warn("Failed to notify HA", err));
           }
-        }
-      });
+        });
+      }
     }
 
+    // Nightly maintenance: keep 7 days of task history so reboot/crash recovery works
+    // during the current day without letting old task records pile up forever.
     const maintenanceKey = `${dateKey}-maintenance`;
 
-    if (!dailyRewards[maintenanceKey]) {
-      setCompletedTasks(prev => {
-        const cutoff = new Date();
+    if (!dailyRewards[maintenanceKey] && !rewardProcessingRef.current.has(maintenanceKey)) {
+      rewardProcessingRef.current.add(maintenanceKey);
+
+      setCompletedTasks((prev) => {
+        const cutoff = new Date(today);
+        cutoff.setHours(0, 0, 0, 0);
         cutoff.setDate(cutoff.getDate() - 7);
 
         const next = { ...prev };
         let prunedCount = 0;
 
-        Object.keys(next).forEach(key => {
+        Object.keys(next).forEach((key) => {
           const datePart = key.substring(0, 10);
-          const taskDate = new Date(datePart);
+          const taskDate = fromLocalDateString(datePart);
+          taskDate.setHours(0, 0, 0, 0);
 
           if (taskDate < cutoff) {
             delete next[key];
@@ -3319,110 +2822,20 @@ function FamilyDashboard() {
         return next;
       });
 
-      setEarningsLedger(prev => {
-        const cutoff = new Date();
-        cutoff.setDate(cutoff.getDate() - 60);
-
-        return (prev || []).filter(entry => {
-          if (!entry?.date) return false;
-          return new Date(entry.date) >= cutoff;
-        });
-      });
-
-      setDailyRewards(prev => ({ ...prev, [maintenanceKey]: true }));
+      setDailyRewards((prev) => ({
+        ...prev,
+        [maintenanceKey]: {
+          date: dateKey,
+          type: "maintenance",
+          processedAt,
+        },
+      }));
     }
-
-  }, [currentTime, masterTasks, completedTasks, childrenData, dailyRewards, rewardThreshold]);
+  }, [currentTime, masterTasks, completedTasks, childrenData, dailyRewards]);
 
   // Weather & Menu Fetch (Standard)
-  useEffect(() => {
-    const fetchWeather = async () => {
-      try {
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=41.3712&longitude=-73.414&current_weather=true&hourly=temperature_2m,precipitation_probability,relative_humidity_2m,wind_speed_10m,weathercode&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode&temperature_unit=fahrenheit&timezone=America%2FNew_York`;
-        const res = await fetch(url);
-        const data = await res.json();
-        if (!data.current_weather) return;
-        const daily = data.daily.time.map((iso, i) => ({
-          date: fromLocalDateString(iso),
-          high: data.daily.temperature_2m_max[i],
-          low: data.daily.temperature_2m_min[i],
-          code: data.daily.weathercode[i],
-        })).slice(0, 7);
-        setWeather({
-          current: { temperature: data.current_weather.temperature, code: data.current_weather.weathercode },
-          daily,
-          unit: "F"
-        });
-      } catch (e) { }
-    };
-    fetchWeather();
-  }, []);
-
-  useEffect(() => {
-    const fetchMenu = async () => {
-      try {
-        const year = currentTime.getFullYear();
-        const monthNumber = currentTime.getMonth() + 1;
-        const month = String(monthNumber).padStart(2, "0");
-        const lastDay = new Date(year, monthNumber, 0).getDate();
-        const endDay = String(lastDay).padStart(2, "0");
-        const timeOffset = new Date().getTimezoneOffset();
-
-        const url =
-          `https://apiservicelocatorstenant.fdmealplanner.com/api/v1/data-locator-webapi/3/meals` +
-          `?menuId=0` +
-          `&accountId=651` +
-          `&locationId=${selectedSchool}` +
-          `&mealPeriodId=2` +
-          `&tenantId=3` +
-          `&monthId=${monthNumber}` +
-          `&startDate=${year}%2F${month}%2F01` +
-          `&endDate=${year}%2F${month}%2F${endDay}` +
-          `&timeOffset=${timeOffset}` +
-          `&_=${Date.now()}`;
-
-        const res = await fetch(url, { cache: "no-store" });
-        if (!res.ok) throw new Error(`Lunch API HTTP ${res.status}`);
-
-        const raw = await res.json();
-        const rows = Array.isArray(raw?.result) ? raw.result : [];
-        const normalized = rows
-          .map((row) => {
-            const dateStr = row.strMenuForDate || row.menuForDate || row.date;
-            if (!dateStr) return null;
-
-            let items = [];
-            if (Array.isArray(row.menuRecipiesData)) {
-              items = row.menuRecipiesData
-                .filter(
-                  (r) =>
-                    Number(r.isEntreeType) === 1 &&
-                    (r.isShowOnMenu === 1 ||
-                      r.isShowOnMenu === true ||
-                      r.isShowOnMenu === "1")
-                )
-                .map((r) => r.componentEnglishName || r.name || "")
-                .filter(Boolean);
-
-              items = Array.from(new Set(items));
-            }
-
-            return {
-              date: new Date(dateStr),
-              items,
-            };
-          })
-          .filter(Boolean);
-
-        setSchoolMenu(normalized);
-      } catch (err) {
-        console.error("Lunch menu fetch failed:", err);
-        setSchoolMenu([]);
-      }
-    };
-
-    fetchMenu();
-  }, [selectedSchool, currentTime.getFullYear(), currentTime.getMonth()]);
+  useEffect(() => { const fetchWeather = async () => { try { const url = `https://api.open-meteo.com/v1/forecast?latitude=41.3712&longitude=-73.414&current_weather=true&hourly=temperature_2m,precipitation_probability,relative_humidity_2m,wind_speed_10m,weathercode&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode&temperature_unit=fahrenheit&timezone=America%2FNew_York`; const res = await fetch(url); const data = await res.json(); if (!data.current_weather) return; const daily = data.daily.time.map((iso, i) => ({ date: fromLocalDateString(iso), high: data.daily.temperature_2m_max[i], low: data.daily.temperature_2m_min[i], code: data.daily.weathercode[i], })).slice(0, 7); setWeather({ current: { temperature: data.current_weather.temperature, code: data.current_weather.weathercode }, daily, unit: "F" }); } catch (e) { } }; fetchWeather(); }, []);
+  useEffect(() => { const fetchMenu = async () => { try { const year = currentTime.getFullYear(); const month = String(currentTime.getMonth() + 1).padStart(2, "0"); const url = `https://apiservicelocatorstenant.fdmealplanner.com/api/v1/data-locator-webapi/3/meals?menuId=0&accountId=651&locationId=${selectedSchool}&mealPeriodId=2&tenantId=3&monthId=${month}&startDate=${year}/${month}/01&endDate=${year}/${month}/31&timeOffset=300`; const res = await fetch(url); const raw = await res.json(); const rows = Array.isArray(raw?.result) ? raw.result : []; const normalized = rows.map((row) => { const dateStr = row.strMenuForDate || row.menuForDate || row.date; if (!dateStr) return null; let items = []; if (Array.isArray(row.menuRecipiesData)) { items = row.menuRecipiesData.filter((r) => r.isEntreeType === 1 && (r.isShowOnMenu === 1 || r.isShowOnMenu === true || r.isShowOnMenu === "1")).map((r) => r.componentEnglishName || r.name || "").filter(Boolean); items = Array.from(new Set(items)); } return { date: new Date(dateStr), items }; }).filter(Boolean); setSchoolMenu(normalized); } catch (err) { setSchoolMenu([]); } }; fetchMenu(); }, [selectedSchool, currentTime.getFullYear(), currentTime.getMonth()]);
 
   const toggleTask = (childId, taskId) => { const key = `${todayKey}-${childId}-${taskId}`; setCompletedTasks((prev) => { const c = { ...prev }; if (c[key]) delete c[key]; else c[key] = Date.now(); return c; }); };
   const getProgress = (childId, category) => { const dow = currentTime.getDay(); const weekday = dow === 0 ? 7 : dow; const tasks = masterTasks.filter((t) => { if (category && t.category !== category) return false; if (!(t.assignees.includes("all") || t.assignees.includes(childId))) return false; if (t.days && t.days.length > 0 && !t.days.includes(weekday)) return false; return true; }); let completed = 0; tasks.forEach((t) => { if (completedTasks[`${todayKey}-${childId}-${t.id}`]) completed++; }); return { completed, total: tasks.length }; };
@@ -3518,12 +2931,8 @@ function FamilyDashboard() {
   }, [calendarMonthKey, calendarSources, calendarFilters, customEvents, hiddenEventIds]);
 
   return (
-    <div className={`relative w-screen h-screen overflow-hidden font-sans transition-all duration-1000 ease-in-out ${theme.text}`} style={theme.bgStyle}>
+    <div className={`relative w-screen h-screen overflow-hidden font-sans transition-all duration-1000 ease-in-out ${theme.appBg}`}>
       <div className={`pointer-events-none absolute inset-0 ${theme.overlayClass}`} />
-      <div className={`pointer-events-none absolute -top-24 -left-16 h-[26rem] w-[26rem] rounded-full blur-3xl ${theme.atmospherePrimary}`} />
-      <div className={`pointer-events-none absolute bottom-[-8rem] right-[-6rem] h-[24rem] w-[24rem] rounded-full blur-3xl ${theme.atmosphereSecondary}`} />
-      <div className={`pointer-events-none absolute inset-0 ${theme.vignette}`} />
-      <div className="pointer-events-none absolute inset-0 opacity-[0.035] bg-[linear-gradient(rgba(255,255,255,0.7)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.7)_1px,transparent_1px)] bg-[size:72px_72px]" />
       <div className="relative z-10 h-full w-full flex flex-col">
         {/* UPDATED HEADER: DYNAMIC PIZZAZZ */}
         <header className="flex justify-between items-center px-6 pt-5 pb-4 shrink-0">
@@ -3532,13 +2941,13 @@ function FamilyDashboard() {
             <div className="relative group">
               <div className="absolute inset-0 bg-blue-500 rounded-2xl blur opacity-40 group-hover:opacity-100 transition duration-500 animate-pulse"></div>
               <div className="relative w-14 h-14 rounded-2xl bg-slate-900 border border-white/10 flex items-center justify-center text-white shadow-2xl">
-                {themePhase === "morning" ? <Sun className="w-8 h-8 text-cyan-300" /> : themePhase === "afternoon" ? <CloudSun className="w-8 h-8 text-blue-200" /> : <Moon className="w-8 h-8 text-indigo-200" />}
+                <Sun className="w-8 h-8 text-amber-400" />
               </div>
             </div>
 
             {/* Styled Title */}
             <div>
-              <h1 className={`text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r ${theme.headerAccent} drop-shadow-sm`}>
+              <h1 className="text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-300 via-indigo-200 to-white drop-shadow-sm">
                 Lindstrom HQ
               </h1>
               <div className="flex items-center gap-2 mt-0.5">
@@ -3619,7 +3028,6 @@ function FamilyDashboard() {
               childrenData={childrenData}
               wallet={wallet}
               setWallet={setWallet}
-              setEarningsLedger={setEarningsLedger}
             />
           )}
 
@@ -3630,9 +3038,6 @@ function FamilyDashboard() {
               childrenData={childrenData}
               wallet={wallet}
               setWallet={setWallet}
-              masterTasks={masterTasks}
-              completedTasks={completedTasks}
-              currentTime={currentTime}
             />
           )}
 
@@ -3661,9 +3066,6 @@ function FamilyDashboard() {
               setCalendarFilters={setCalendarFilters}
               hiddenEventIds={hiddenEventIds}
               setHiddenEventIds={setHiddenEventIds}
-              completedTasks={completedTasks}
-              earningsLedger={earningsLedger}
-              currentTime={currentTime}
 
               // 5. Wallet & Automation
               wallet={wallet}
