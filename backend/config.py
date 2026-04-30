@@ -37,7 +37,7 @@ class Settings:
 
     qustodio_email: str = os.getenv("QUSTODIO_EMAIL", "")
     qustodio_password: str = os.getenv("QUSTODIO_PW", "")
-    qustodio_token: str = os.getenv("QUSTODIO_TOKEN", "")
+    qustodio_token: str = os.getenv("QUSTODIO_TOKEN", os.getenv("TOKEN", ""))
     qustodio_account_uid: str = os.getenv("QUSTODIO_ACCOUNT_UID", "61672d9e46804349af49bd547bbb51a5")
     qustodio_timeout_seconds: int = int(os.getenv("QUSTODIO_TIMEOUT_SECONDS", "20"))
     qustodio_headless: bool = _as_bool(os.getenv("QUSTODIO_HEADLESS", "true"), True)
