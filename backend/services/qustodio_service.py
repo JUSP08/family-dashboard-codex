@@ -12,6 +12,7 @@ from services.qustodio_exact import QustodioController
 def enqueue_qustodio_request(
     child_id: str,
     child_name: str,
+    qustodio_uid: str,
     minutes: int,
     last_error: str,
 ) -> None:
@@ -38,7 +39,7 @@ def enqueue_qustodio_request(
             (
                 child_id,
                 child_name,
-                "",
+                qustodio_uid,
                 minutes,
                 "pending",
                 0,
@@ -115,6 +116,7 @@ def grant_tablet_time(
     enqueue_qustodio_request(
         child_id=child_id or "",
         child_name=name,
+        qustodio_uid=uid,
         minutes=minutes,
         last_error=detail,
     )
@@ -144,7 +146,7 @@ def retry_qustodio_queue_once() -> None:
     with get_connection() as conn:
         rows = conn.execute(
             """
-            SELECT id, child_id, child_name, minutes
+            SELECT id, child_id, child_name, qustodio_uid, minutes
             FROM qustodio_queue
             WHERE status IN ('pending', 'failed')
               AND (next_retry_at IS NULL OR next_retry_at <= ?)
@@ -157,12 +159,13 @@ def retry_qustodio_queue_once() -> None:
         queue_id = row["id"]
         child_id = row["child_id"]
         child_name = row["child_name"]
+        qustodio_uid = row["qustodio_uid"]
         minutes = row["minutes"]
 
         success, detail, captured_output = _run_exact_add_time(
             name=child_name,
             minutes=minutes,
-            uid=None,
+            uid=qustodio_uid or None,
         )
 
         with get_connection() as conn:

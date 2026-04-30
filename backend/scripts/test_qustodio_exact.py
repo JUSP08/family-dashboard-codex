@@ -33,7 +33,7 @@ def main() -> None:
     print("Environment snapshot:")
     print(f"  QUSTODIO_EMAIL: {mask(os.getenv('QUSTODIO_EMAIL'))}")
     print(f"  QUSTODIO_PW: {'(present)' if os.getenv('QUSTODIO_PW') else '(missing)'}")
-    print(f"  TOKEN: {mask(os.getenv('TOKEN'))}")
+    print(f"  QUSTODIO_TOKEN: {mask(os.getenv('QUSTODIO_TOKEN') or os.getenv('TOKEN'))}")
 
     controller = QustodioController()
 
