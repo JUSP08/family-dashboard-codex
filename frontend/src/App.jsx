@@ -870,9 +870,9 @@ const DashboardView = ({
               <div className="flex justify-between gap-2 pt-2 border-t border-white/5">
                 {weather.daily && weather.daily.slice(0, 4).map((d, idx) => (
                   <div key={idx} className="flex flex-col items-center">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase">{shortDay(d.date)}</span>
-                    <span className="text-xl my-1 opacity-90">{describeWeather(d.code).icon}</span>
-                    <span className="text-[10px] text-slate-300 font-mono">{Math.round(d.high)}°</span>
+                    <span className="text-xs text-slate-400 font-bold uppercase">{shortDay(d.date)}</span>
+                    <span className="text-2xl my-1 opacity-90">{describeWeather(d.code).icon}</span>
+                    <span className="text-xs text-slate-300 font-mono">{Math.round(d.high)}°</span>
                   </div>
                 ))}
               </div>
