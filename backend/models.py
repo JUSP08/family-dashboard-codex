@@ -8,4 +8,6 @@ STATE_KEYS = [
     "gigTemplates",
     "calendarSources",
     "calendarFilters",
+    "dailyRewards",
+    "completedTasks",
 ]

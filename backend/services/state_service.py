@@ -17,6 +17,8 @@ def default_state() -> dict:
         "gigTemplates": [],
         "calendarSources": [],
         "calendarFilters": [],
+        "dailyRewards": {},
+        "completedTasks": {},
     }
 
 

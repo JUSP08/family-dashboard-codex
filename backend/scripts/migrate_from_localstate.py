@@ -26,6 +26,8 @@ LOCAL_TO_STATE_KEY = {
     "gigTemplates": "gigTemplates",
     "calendarSources": "calendarSources",
     "calendarFilters": "calendarFilters",
+    "familyDailyRewards": "dailyRewards",
+    "familyCompletedTasks": "completedTasks",
 }
 
 
