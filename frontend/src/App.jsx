@@ -86,7 +86,7 @@ const CHILDREN = [
 
 const COACH_TIME_RANGES = {
   morning: { start: 6, end: 9 },    // 6am - 9am
-  afternoon: { start: 2, end: 18 }, // 3pm - 6pm
+  afternoon: { start: 12, end: 18 }, // 12pm - 6pm
   evening: { start: 18, end: 22 }    // 6pm - 11pm
 };
 
@@ -137,7 +137,7 @@ const INITIAL_MASTER_TASKS = [
 -------------------------------------------------- */
 const PHASE_BOUNDARIES = {
   morning: { start: 6, end: 8.5 }, // 6:00 AM – 8:30 AM
-  afternoon: { start: 14.5, end: 18 },  // 2:30 PM – 6:00 PM
+  afternoon: { start: 12, end: 18 },  // 12:00 PM – 6:00 PM
   evening: { start: 18, end: 22 },  // 6:00 PM – 9:00 PM
 };
 
@@ -934,7 +934,7 @@ const DashboardView = ({
 -------------------------------------------------- */
 const getPhaseFromHour = (h) => {
   if (h >= 5 && h < 12) return "morning";
-  if (h >= 12 && h < 16) return "afternoon";
+  if (h >= 12 && h < 18) return "afternoon";
   return "evening";
 };
 
