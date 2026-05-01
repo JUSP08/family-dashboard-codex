@@ -49,13 +49,18 @@ import "./App.css";
 // Determine which theme to use based on time
 export function getDayPhase(date = new Date()) {
   const h = date.getHours();
-  if (h >= 5 && h < 12) return "morning";    // 5am–11:59am
-  if (h >= 12 && h < 17) return "afternoon"; // 12pm–4:59pm
-  return "evening";                          // 5pm–4:59am
+  if (h >= 6 && h < 9) return "sunrise";
+  if (h >= 9 && h < 16) return "day";
+  if (h >= 16 && h < 19) return "sunset";
+  return "night";
 }
 
 // Mapping theme → class (Updated for Dark Glass aesthetic)
 export const THEME_CLASSES = {
+  sunrise: "theme-bg theme-bg-sunrise",
+  day: "theme-bg theme-bg-day",
+  sunset: "theme-bg theme-bg-sunset",
+  night: "theme-bg theme-bg-night",
   morning: "theme-bg theme-bg-morning",
   afternoon: "theme-bg theme-bg-afternoon",
   evening: "theme-bg theme-bg-evening",
@@ -161,26 +166,50 @@ const CHILD_DEADLINES = {
 const commonGlass = "backdrop-blur-xl border border-white/10 shadow-2xl";
 
 const THEMES = {
-  morning: {
-    // Deep Teal / Slate Gradient
-    appBg: "bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-teal-900 via-slate-900 to-black",
-    overlayClass: "opacity-20",
+  sunrise: {
+    appBg: "bg-[#07111f]",
+    backgroundStyle: {
+      backgroundImage: "radial-gradient(circle at 18% 16%, rgba(251,191,36,0.48), transparent 24%), radial-gradient(circle at 78% 8%, rgba(244,114,182,0.24), transparent 30%), linear-gradient(135deg, #2f1b5b 0%, #0f766e 46%, #020617 100%)",
+    },
+    overlayClass: "bg-slate-950/15",
+    iconClass: "text-amber-300",
+    glowClass: "bg-amber-400",
     text: "text-slate-100",
-    calendarBg: `bg-slate-900/60 ${commonGlass}`,
-    cardBg: `bg-slate-800/40 ${commonGlass}`,
+    calendarBg: `bg-slate-950/60 ${commonGlass}`,
+    cardBg: `bg-slate-900/50 ${commonGlass}`,
   },
-  afternoon: {
-    // Indigo / Violet Gradient
-    appBg: "bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-900 via-slate-900 to-black",
-    overlayClass: "opacity-20",
+  day: {
+    appBg: "bg-[#082f49]",
+    backgroundStyle: {
+      backgroundImage: "radial-gradient(circle at 75% 14%, rgba(254,240,138,0.58), transparent 18%), radial-gradient(circle at 18% 24%, rgba(125,211,252,0.42), transparent 28%), linear-gradient(160deg, #0ea5e9 0%, #0369a1 42%, #064e3b 100%)",
+    },
+    overlayClass: "bg-slate-950/20",
+    iconClass: "text-yellow-200",
+    glowClass: "bg-yellow-300",
     text: "text-slate-100",
-    calendarBg: `bg-slate-900/60 ${commonGlass}`,
-    cardBg: `bg-slate-800/40 ${commonGlass}`,
+    calendarBg: `bg-slate-950/60 ${commonGlass}`,
+    cardBg: `bg-slate-900/50 ${commonGlass}`,
   },
-  evening: {
-    // Midnight / Onyx Gradient
-    appBg: "bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-900 via-black to-black",
-    overlayClass: "opacity-20",
+  sunset: {
+    appBg: "bg-[#1e1b4b]",
+    backgroundStyle: {
+      backgroundImage: "radial-gradient(circle at 18% 24%, rgba(251,146,60,0.56), transparent 24%), radial-gradient(circle at 82% 10%, rgba(236,72,153,0.28), transparent 32%), linear-gradient(145deg, #7c2d12 0%, #be123c 36%, #312e81 72%, #020617 100%)",
+    },
+    overlayClass: "bg-slate-950/24",
+    iconClass: "text-orange-300",
+    glowClass: "bg-orange-400",
+    text: "text-slate-100",
+    calendarBg: `bg-slate-950/60 ${commonGlass}`,
+    cardBg: `bg-slate-900/50 ${commonGlass}`,
+  },
+  night: {
+    appBg: "bg-[#020617]",
+    backgroundStyle: {
+      backgroundImage: "radial-gradient(circle at 22% 18%, rgba(250,204,21,0.16), transparent 18%), radial-gradient(circle at 78% 12%, rgba(56,189,248,0.18), transparent 24%), linear-gradient(145deg, #020617 0%, #111827 48%, #3b2716 100%)",
+    },
+    overlayClass: "bg-black/20",
+    iconClass: "text-amber-200",
+    glowClass: "bg-amber-300",
     text: "text-slate-100",
     calendarBg: `bg-black/60 ${commonGlass}`,
     cardBg: `bg-white/5 ${commonGlass}`,
@@ -3376,17 +3405,17 @@ function FamilyDashboard() {
   }, [calendarMonthKey, calendarSources, calendarFilters, customEvents, hiddenEventIds]);
 
   return (
-    <div className={`relative w-screen h-screen overflow-hidden font-sans transition-all duration-1000 ease-in-out ${theme.appBg}`}>
-      <div className={`pointer-events-none absolute inset-0 ${theme.overlayClass}`} />
+    <div className={`relative w-screen h-screen overflow-hidden font-sans transition-all duration-1000 ease-in-out ${theme.appBg}`} style={theme.backgroundStyle}>
+      <div className={`pointer-events-none absolute inset-0 transition-colors duration-1000 ${theme.overlayClass}`} />
       <div className="relative z-10 h-full w-full flex flex-col">
         {/* UPDATED HEADER: DYNAMIC PIZZAZZ */}
         <header className="flex justify-between items-center px-6 pt-5 pb-4 shrink-0">
           <div className="flex items-center gap-5">
             {/* Glowing Icon */}
             <div className="relative group">
-              <div className="absolute inset-0 bg-blue-500 rounded-2xl blur opacity-40 group-hover:opacity-100 transition duration-500 animate-pulse"></div>
+              <div className={`absolute inset-0 ${theme.glowClass} rounded-2xl blur opacity-40 group-hover:opacity-100 transition duration-500 animate-pulse`}></div>
               <div className="relative w-14 h-14 rounded-2xl bg-slate-900 border border-white/10 flex items-center justify-center text-white shadow-2xl">
-                <Sun className="w-8 h-8 text-amber-400" />
+                <Sun className={`w-8 h-8 ${theme.iconClass}`} />
               </div>
             </div>
 
