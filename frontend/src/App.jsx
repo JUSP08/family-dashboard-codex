@@ -2676,12 +2676,7 @@ const BalancesView = ({ theme, childrenData, wallet, setWallet, dailyRewards = {
       return;
     }
 
-    const confirmLabel = redeemType === "time"
-      ? `${amount} minutes of screen time`
-      : `$${amount.toFixed(2)}`;
-
-    if (window.confirm(`Confirm: Deduct ${confirmLabel} from ${child.name}?`)) {
-      // 1. Update Local Wallet (authoritative local redemption)
+    // 1. Update Local Wallet (authoritative local redemption)
       setWallet(prev => ({
         ...prev,
         [redeemingChildId]: {
@@ -2740,7 +2735,6 @@ const BalancesView = ({ theme, childrenData, wallet, setWallet, dailyRewards = {
       // 4. Reset Form
       setRedeemingChildId(null);
       setRedeemAmount("");
-    }
   };
 
   const amountNumber = Number(redeemAmount) || 0;
