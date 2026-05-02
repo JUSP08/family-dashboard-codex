@@ -276,31 +276,24 @@ const parseICS = (icsData) => {
   return events;
 };
 
-// Gemini
-const callGemini = async (prompt) => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || "";
-  if (!apiKey) return "Gemini API Key missing";
-  const model = "gemini-2.5-flash";
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      console.error("Gemini error", data);
-      return data.error?.message || "Gemini API error";
-    }
-    return (
-      data.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "No response from Gemini"
-    );
-  } catch (err) {
-    console.error("Gemini fetch error", err);
-    return "Network / API Error";
+// Daily Sparkle
+const getLocalDateKey = (date = new Date()) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+const fetchDailySparkle = async (forceRefresh = false) => {
+  const response = await fetch("/api/sparkle", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      forceRefresh,
+      todayKey: getLocalDateKey(),
+    }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.success || !data.content) {
+    throw new Error(data.error || "Unable to load Daily Sparkle");
   }
+  return data.content;
 };
 
 // Weather
@@ -619,48 +612,23 @@ const DashboardView = ({
   // --- UPDATED SPARKLE LOGIC (No Repeats) ---
   const [sparkleContent, setSparkleContent] = useState("");
   const [isSparkleLoading, setIsSparkleLoading] = useState(false);
-
-  const SPARKLE_HISTORY_KEY = "dailySparkleHistory";
-  const SPARKLE_TODAY_KEY = "dailySparkleToday";
-
-  const getSparkleHistory = () => { try { const raw = localStorage.getItem(SPARKLE_HISTORY_KEY); if (!raw) return []; const parsed = JSON.parse(raw); return Array.isArray(parsed) ? parsed : []; } catch { return []; } };
-  const pushSparkleToHistory = (text) => { try { const history = getSparkleHistory(); const next = [text, ...history].slice(0, 20); localStorage.setItem(SPARKLE_HISTORY_KEY, JSON.stringify(next)); } catch { } };
-
-  const generateSparklePrompt = () => {
-    const history = getSparkleHistory();
-    const recent = history.slice(0, 10);
-    const dateStr = currentTime.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
-    return `
-      You are creating a unique "Daily Sparkle" for kids.
-      - Topic: A fun fact, a short joke, or an inspiring mini-quote.
-      - Constraints: Under 30 words. NO title. NO "Daily Sparkle" label.
-      - Context: Today is ${dateStr}.
-      - ANTI-REPEAT: Do NOT use any of these recent sparkles: ${JSON.stringify(recent)}.
-      - GOAL: Generate something brand new and delightful.
-    `.trim();
-  };
+  const [sparkleError, setSparkleError] = useState("");
 
   const fetchSparkle = async (forceRefresh = false) => {
-    const todayStr = new Date().toDateString();
-    if (!forceRefresh) {
-      try {
-        const todaySaved = JSON.parse(localStorage.getItem(SPARKLE_TODAY_KEY));
-        if (todaySaved && todaySaved.date === todayStr && todaySaved.content) {
-          setSparkleContent(todaySaved.content);
-          return;
-        }
-      } catch { }
-    }
     setIsSparkleLoading(true);
-    const prompt = generateSparklePrompt();
-    const result = await callGemini(prompt);
-    const cleaned = (result || "").trim().replace(/^"|"$/g, '');
-    if (cleaned) {
-      setSparkleContent(cleaned);
-      pushSparkleToHistory(cleaned);
-      localStorage.setItem(SPARKLE_TODAY_KEY, JSON.stringify({ date: todayStr, content: cleaned }));
+    setSparkleError("");
+    try {
+      const content = await fetchDailySparkle(forceRefresh);
+      setSparkleContent(content);
+    } catch (err) {
+      console.error("Sparkle error", err);
+      setSparkleError(err?.message || "Unable to load Daily Sparkle");
+      if (!sparkleContent) {
+        setSparkleContent("Find one tiny good thing and tell someone about it.");
+      }
+    } finally {
+      setIsSparkleLoading(false);
     }
-    setIsSparkleLoading(false);
   };
 
   useEffect(() => { fetchSparkle(false); }, []);
@@ -919,9 +887,9 @@ const DashboardView = ({
               <div className="p-1.5 bg-yellow-500/20 rounded-lg text-yellow-300 text-sm">🔔</div>
               <h2 className="font-bold text-slate-200 text-sm tracking-wide uppercase">Sparkle</h2>
             </div>
-            <button onClick={regenerateSparkle} className="text-xs p-1.5 rounded-full bg-slate-700/50 hover:bg-slate-600 text-slate-300 transition-colors">✨</button>
+            <button onClick={regenerateSparkle} disabled={isSparkleLoading} className="text-xs p-1.5 rounded-full bg-slate-700/50 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-slate-300 transition-colors">✨</button>
           </div>
-          <p className="relative z-10 text-base font-light italic text-slate-100 leading-snug line-clamp-4">
+          <p className={`relative z-10 text-base font-light italic leading-snug line-clamp-4 ${sparkleError ? "text-amber-100" : "text-slate-100"}`}>
             {isSparkleLoading ? "Summoning magic..." : `"${sparkleContent}"`}
           </p>
         </div>

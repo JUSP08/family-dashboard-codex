@@ -42,6 +42,10 @@ class Settings:
     qustodio_timeout_seconds: int = int(os.getenv("QUSTODIO_TIMEOUT_SECONDS", "20"))
     qustodio_headless: bool = _as_bool(os.getenv("QUSTODIO_HEADLESS", "true"), True)
 
+    gemini_api_key: str = os.getenv("GEMINI_API_KEY", os.getenv("VITE_GEMINI_API_KEY", ""))
+    gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    gemini_timeout_seconds: int = int(os.getenv("GEMINI_TIMEOUT_SECONDS", "20"))
+
     log_level: str = os.getenv("LOG_LEVEL", "INFO")
 
 
