@@ -1370,60 +1370,166 @@ const GigsView = ({ theme, gigs, setGigs, childrenData = [], wallet, setWallet }
   const claimedGigs = gigs.filter(g => g.claimedBy && !g.completed);
   const completedGigs = gigs.filter(g => g.completed);
 
+  const getRewardLabel = (gig) => {
+    const amount = Number(gig.compensationAmount) || 0;
+    if (gig.compensationType === "money") return `$${amount}`;
+    return `${amount}m screen time`;
+  };
+
+  const getColumnMeta = (type, count) => {
+    const meta = {
+      open: { label: "Available", hint: "Pick a job to claim", tone: "slate", dot: "bg-slate-400" },
+      claimed: { label: "In Progress", hint: "Waiting for parent approval", tone: "indigo", dot: "bg-indigo-400 animate-pulse" },
+      completed: { label: "Paid", hint: "Finished and added to balances", tone: "emerald", dot: "bg-emerald-400" },
+    }[type];
+    return { ...meta, count };
+  };
+
   const renderGigCard = (gig) => {
     const isClaimed = !!gig.claimedBy;
     const claimer = isClaimed ? (childrenData || []).find((c) => c.id === gig.claimedBy) : null;
+    const rewardIsMoney = gig.compensationType === "money";
+    const rewardClass = rewardIsMoney
+      ? "bg-emerald-500/10 text-emerald-300 border-emerald-400/30"
+      : "bg-purple-500/10 text-purple-300 border-purple-400/30";
+    const statusLabel = gig.completed ? "Paid" : isClaimed ? "Claimed" : "Open";
+
     return (
-      <div key={gig.id} className={`relative flex flex-col p-5 rounded-2xl border transition-all duration-300 ${gig.completed ? "bg-emerald-900/10 border-emerald-500/20 opacity-60 grayscale-[0.5]" : isClaimed ? "bg-slate-800 border-indigo-500/30" : "bg-slate-900/40 border-white/10 hover:bg-slate-800/60"}`}>
-        <div className="flex justify-between items-start mb-3">
-          <div className={`px-2.5 py-1 rounded-lg text-sm font-bold uppercase tracking-wider border ${gig.compensationType === "money" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-purple-500/10 text-purple-400 border-purple-500/20"}`}>
-            {gig.compensationType === "money" ? `$${gig.compensationAmount}` : `${gig.compensationAmount}m Time`}
+      <div
+        key={gig.id}
+        className={`relative flex flex-col rounded-2xl border p-4 transition-all duration-300 min-h-[220px] ${
+          gig.completed
+            ? "bg-emerald-950/20 border-emerald-400/20 opacity-75"
+            : isClaimed
+              ? "bg-indigo-950/30 border-indigo-400/35 shadow-[0_0_0_1px_rgba(129,140,248,0.08)]"
+              : "bg-slate-950/45 border-white/10 hover:bg-slate-900/70 hover:border-white/20"
+        }`}
+      >
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-12 h-12 shrink-0 rounded-2xl bg-slate-900/80 border border-white/10 flex items-center justify-center text-3xl shadow-inner">
+              {gig.icon || "$"}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-black ${rewardClass}`}>
+                  {getRewardLabel(gig)}
+                </span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{statusLabel}</span>
+              </div>
+              <h3 className="text-base font-bold text-white leading-snug break-words">{gig.title}</h3>
+            </div>
           </div>
-          <div className="flex flex-col items-end gap-1.5">
-            {gig.expectedMinutes && <div className="text-slate-500 text-xs flex items-center gap-1"><Clock className="w-4 h-4" /> {gig.expectedMinutes}m</div>}
-            {claimer && <div className="flex items-center gap-1" title={gig.completed ? `Completed by ${claimer.name}` : `Claimed by ${claimer.name}`}><ChildAvatar child={claimer} className="w-8 h-8 ring-1 ring-slate-600" textSize="text-xs" /></div>}
-          </div>
+
+          {gig.expectedMinutes && (
+            <div className="shrink-0 rounded-full bg-slate-900/70 border border-white/10 px-2.5 py-1 text-xs font-mono text-slate-300 flex items-center gap-1">
+              <Clock className="w-3.5 h-3.5 text-slate-500" />
+              {gig.expectedMinutes}m
+            </div>
+          )}
         </div>
-        <div className="flex items-start gap-3 mb-1 mt-[-2px]">
-          <span className="text-3xl leading-none pt-0.5">{gig.icon || "💵"}</span>
-          <h3 className="text-base font-bold text-white leading-tight">{gig.title}</h3>
-        </div>
-        <p className="text-sm text-slate-400 mb-4 line-clamp-2 leading-relaxed ml-11">{gig.description}</p>
+
+        {gig.description && (
+          <p className="text-sm leading-relaxed text-slate-400 line-clamp-3 mb-4">
+            {gig.description}
+          </p>
+        )}
+
         <div className="mt-auto pt-3 border-t border-white/5">
           {isClaimed && !gig.completed ? (
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs text-slate-400">Claimed by <span className="text-slate-200 font-bold">{claimer?.name}</span></span>
-              <div className="flex gap-2">
-                <button onClick={() => unclaimGig(gig.id)} className="text-xs text-rose-400 hover:text-rose-300 px-3 py-1.5">Cancel</button>
-                <button onClick={() => { setPendingGigId(gig.id); setShowPinPad(true); }} className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2 rounded-lg shadow-lg shadow-emerald-900/20 flex items-center gap-1 transition-all active:scale-95"><span>Approve & Pay</span></button>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-3 rounded-xl bg-indigo-500/10 border border-indigo-400/15 px-3 py-2">
+                <span className="text-xs text-slate-400">Claimed by</span>
+                <div className="flex items-center gap-2 min-w-0">
+                  {claimer && <ChildAvatar child={claimer} className="w-8 h-8 ring-1 ring-indigo-300/40" textSize="text-xs" />}
+                  <span className="text-sm text-slate-100 font-bold truncate">{claimer?.name || "Someone"}</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-[auto_1fr] gap-2">
+                <button onClick={() => unclaimGig(gig.id)} className="px-3 py-2 rounded-xl border border-rose-400/20 text-xs font-bold text-rose-300 hover:bg-rose-500/10 transition-all">Release</button>
+                <button onClick={() => { setPendingGigId(gig.id); setShowPinPad(true); }} className="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold px-4 py-2 rounded-xl shadow-lg shadow-emerald-900/20 flex items-center justify-center gap-2 transition-all active:scale-95"><Lock className="w-4 h-4" /><span>Approve & Pay</span></button>
               </div>
             </div>
           ) : isClaimed && gig.completed ? (
-            <div className="flex justify-end"><span className="text-xs text-emerald-500 font-bold uppercase tracking-wider flex items-center gap-1"><Check className="w-4 h-4" /> Paid</span></div>
+            <div className="flex items-center justify-between gap-3 text-emerald-300">
+              <div className="flex items-center gap-2 min-w-0">
+                {claimer && <ChildAvatar child={claimer} className="w-8 h-8 ring-1 ring-emerald-300/40" textSize="text-xs" />}
+                <span className="text-sm font-bold truncate">{claimer?.name || "Completed"}</span>
+              </div>
+              <span className="text-xs font-black uppercase tracking-widest flex items-center gap-1"><Check className="w-4 h-4" /> Paid</span>
+            </div>
           ) : (
             claimModeId === gig.id ? (
-              <div className="animate-in fade-in slide-in-from-bottom-2 duration-200">
-                <p className="text-xs text-slate-500 uppercase font-bold mb-2 text-center">Who is claiming this?</p>
+              <div className="animate-in fade-in slide-in-from-bottom-2 duration-200 rounded-xl bg-slate-900/60 border border-white/10 p-3">
+                <p className="text-xs text-slate-400 uppercase font-bold mb-3 text-center tracking-widest">Who is taking this?</p>
                 <div className="flex justify-center gap-3 flex-wrap">
-                  {kids.map((child) => (<button key={child.id} onClick={() => claimGig(gig.id, child.id)} className="flex flex-col items-center gap-1 group"><ChildAvatar child={child} className="w-10 h-10 group-hover:ring-2 ring-emerald-500 transition-all" textSize="text-sm" /></button>))}
-                  <button onClick={() => setClaimModeId(null)} className="w-10 h-10 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-slate-400 hover:bg-slate-700">✕</button>
+                  {kids.map((child) => (<button key={child.id} onClick={() => claimGig(gig.id, child.id)} className="flex flex-col items-center gap-1 group" title={child.name}><ChildAvatar child={child} className="w-11 h-11 group-hover:ring-2 ring-emerald-500 transition-all" textSize="text-sm" /><span className="text-[10px] text-slate-500 group-hover:text-slate-300">{child.name}</span></button>))}
+                  <button onClick={() => setClaimModeId(null)} className="w-11 h-11 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-slate-400 hover:bg-slate-700">X</button>
                 </div>
               </div>
-            ) : (<button onClick={() => setClaimModeId(gig.id)} className="w-full bg-slate-800 hover:bg-slate-700 border border-white/5 text-slate-300 hover:text-white text-sm font-bold py-3 rounded-lg transition-all">Claim Job</button>)
+            ) : (<button onClick={() => setClaimModeId(gig.id)} className="w-full bg-slate-100 hover:bg-white text-slate-950 text-sm font-black py-3 rounded-xl transition-all active:scale-95 shadow-lg shadow-black/10">Claim Job</button>)
           )}
         </div>
       </div>
     );
   };
 
+  const renderColumn = (type, items) => {
+    const meta = getColumnMeta(type, items.length);
+    const toneClasses = {
+      slate: "text-slate-300 bg-slate-800/35",
+      indigo: "text-indigo-200 bg-indigo-950/25",
+      emerald: "text-emerald-200 bg-emerald-950/20",
+    }[meta.tone];
+
+    return (
+      <section className="flex flex-col rounded-2xl border border-white/10 bg-slate-950/28 overflow-hidden min-h-0">
+        <div className={`p-4 border-b border-white/5 ${toneClasses}`}>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="font-black text-sm uppercase tracking-widest flex items-center gap-2">
+                <span className={`w-2.5 h-2.5 rounded-full ${meta.dot}`} />
+                {meta.label}
+              </h2>
+              <p className="text-[11px] text-slate-500 mt-1 truncate">{meta.hint}</p>
+            </div>
+            <span className="shrink-0 min-w-8 h-8 rounded-full bg-black/25 border border-white/10 flex items-center justify-center text-sm font-mono text-slate-200">{meta.count}</span>
+          </div>
+        </div>
+        <div className="p-3 space-y-3 overflow-y-auto custom-scrollbar flex-1">
+          {items.length === 0 ? (
+            <div className="h-full min-h-[180px] rounded-2xl border border-dashed border-white/10 bg-slate-950/20 flex flex-col items-center justify-center text-center px-4">
+              <div className="text-2xl mb-2 opacity-60">{type === "open" ? "+" : type === "claimed" ? "..." : "Done"}</div>
+              <div className="text-sm font-bold text-slate-400">{type === "open" ? "No available gigs" : type === "claimed" ? "Nothing being worked" : "No paid gigs yet"}</div>
+              <div className="text-xs text-slate-600 mt-1">{type === "open" ? "Add gigs in Settings" : type === "claimed" ? "Claimed jobs will land here" : "Approved jobs move here"}</div>
+            </div>
+          ) : items.map(renderGigCard)}
+        </div>
+      </section>
+    );
+  };
+
   return (
     <div className="h-full w-full pb-24 overflow-hidden flex flex-col relative">
-      <header className="shrink-0 bg-slate-800/40 border-b border-white/5 p-4 mb-4 backdrop-blur-md flex justify-between items-center">
+      <header className="shrink-0 bg-slate-950/35 border border-white/10 rounded-2xl px-5 py-4 mb-4 backdrop-blur-md flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-white">Gig Board</h1>
-          <p className="text-[10px] text-slate-400 uppercase tracking-widest">Available Tasks</p>
+          <h1 className="text-2xl font-black text-white tracking-tight">Gig Board</h1>
+          <p className="text-xs text-slate-400 uppercase tracking-widest mt-1">Claim work, approve payouts, and keep balances tidy</p>
         </div>
-        <div className="text-[10px] text-slate-500 uppercase font-bold tracking-widest border border-white/10 px-2 py-1 rounded-lg">Check 'Balances' to Redeem</div>
+        <div className="grid grid-cols-3 gap-2 min-w-[280px]">
+          <div className="rounded-xl border border-white/10 bg-slate-900/55 px-3 py-2">
+            <div className="text-lg font-black text-white leading-none">{openGigs.length}</div>
+            <div className="text-[10px] uppercase tracking-widest text-slate-500 mt-1">Available</div>
+          </div>
+          <div className="rounded-xl border border-indigo-400/20 bg-indigo-950/25 px-3 py-2">
+            <div className="text-lg font-black text-indigo-200 leading-none">{claimedGigs.length}</div>
+            <div className="text-[10px] uppercase tracking-widest text-slate-500 mt-1">Active</div>
+          </div>
+          <div className="rounded-xl border border-emerald-400/20 bg-emerald-950/20 px-3 py-2">
+            <div className="text-lg font-black text-emerald-200 leading-none">{completedGigs.length}</div>
+            <div className="text-[10px] uppercase tracking-widest text-slate-500 mt-1">Paid</div>
+          </div>
+        </div>
       </header>
 
       {/* PIN PAD */}
@@ -1438,20 +1544,11 @@ const GigsView = ({ theme, gigs, setGigs, childrenData = [], wallet, setWallet }
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto px-6 pb-6 custom-scrollbar">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full min-h-[500px]">
-          <div className="flex flex-col bg-slate-800/20 rounded-[2rem] border border-white/5 overflow-hidden">
-            <div className="p-4 bg-slate-800/40 border-b border-white/5 flex items-center justify-between"><h2 className="font-bold text-slate-300 text-sm uppercase tracking-wide flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-slate-500" /> Open</h2><span className="text-xs font-mono text-slate-500">{openGigs.length}</span></div>
-            <div className="p-3 space-y-3 overflow-y-auto custom-scrollbar flex-1">{openGigs.length === 0 && <div className="text-center text-xs text-slate-600 italic py-10">No open gigs.</div>}{openGigs.map(renderGigCard)}</div>
-          </div>
-          <div className="flex flex-col bg-slate-800/20 rounded-[2rem] border border-white/5 overflow-hidden">
-            <div className="p-4 bg-slate-800/40 border-b border-white/5 flex items-center justify-between"><h2 className="font-bold text-indigo-300 text-sm uppercase tracking-wide flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" /> In Progress</h2><span className="text-xs font-mono text-slate-500">{claimedGigs.length}</span></div>
-            <div className="p-3 space-y-3 overflow-y-auto custom-scrollbar flex-1">{claimedGigs.length === 0 && <div className="text-center text-xs text-slate-600 italic py-10">Nothing in progress.</div>}{claimedGigs.map(renderGigCard)}</div>
-          </div>
-          <div className="flex flex-col bg-slate-800/20 rounded-[2rem] border border-white/5 overflow-hidden">
-            <div className="p-4 bg-slate-800/40 border-b border-white/5 flex items-center justify-between"><h2 className="font-bold text-emerald-300 text-sm uppercase tracking-wide flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-emerald-500" /> Completed</h2><span className="text-xs font-mono text-slate-500">{completedGigs.length}</span></div>
-            <div className="p-3 space-y-3 overflow-y-auto custom-scrollbar flex-1">{completedGigs.length === 0 && <div className="text-center text-xs text-slate-600 italic py-10">No completed gigs yet.</div>}{completedGigs.map(renderGigCard)}</div>
-          </div>
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full min-h-[500px]">
+          {renderColumn("open", openGigs)}
+          {renderColumn("claimed", claimedGigs)}
+          {renderColumn("completed", completedGigs)}
         </div>
       </div>
     </div>
