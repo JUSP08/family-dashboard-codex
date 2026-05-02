@@ -11,6 +11,7 @@ from services.health_service import build_status
 from services.notify_service import send_redemption_notification
 from services.qustodio_service import grant_tablet_time
 from services.queue_service import start_background_workers
+from services.sparkle_service import get_or_create_daily_sparkle
 from services.state_service import get_full_state, save_full_state
 
 
@@ -111,6 +112,21 @@ def create_app() -> Flask:
             child_id=child_id,
         )
         return jsonify(result)
+
+    @app.post("/api/sparkle")
+    def api_sparkle():
+        payload = request.get_json(silent=True) if request.is_json else {}
+        if payload is None:
+            payload = {}
+        if not isinstance(payload, dict):
+            return jsonify({"success": False, "error": "Invalid JSON payload"}), 400
+
+        result = get_or_create_daily_sparkle(
+            force_refresh=bool(payload.get("forceRefresh", False)),
+            today_key=str(payload.get("todayKey", "")).strip() or None,
+        )
+        status_code = 200 if result.get("success") else 503
+        return jsonify(result), status_code
 
     @app.route("/", defaults={"path": ""})
     @app.route("/<path:path>")
