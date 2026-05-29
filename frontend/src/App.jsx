@@ -1279,10 +1279,10 @@ const CoachView = ({
                           <button
                             key={task.id}
                             onClick={() => toggleTask(child.id, task.id)}
-                            className={`px-3 py-1.5 rounded-lg border text-xs font-medium flex items-center gap-2 transition-all ${done ? "bg-emerald-500/10 border-emerald-500/50 text-emerald-300" : "bg-slate-900/40 border-white/5 text-slate-400 hover:bg-slate-700 hover:text-slate-200"}`}
+                            className={`min-h-9 px-3.5 py-2 rounded-xl border text-[13px] font-semibold flex items-center gap-2 transition-all ${done ? "bg-emerald-500/10 border-emerald-500/50 text-emerald-300" : "bg-slate-900/40 border-white/5 text-slate-300 hover:bg-slate-700 hover:text-slate-100"}`}
                           >
-                            <span className="text-sm">{task.icon}</span>
-                            <span className="text-xs">{task.label}</span>
+                            <span className="text-base leading-none">{task.icon}</span>
+                            <span className="leading-tight">{task.label}</span>
                           </button>
                         );
                       })
@@ -1725,6 +1725,10 @@ const SettingsView = ({
   const [showAdminPin, setShowAdminPin] = useState(false);
   const [adminPinInput, setAdminPinInput] = useState("");
   const [adminPinError, setAdminPinError] = useState(false);
+  const [qustodioToken, setQustodioToken] = useState("");
+  const [qustodioTokenLoading, setQustodioTokenLoading] = useState(false);
+  const [qustodioTokenRefreshing, setQustodioTokenRefreshing] = useState(false);
+  const [qustodioTokenStatus, setQustodioTokenStatus] = useState("");
   const CONFIG_PIN = "7433";
 
   const handleAdminPinClick = (num) => { if (adminPinInput.length < 4) setAdminPinInput(prev => prev + num); };
@@ -1739,6 +1743,53 @@ const SettingsView = ({
       setAdminPinInput("");
       setTimeout(() => setAdminPinError(false), 500);
     }
+  };
+
+  const loadQustodioToken = async () => {
+    setQustodioTokenLoading(true);
+    try {
+      const response = await fetch("/api/qustodio/token");
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Unable to load token");
+      }
+      setQustodioToken(data.token || "");
+      setQustodioTokenStatus(data.present ? "Token loaded." : "No token found.");
+    } catch (err) {
+      setQustodioTokenStatus(err.message || "Unable to load token.");
+    } finally {
+      setQustodioTokenLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAdmin) {
+      loadQustodioToken();
+    }
+  }, [isAdmin]);
+
+  const refreshQustodioToken = async () => {
+    setQustodioTokenRefreshing(true);
+    setQustodioTokenStatus("Refreshing token...");
+    try {
+      const response = await fetch("/api/qustodio/token/refresh", { method: "POST" });
+      const data = await response.json();
+      setQustodioToken(data.token || "");
+      if (!response.ok || !data.success) {
+        throw new Error(data.detail || data.error || "Token refresh failed");
+      }
+      setQustodioTokenStatus(data.detail || "Token refreshed.");
+    } catch (err) {
+      setQustodioTokenStatus(err.message || "Token refresh failed.");
+    } finally {
+      setQustodioTokenRefreshing(false);
+    }
+  };
+
+  const copyQustodioToken = () => {
+    if (!qustodioToken) return;
+    navigator.clipboard?.writeText(qustodioToken);
+    setQustodioTokenStatus("Token copied.");
   };
 
   // --- EMOJI STATE ---
@@ -2043,6 +2094,59 @@ const SettingsView = ({
         </div>
       )}
 
+
+      {/* SECTION 0: QUSTODIO TOKEN */}
+      {isAdmin && (
+        <section className="p-6 rounded-[2rem] bg-slate-800/40 backdrop-blur-xl border border-white/10">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-4">
+            <div>
+              <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Qustodio Bearer Token</h2>
+              <p className="text-xs text-slate-500 mt-1">Used for tablet-time redemption requests.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={loadQustodioToken}
+                disabled={qustodioTokenLoading || qustodioTokenRefreshing}
+                className="px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-200 text-xs font-bold flex items-center gap-2 transition-all"
+              >
+                <RefreshCw className={`w-4 h-4 ${qustodioTokenLoading ? "animate-spin" : ""}`} />
+                <span>Reload</span>
+              </button>
+              <button
+                onClick={copyQustodioToken}
+                disabled={!qustodioToken}
+                className="px-3 py-2 rounded-xl bg-indigo-600/80 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold flex items-center gap-2 transition-all"
+              >
+                <Copy className="w-4 h-4" />
+                <span>Copy</span>
+              </button>
+              <button
+                onClick={refreshQustodioToken}
+                disabled={qustodioTokenRefreshing}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold flex items-center gap-2 shadow-lg shadow-emerald-900/30 transition-all"
+              >
+                <RefreshCw className={`w-4 h-4 ${qustodioTokenRefreshing ? "animate-spin" : ""}`} />
+                <span>{qustodioTokenRefreshing ? "Refreshing" : "Refresh Token"}</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="rounded-2xl bg-slate-950/70 border border-white/10 p-4">
+            <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-2">Current Token</div>
+            <div className="min-h-12 max-h-28 overflow-y-auto break-all font-mono text-xs leading-relaxed text-slate-200">
+              {qustodioTokenLoading ? "Loading..." : qustodioToken || "No token found."}
+            </div>
+          </div>
+
+          {qustodioTokenStatus && (
+            <div className={`mt-3 text-xs font-medium ${qustodioTokenStatus.toLowerCase().includes("failed") || qustodioTokenStatus.toLowerCase().includes("unable") ? "text-rose-300" : "text-emerald-300"}`}>
+              {qustodioTokenStatus}
+            </div>
+          )}
+        </section>
+      )}
+
+      {isAdmin && <div className="w-full h-px bg-white/10" />}
 
       {/* SECTION 0: CHILD PROFILES */}
       {isAdmin && (

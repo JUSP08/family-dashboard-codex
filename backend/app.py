@@ -9,7 +9,8 @@ from config import FRONTEND_DIST, PROJECT_ROOT, settings
 from db import init_db, log_event
 from services.health_service import build_status
 from services.notify_service import send_redemption_notification
-from services.qustodio_service import grant_tablet_time
+from services.qustodio_exact import QustodioController
+from services.qustodio_service import grant_tablet_time, refresh_qustodio_token
 from services.queue_service import start_background_workers
 from services.sparkle_service import get_or_create_daily_sparkle
 from services.state_service import get_full_state, save_full_state
@@ -112,6 +113,37 @@ def create_app() -> Flask:
             child_id=child_id,
         )
         return jsonify(result)
+
+    @app.get("/api/qustodio/token")
+    def api_qustodio_get_token():
+        token = QustodioController().token or ""
+        return jsonify(
+            {
+                "success": True,
+                "token": token,
+                "present": bool(token),
+            }
+        )
+
+    @app.post("/api/qustodio/token/refresh")
+    def api_qustodio_refresh_token():
+        success, detail, captured_output = refresh_qustodio_token(
+            reason="manual_system_config"
+        )
+        token = QustodioController().token or ""
+        status_code = 200 if success else 503
+        return (
+            jsonify(
+                {
+                    "success": success,
+                    "detail": detail,
+                    "token": token,
+                    "present": bool(token),
+                    "captured_output": captured_output,
+                }
+            ),
+            status_code,
+        )
 
     @app.post("/api/sparkle")
     def api_sparkle():

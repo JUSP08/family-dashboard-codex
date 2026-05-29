@@ -1,7 +1,7 @@
 import datetime
 
 import requests
-from dotenv import set_key
+from dotenv import dotenv_values, set_key
 from playwright.sync_api import sync_playwright
 
 from config import BACKEND_ROOT, settings
@@ -11,7 +11,7 @@ class QustodioController:
     def __init__(self):
         self.account_uid = settings.qustodio_account_uid
         self.base_url = "https://api.qustodio.com/v2"
-        self.token = settings.qustodio_token
+        self.token = self._load_token()
         self.kids = {
             "tristan": "34f4ad13cbaf49b8ba8441ea807685b3",
             "blake": "e4fb6de0dde041c5a5d927b0c29ef433",
@@ -22,6 +22,7 @@ class QustodioController:
         }
 
     def get_auth_header(self):
+        self.token = self._load_token()
         return {
             "Authorization": f"Bearer {self.token}",
             "Content-Type": "application/json",
@@ -29,9 +30,27 @@ class QustodioController:
             "Qustodio-Client": "QustodioPARWeb/PAR-182.34.1-19-g8237c6af (p:browser)",
         }
 
+    def _load_env_values(self):
+        env_path = BACKEND_ROOT / ".env"
+        return dotenv_values(env_path) if env_path.exists() else {}
+
+    def _load_token(self):
+        env_values = self._load_env_values()
+        return (
+            env_values.get("QUSTODIO_TOKEN")
+            or env_values.get("TOKEN")
+            or settings.qustodio_token
+        )
+
+    def _load_credentials(self):
+        env_values = self._load_env_values()
+        return (
+            env_values.get("QUSTODIO_EMAIL") or settings.qustodio_email,
+            env_values.get("QUSTODIO_PW") or settings.qustodio_password,
+        )
+
     def refresh_token(self, headless=None):
-        email = settings.qustodio_email
-        password = settings.qustodio_password
+        email, password = self._load_credentials()
         launch_headless = settings.qustodio_headless if headless is None else headless
 
         if not email or not password:
@@ -41,6 +60,7 @@ class QustodioController:
         with sync_playwright() as p:
             print(f"Launching browser for {email}...")
             browser = p.chromium.launch(headless=launch_headless)
+            scraped_token = {"value": None}
             context = browser.new_context(
                 user_agent=(
                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -49,6 +69,13 @@ class QustodioController:
                 )
             )
             page = context.new_page()
+
+            def capture_bearer_from_request(request):
+                auth_header = request.headers.get("authorization", "")
+                if auth_header.lower().startswith("bearer "):
+                    scraped_token["value"] = auth_header.split(" ", 1)[1].strip()
+
+            page.on("request", capture_bearer_from_request)
 
             try:
                 page.goto("https://family.qustodio.com/login")
@@ -67,12 +94,13 @@ class QustodioController:
                     page.click('button[type="submit"]')
 
                 token_data = response_info.value.json()
+                token = token_data.get("access_token") or scraped_token["value"]
 
-                if "access_token" not in token_data:
-                    print("Token refresh failed: 'access_token' key not found in response.")
+                if not token:
+                    print("Token refresh failed: no bearer token found in the signin sequence.")
                     return None
 
-                self.token = token_data["access_token"]
+                self.token = token
                 self._update_env(self.token)
                 print(f"SUCCESS: Token refreshed ({self.token[:10]}...)")
                 return self.token

@@ -8,7 +8,7 @@ import requests
 
 from config import settings
 from db import get_connection, log_event
-from services.qustodio_service import retry_qustodio_queue_once
+from services.qustodio_service import refresh_qustodio_token_if_due, retry_qustodio_queue_once
 
 
 _WORKER_STARTED = False
@@ -36,6 +36,7 @@ def _retry_notification_queue_loop() -> None:
 def _retry_qustodio_queue_loop() -> None:
     while True:
         try:
+            refresh_qustodio_token_if_due()
             retry_qustodio_queue_once()
         except Exception as exc:
             log_event(
