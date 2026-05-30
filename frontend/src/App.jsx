@@ -807,10 +807,9 @@ const DashboardView = ({
                     <div className={`p-3 text-center border-b border-white/5 ${isToday ? "text-blue-400" : "text-slate-400"}`}><div className="text-[10px] uppercase font-bold tracking-widest opacity-70">{date.toLocaleDateString("en-US", { weekday: "short" })}</div><div className="text-xl font-light mt-1 text-slate-200">{date.getDate()}</div></div>
                     <div className="flex-1 p-2 space-y-2 overflow-y-auto custom-scrollbar">
                       {evts.map((e, idx) => (
-                        <div key={`${e.id}-${idx}`} onClick={(evt) => { evt.stopPropagation(); setSelectedEvent(e); }} className={`px-2 py-2 rounded-lg text-xs border-l-[3px] shadow-sm backdrop-blur-sm cursor-pointer hover:brightness-125 transition-all active:scale-95 ${e.colorClass} ${e.isChildEvent ? "bg-blue-900/30" : "bg-slate-800/60"}`}>
-                          <div className="flex items-center justify-between gap-1 mb-1"><div className="font-bold text-slate-200 opacity-80 text-[10px]">{e.time}</div><div className="text-sm leading-none" title={e.calendarLabel}>{getEventEmoji(e.sourceIcon, e.title, e.calendarLabel)}</div></div>
-                          {/* ✅ CHANGED FROM text-[30px] TO text-sm */}
-                          <div className="text-sm font-bold text-slate-100 leading-tight line-clamp-2">{e.title}</div>
+                        <div key={`${e.id}-${idx}`} onClick={(evt) => { evt.stopPropagation(); setSelectedEvent(e); }} className={`px-2.5 py-2.5 rounded-lg text-xs border-l-[3px] shadow-sm backdrop-blur-sm cursor-pointer hover:brightness-125 transition-all active:scale-95 ${e.colorClass} ${e.isChildEvent ? "bg-blue-900/30" : "bg-slate-800/60"}`}>
+                          <div className="flex items-center justify-between gap-1 mb-1"><div className="font-bold text-slate-200 opacity-80 text-xs">{e.time}</div><div className="text-base leading-none" title={e.calendarLabel}>{getEventEmoji(e.sourceIcon, e.title, e.calendarLabel)}</div></div>
+                          <div className="text-base font-bold text-slate-100 leading-tight line-clamp-2">{e.title}</div>
                         </div>
                       ))}
                     </div>
@@ -829,12 +828,12 @@ const DashboardView = ({
                       <div className="flex justify-between items-center mb-1"><span className={`text-xs font-medium ${isToday ? "text-blue-400" : "text-slate-400"}`}>{date.getDate()}</span></div>
                       <div className="space-y-1">
                         {evts.slice(0, 3).map((e, i) => (
-                          <div key={`${e.id}-${i}`} onClick={(evt) => { evt.stopPropagation(); setSelectedEvent(e); }} className={`px-1 py-0.5 rounded-[2px] text-[9px] border-l-2 truncate text-slate-300 ${e.colorClass} bg-white/5 flex items-center justify-between gap-1 cursor-pointer hover:bg-white/10`}>
+                          <div key={`${e.id}-${i}`} onClick={(evt) => { evt.stopPropagation(); setSelectedEvent(e); }} className={`px-1.5 py-1 rounded-[3px] text-[11px] border-l-2 truncate text-slate-300 ${e.colorClass} bg-white/5 flex items-center justify-between gap-1 cursor-pointer hover:bg-white/10`}>
                             <div className="truncate flex-1"><span className="opacity-70 mr-1">{e.time}</span>{e.title}</div>
-                            <span className="shrink-0 text-[10px]" title={e.calendarLabel}>{getEventEmoji(e.sourceIcon, e.title, e.calendarLabel)}</span>
+                            <span className="shrink-0 text-sm" title={e.calendarLabel}>{getEventEmoji(e.sourceIcon, e.title, e.calendarLabel)}</span>
                           </div>
                         ))}
-                        {evts.length > 3 && (<div className="text-[9px] text-slate-500 text-center">+{evts.length - 3}</div>)}
+                        {evts.length > 3 && (<div className="text-xs text-slate-500 text-center">+{evts.length - 3}</div>)}
                       </div>
                     </div>
                   );
@@ -845,8 +844,8 @@ const DashboardView = ({
         </div>
       </div>
 
-      {/* RIGHT COLUMN: SIDEBAR (30% WIDTH) */}
-      <div className="w-[30%] flex flex-col gap-6 shrink-0 min-h-0 overflow-y-auto custom-scrollbar">
+      {/* RIGHT COLUMN: SIDEBAR (narrower to give the schedule more room) */}
+      <div className="w-[24%] flex flex-col gap-5 shrink-0 min-h-0 overflow-y-auto custom-scrollbar">
 
         {/* 1. WEATHER */}
         <div className={`${theme.cardBg} rounded-[2rem] p-5 relative overflow-hidden group shrink-0`}>
@@ -865,10 +864,10 @@ const DashboardView = ({
 
               {/* Forecast */}
               <div className="flex justify-between gap-2 pt-2 border-t border-white/5">
-                {weather.daily && weather.daily.slice(0, 4).map((d, idx) => (
+                {weather.daily && weather.daily.slice(0, 3).map((d, idx) => (
                   <div key={idx} className="flex flex-col items-center">
                     <span className="text-xs text-slate-400 font-bold uppercase">{shortDay(d.date)}</span>
-                    <span className="text-2xl my-1 opacity-90">{describeWeather(d.code).icon}</span>
+                    <span className="text-5xl my-2 leading-none opacity-95">{describeWeather(d.code).icon}</span>
                     <span className="text-xs text-slate-300 font-mono">{Math.round(d.high)}°</span>
                   </div>
                 ))}
