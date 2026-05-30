@@ -2018,7 +2018,7 @@ const SettingsView = ({
 
   const handlePhotoUpload = (e, childId) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (event) => { const img = new Image(); img.onload = () => { const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d'); const MAX_SIZE = 150; let width = img.width; let height = img.height; if (width > height) { if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } } else { if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; } } canvas.width = width; canvas.height = height; ctx.drawImage(img, 0, 0, width, height); const dataUrl = canvas.toDataURL('image/jpeg', 0.7); setChildrenData(prev => prev.map(c => c.id === childId ? { ...c, img: dataUrl } : c)); }; img.src = event.target.result; }; reader.readAsDataURL(file); };
   const removePhoto = (childId) => { if (window.confirm("Remove this photo?")) { setChildrenData(prev => prev.map(c => c.id === childId ? { ...c, img: null } : c)); } };
-  const adjustBalance = (childId, type, amount) => { setWallet(prev => { const current = prev[childId] || { money: 0, time: 0 }; const newValue = type === 'money' ? current.money + amount : current.time + amount; return { ...prev, [childId]: { ...current, [type]: newValue } }; }); };
+  const adjustBalance = (childId, type, amount) => { setWallet(prev => { const current = prev[childId] || { money: 0, time: 0 }; const newValue = type === 'money' ? current.money + amount : Math.max(0, current.time + amount); return { ...prev, [childId]: { ...current, [type]: newValue } }; }); };
   const unhideAll = () => { if (window.confirm(`Restore ${hiddenEventIds.length} hidden events?`)) { setHiddenEventIds([]); } };
 
   // --- COLUMN HELPER FOR TASKS ---
@@ -2231,19 +2231,38 @@ const SettingsView = ({
                     </div>
                     <div className="flex-1">
                       <label className="block text-[10px] uppercase font-bold text-slate-500 tracking-wider mb-1">Time Balance (min)</label>
-                      <input
-                        type="number"
-                        step="1"
-                        value={bal.time}
-                        onChange={(e) => {
-                          const val = e.target.value === '' ? 0 : parseInt(e.target.value);
-                          setWallet(prev => ({
-                            ...prev,
-                            [child.id]: { ...prev[child.id], time: val }
-                          }));
-                        }}
-                        className="w-full bg-slate-950 border border-white/10 rounded-lg px-3 py-2 text-white font-mono text-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
-                      />
+                      <div className="grid grid-cols-[44px_1fr_44px] gap-2 items-center">
+                        <button
+                          type="button"
+                          onClick={() => adjustBalance(child.id, 'time', 5)}
+                          className="h-11 rounded-xl bg-emerald-600/20 border border-emerald-400/40 text-emerald-300 flex items-center justify-center hover:bg-emerald-600/30 active:scale-95 transition-all"
+                          aria-label={`Add 5 minutes to ${child.name}`}
+                        >
+                          <Plus className="w-5 h-5" />
+                        </button>
+                        <input
+                          type="number"
+                          step="1"
+                          min="0"
+                          value={bal.time}
+                          onChange={(e) => {
+                            const val = e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value, 10) || 0);
+                            setWallet(prev => ({
+                              ...prev,
+                              [child.id]: { ...prev[child.id], time: val }
+                            }));
+                          }}
+                          className="w-full bg-slate-950 border border-purple-500/80 rounded-xl px-3 py-2 text-center text-white font-mono text-lg font-black focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => adjustBalance(child.id, 'time', -5)}
+                          className="h-11 rounded-xl bg-rose-600/20 border border-rose-400/40 text-rose-300 flex items-center justify-center hover:bg-rose-600/30 active:scale-95 transition-all"
+                          aria-label={`Remove 5 minutes from ${child.name}`}
+                        >
+                          <Minus className="w-5 h-5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
 
