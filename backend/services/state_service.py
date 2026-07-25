@@ -19,6 +19,8 @@ def default_state() -> dict:
         "calendarFilters": [],
         "dailyRewards": {},
         "completedTasks": {},
+        "gigRequests": [],
+        "householdSuggestions": [],
     }
 
 
