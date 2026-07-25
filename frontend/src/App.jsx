@@ -41,7 +41,10 @@ import {
   RefreshCw,
   CreditCard,
   DollarSign,
-  Save
+  Save,
+  MessageSquare,
+  ShoppingBasket,
+  WandSparkles
 } from "lucide-react";
 import "./index.css";
 import "./App.css";
@@ -216,6 +219,133 @@ const THEMES = {
   },
 };
 
+const MONTHLY_THEME_ACCENTS = [
+  {
+    name: "January Lanterns",
+    byPhase: {
+      sunrise: "radial-gradient(circle at 10% 12%, rgba(125,211,252,0.22), transparent 18%)",
+      day: "radial-gradient(circle at 80% 20%, rgba(186,230,253,0.32), transparent 20%)",
+      sunset: "radial-gradient(circle at 24% 18%, rgba(244,114,182,0.18), transparent 22%)",
+      night: "radial-gradient(circle at 68% 14%, rgba(147,197,253,0.2), transparent 24%)",
+    },
+  },
+  {
+    name: "February Glow",
+    byPhase: {
+      sunrise: "radial-gradient(circle at 22% 14%, rgba(251,113,133,0.28), transparent 20%)",
+      day: "radial-gradient(circle at 74% 18%, rgba(252,165,165,0.28), transparent 22%)",
+      sunset: "radial-gradient(circle at 18% 20%, rgba(244,114,182,0.3), transparent 24%)",
+      night: "radial-gradient(circle at 82% 16%, rgba(190,24,93,0.18), transparent 24%)",
+    },
+  },
+  {
+    name: "March Sprouts",
+    byPhase: {
+      sunrise: "radial-gradient(circle at 16% 14%, rgba(134,239,172,0.26), transparent 22%)",
+      day: "radial-gradient(circle at 78% 18%, rgba(74,222,128,0.3), transparent 24%)",
+      sunset: "radial-gradient(circle at 18% 16%, rgba(45,212,191,0.18), transparent 24%)",
+      night: "radial-gradient(circle at 70% 16%, rgba(34,197,94,0.16), transparent 24%)",
+    },
+  },
+  {
+    name: "April Showers",
+    byPhase: {
+      sunrise: "radial-gradient(circle at 16% 16%, rgba(96,165,250,0.25), transparent 22%)",
+      day: "radial-gradient(circle at 82% 18%, rgba(56,189,248,0.28), transparent 24%)",
+      sunset: "radial-gradient(circle at 18% 20%, rgba(129,140,248,0.2), transparent 24%)",
+      night: "radial-gradient(circle at 72% 14%, rgba(59,130,246,0.16), transparent 24%)",
+    },
+  },
+  {
+    name: "May Garden",
+    byPhase: {
+      sunrise: "radial-gradient(circle at 18% 14%, rgba(250,204,21,0.28), transparent 20%)",
+      day: "radial-gradient(circle at 76% 18%, rgba(52,211,153,0.32), transparent 24%)",
+      sunset: "radial-gradient(circle at 22% 18%, rgba(251,146,60,0.22), transparent 24%)",
+      night: "radial-gradient(circle at 72% 16%, rgba(16,185,129,0.16), transparent 24%)",
+    },
+  },
+  {
+    name: "June Fireflies",
+    byPhase: {
+      sunrise: "radial-gradient(circle at 18% 16%, rgba(253,224,71,0.3), transparent 18%)",
+      day: "radial-gradient(circle at 82% 14%, rgba(45,212,191,0.26), transparent 22%)",
+      sunset: "radial-gradient(circle at 20% 20%, rgba(251,191,36,0.32), transparent 24%)",
+      night: "radial-gradient(circle at 76% 18%, rgba(250,204,21,0.18), transparent 18%)",
+    },
+  },
+  {
+    name: "July Parade",
+    byPhase: {
+      sunrise: "radial-gradient(circle at 16% 14%, rgba(248,113,113,0.28), transparent 20%)",
+      day: "radial-gradient(circle at 78% 16%, rgba(59,130,246,0.3), transparent 22%)",
+      sunset: "radial-gradient(circle at 20% 18%, rgba(239,68,68,0.26), transparent 24%)",
+      night: "radial-gradient(circle at 72% 16%, rgba(191,219,254,0.18), transparent 20%)",
+    },
+  },
+  {
+    name: "August Sun",
+    byPhase: {
+      sunrise: "radial-gradient(circle at 18% 16%, rgba(251,191,36,0.32), transparent 22%)",
+      day: "radial-gradient(circle at 80% 18%, rgba(20,184,166,0.26), transparent 24%)",
+      sunset: "radial-gradient(circle at 22% 18%, rgba(249,115,22,0.3), transparent 24%)",
+      night: "radial-gradient(circle at 76% 16%, rgba(217,119,6,0.16), transparent 24%)",
+    },
+  },
+  {
+    name: "September Pencils",
+    byPhase: {
+      sunrise: "radial-gradient(circle at 18% 14%, rgba(251,191,36,0.26), transparent 22%)",
+      day: "radial-gradient(circle at 78% 18%, rgba(14,165,233,0.26), transparent 24%)",
+      sunset: "radial-gradient(circle at 20% 18%, rgba(168,85,247,0.2), transparent 24%)",
+      night: "radial-gradient(circle at 72% 16%, rgba(99,102,241,0.16), transparent 24%)",
+    },
+  },
+  {
+    name: "October Porch",
+    byPhase: {
+      sunrise: "radial-gradient(circle at 18% 14%, rgba(251,146,60,0.3), transparent 22%)",
+      day: "radial-gradient(circle at 78% 18%, rgba(132,204,22,0.22), transparent 24%)",
+      sunset: "radial-gradient(circle at 22% 18%, rgba(249,115,22,0.34), transparent 24%)",
+      night: "radial-gradient(circle at 72% 16%, rgba(234,88,12,0.18), transparent 24%)",
+    },
+  },
+  {
+    name: "November Hearth",
+    byPhase: {
+      sunrise: "radial-gradient(circle at 18% 16%, rgba(245,158,11,0.26), transparent 22%)",
+      day: "radial-gradient(circle at 80% 18%, rgba(217,119,6,0.22), transparent 24%)",
+      sunset: "radial-gradient(circle at 20% 18%, rgba(220,38,38,0.22), transparent 24%)",
+      night: "radial-gradient(circle at 72% 16%, rgba(120,53,15,0.2), transparent 24%)",
+    },
+  },
+  {
+    name: "December Lights",
+    byPhase: {
+      sunrise: "radial-gradient(circle at 18% 14%, rgba(74,222,128,0.24), transparent 20%)",
+      day: "radial-gradient(circle at 78% 18%, rgba(248,113,113,0.24), transparent 22%)",
+      sunset: "radial-gradient(circle at 20% 18%, rgba(250,204,21,0.22), transparent 24%)",
+      night: "radial-gradient(circle at 74% 16%, rgba(34,197,94,0.18), transparent 22%)",
+    },
+  },
+];
+
+const buildTheme = (phase, date) => {
+  const base = THEMES[phase] || THEMES.day;
+  const monthAccent = MONTHLY_THEME_ACCENTS[date.getMonth()] || MONTHLY_THEME_ACCENTS[0];
+  const phaseAccent = monthAccent.byPhase?.[phase] || monthAccent.byPhase?.day || "";
+  return {
+    ...base,
+    seasonalName: monthAccent.name,
+    backgroundStyle: {
+      ...base.backgroundStyle,
+      backgroundImage: phaseAccent
+        ? `${phaseAccent}, ${base.backgroundStyle.backgroundImage}`
+        : base.backgroundStyle.backgroundImage,
+    },
+  };
+};
+
 const CALENDAR_SOURCES = [
   { type: "google_api", id: "kidlindstrom@gmail.com", label: "Family", color: "border-sky-400" },
   { type: "google_api", id: "ke619q4g2ntjl8hd50omn4v1ih88o164@import.calendar.google.com", label: "BHS Calendar", color: "border-emerald-400" },
@@ -226,6 +356,27 @@ const CALENDAR_SOURCES = [
 ];
 
 const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || "";
+
+const HOUSEHOLD_GIG_IDEAS = [
+  { title: "Sock Sort Sprint", description: "Match clean socks and put them in the right drawers.", successCriteria: "No loose sock pile left behind.", expectedMinutes: 10, compensationType: "tablet", compensationAmount: 10, icon: "🧦" },
+  { title: "Entryway Reset", description: "Line up shoes, hang bags, and clear the floor near the door.", successCriteria: "The entryway is walkable and tidy.", expectedMinutes: 10, compensationType: "tablet", compensationAmount: 10, icon: "👟" },
+  { title: "Trash Scout", description: "Empty small trash cans into the main trash.", successCriteria: "Bathrooms, bedrooms, and office bins are checked.", expectedMinutes: 10, compensationType: "money", compensationAmount: 1, icon: "🗑️" },
+  { title: "Dish Rescue", description: "Collect cups and dishes from shared rooms and bring them to the sink.", successCriteria: "No dishes left in living room or bedrooms.", expectedMinutes: 8, compensationType: "tablet", compensationAmount: 10, icon: "🍽️" },
+  { title: "Couch Crumb Patrol", description: "Clear couch cushions and vacuum or brush visible crumbs.", successCriteria: "Couch is ready to sit on.", expectedMinutes: 12, compensationType: "money", compensationAmount: 1, icon: "🛋️" },
+  { title: "Pet Water Check", description: "Refresh pet water bowls and wipe spills nearby.", successCriteria: "Bowls are full and the floor is dry.", expectedMinutes: 5, compensationType: "tablet", compensationAmount: 5, icon: "💧" },
+  { title: "Laundry Launch", description: "Move one load of laundry to the washer or dryer with help if needed.", successCriteria: "One load is started or moved forward.", expectedMinutes: 8, compensationType: "money", compensationAmount: 1, icon: "🧺" },
+  { title: "Book Shelf Rescue", description: "Put books back on shelves and straighten one reading area.", successCriteria: "Books are off the floor and shelves look neat.", expectedMinutes: 12, compensationType: "tablet", compensationAmount: 10, icon: "📚" },
+  { title: "Table Clear Mission", description: "Clear and wipe the kitchen table.", successCriteria: "Table is ready for the next meal.", expectedMinutes: 10, compensationType: "tablet", compensationAmount: 10, icon: "🧽" },
+  { title: "Toy Bin Sort", description: "Pick one toy bin and return stray toys to it.", successCriteria: "One bin is reset and the floor is clearer.", expectedMinutes: 15, compensationType: "tablet", compensationAmount: 15, icon: "🧸" },
+  { title: "Pantry Front-Face", description: "Straighten snacks, cereal, or cans on one shelf.", successCriteria: "One shelf is easy to scan.", expectedMinutes: 10, compensationType: "money", compensationAmount: 1, icon: "🥫" },
+  { title: "Bathroom Counter Reset", description: "Put away toothpaste, brushes, hair tools, and wipe the counter.", successCriteria: "Counter is clear and dry.", expectedMinutes: 10, compensationType: "tablet", compensationAmount: 10, icon: "🪥" },
+  { title: "Window Smudge Hunt", description: "Clean fingerprints from one glass door or window.", successCriteria: "Obvious smudges are gone.", expectedMinutes: 8, compensationType: "money", compensationAmount: 1, icon: "🪟" },
+  { title: "Backpack Cleanout", description: "Remove old papers, trash, and food from your backpack.", successCriteria: "Backpack is ready for tomorrow.", expectedMinutes: 10, compensationType: "tablet", compensationAmount: 10, icon: "🎒" },
+  { title: "Mailbox Runner", description: "Bring in mail and place it in the mail spot.", successCriteria: "Mailbox is empty and mail is sorted safely.", expectedMinutes: 5, compensationType: "tablet", compensationAmount: 5, icon: "📬" },
+  { title: "Stair Sweep", description: "Pick up items from the stairs and put them where they belong.", successCriteria: "Stairs are clear and safe.", expectedMinutes: 10, compensationType: "money", compensationAmount: 1, icon: "🪜" },
+  { title: "Fridge Quick Check", description: "Find expired snacks or empty containers with parent approval before tossing.", successCriteria: "Questionable items are shown to a parent.", expectedMinutes: 10, compensationType: "tablet", compensationAmount: 10, icon: "🧊" },
+  { title: "Remote Control Roundup", description: "Find remotes, game controllers, and chargers and return them to their spot.", successCriteria: "Shared electronics are easy to find.", expectedMinutes: 8, compensationType: "tablet", compensationAmount: 10, icon: "🎮" },
+];
 
 /* --------------------------------------------------
    HELPERS
@@ -1303,8 +1454,17 @@ const CoachView = ({
 /* --------------------------------------------------
    GIGS VIEW (Pure Task Board)
 -------------------------------------------------- */
-const GigsView = ({ theme, gigs, setGigs, childrenData = [], wallet, setWallet }) => {
+const GigsView = ({ theme, gigs, setGigs, childrenData = [], wallet, setWallet, gigRequests = [], setGigRequests }) => {
   const [claimModeId, setClaimModeId] = useState(null);
+  const [ideaOffset, setIdeaOffset] = useState(0);
+  const [requestForm, setRequestForm] = useState({
+    childId: "",
+    title: "",
+    description: "",
+    compensationType: "tablet",
+    compensationAmount: 15,
+    icon: "✨",
+  });
 
   // PIN STATE (Still needed for "Approve & Pay")
   const [showPinPad, setShowPinPad] = useState(false);
@@ -1368,6 +1528,55 @@ const GigsView = ({ theme, gigs, setGigs, childrenData = [], wallet, setWallet }
   const openGigs = gigs.filter(g => !g.claimedBy && !g.completed);
   const claimedGigs = gigs.filter(g => g.claimedBy && !g.completed);
   const completedGigs = gigs.filter(g => g.completed);
+  const pendingRequests = gigRequests.filter(req => req.status !== "approved" && req.status !== "declined");
+  const ideaCards = [0, 1, 2, 3].map((n) => HOUSEHOLD_GIG_IDEAS[(ideaOffset + n) % HOUSEHOLD_GIG_IDEAS.length]);
+
+  const queueGigRequest = (payload) => {
+    if (!setGigRequests) return;
+    setGigRequests(prev => [
+      {
+        id: `gig-req-${Date.now()}`,
+        createdAt: new Date().toISOString(),
+        status: "pending",
+        requestedBy: payload.childId || "",
+        ...payload,
+      },
+      ...prev,
+    ]);
+  };
+
+  const requestIdea = (idea) => {
+    queueGigRequest({
+      ...idea,
+      childId: "",
+      requestedBy: "",
+      source: "idea_bank",
+    });
+  };
+
+  const submitRequest = (e) => {
+    e.preventDefault();
+    if (!requestForm.title.trim()) return;
+    queueGigRequest({
+      title: requestForm.title.trim(),
+      description: requestForm.description.trim(),
+      successCriteria: "Parent reviews the finished work before payout.",
+      expectedMinutes: "",
+      compensationType: requestForm.compensationType,
+      compensationAmount: Number(requestForm.compensationAmount) || 0,
+      icon: requestForm.icon || "✨",
+      childId: requestForm.childId,
+      source: "child_request",
+    });
+    setRequestForm({
+      childId: requestForm.childId,
+      title: "",
+      description: "",
+      compensationType: "tablet",
+      compensationAmount: 15,
+      icon: "✨",
+    });
+  };
 
   const getRewardLabel = (gig) => {
     const amount = Number(gig.compensationAmount) || 0;
@@ -1512,10 +1721,17 @@ const GigsView = ({ theme, gigs, setGigs, childrenData = [], wallet, setWallet }
     <div className="h-full w-full pb-24 overflow-hidden flex flex-col relative">
       <header className="shrink-0 bg-slate-950/35 border border-white/10 rounded-2xl px-5 py-4 mb-4 backdrop-blur-md flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h1 className="text-2xl font-black text-white tracking-tight">Gig Board</h1>
-          <p className="text-xs text-slate-400 uppercase tracking-widest mt-1">Claim work, approve payouts, and keep balances tidy</p>
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-emerald-500/15 border border-emerald-300/20 flex items-center justify-center text-emerald-200">
+              <WandSparkles className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-black text-white tracking-tight">Gig Missions</h1>
+              <p className="text-xs text-slate-400 uppercase tracking-widest mt-1">Pick a mission, suggest a job, earn rewards</p>
+            </div>
+          </div>
         </div>
-        <div className="grid grid-cols-3 gap-2 min-w-[280px]">
+        <div className="grid grid-cols-4 gap-2 min-w-[340px]">
           <div className="rounded-xl border border-white/10 bg-slate-900/55 px-3 py-2">
             <div className="text-lg font-black text-white leading-none">{openGigs.length}</div>
             <div className="text-[10px] uppercase tracking-widest text-slate-500 mt-1">Available</div>
@@ -1528,8 +1744,106 @@ const GigsView = ({ theme, gigs, setGigs, childrenData = [], wallet, setWallet }
             <div className="text-lg font-black text-emerald-200 leading-none">{completedGigs.length}</div>
             <div className="text-[10px] uppercase tracking-widest text-slate-500 mt-1">Paid</div>
           </div>
+          <div className="rounded-xl border border-cyan-400/20 bg-cyan-950/20 px-3 py-2">
+            <div className="text-lg font-black text-cyan-200 leading-none">{pendingRequests.length}</div>
+            <div className="text-[10px] uppercase tracking-widest text-slate-500 mt-1">Ideas</div>
+          </div>
         </div>
       </header>
+
+      <div className="shrink-0 grid grid-cols-1 xl:grid-cols-[1.4fr_0.9fr] gap-4 mb-4">
+        <section className="rounded-2xl border border-white/10 bg-slate-950/30 p-4 backdrop-blur-md overflow-hidden">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div>
+              <h2 className="text-sm font-black uppercase tracking-widest text-emerald-200">Mission Ideas</h2>
+              <p className="text-[11px] text-slate-500">Ask a parent to add one to the board.</p>
+            </div>
+            <button
+              onClick={() => setIdeaOffset((prev) => (prev + 4) % HOUSEHOLD_GIG_IDEAS.length)}
+              className="shrink-0 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/10 flex items-center gap-2"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Shuffle
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+            {ideaCards.map((idea) => (
+              <button
+                key={idea.title}
+                onClick={() => requestIdea(idea)}
+                className="text-left rounded-2xl border border-white/10 bg-slate-900/55 hover:bg-slate-800/80 hover:border-emerald-300/30 p-3 transition-all min-h-[128px] flex flex-col"
+              >
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className="text-2xl">{idea.icon}</span>
+                  <span className="rounded-full bg-emerald-500/10 border border-emerald-400/20 px-2 py-0.5 text-[10px] font-black text-emerald-200">
+                    {getRewardLabel(idea)}
+                  </span>
+                </div>
+                <h3 className="text-sm font-black text-white leading-tight">{idea.title}</h3>
+                <p className="mt-1 text-[11px] text-slate-400 line-clamp-2">{idea.description}</p>
+                <span className="mt-auto pt-2 text-[10px] font-bold uppercase tracking-widest text-cyan-300">Request</span>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-white/10 bg-slate-950/30 p-4 backdrop-blur-md">
+          <h2 className="text-sm font-black uppercase tracking-widest text-cyan-200 mb-1">Create Your Own</h2>
+          <p className="text-[11px] text-slate-500 mb-3">A parent approves it before it can pay out.</p>
+          <form onSubmit={submitRequest} className="space-y-2">
+            <div className="grid grid-cols-[1fr_70px] gap-2">
+              <select
+                value={requestForm.childId}
+                onChange={(e) => setRequestForm(prev => ({ ...prev, childId: e.target.value }))}
+                className="rounded-xl bg-slate-900/70 border border-white/10 text-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              >
+                <option value="">Who?</option>
+                {kids.map(child => <option key={child.id} value={child.id}>{child.name}</option>)}
+              </select>
+              <input
+                value={requestForm.icon}
+                onChange={(e) => setRequestForm(prev => ({ ...prev, icon: e.target.value }))}
+                className="rounded-xl bg-slate-900/70 border border-white/10 text-slate-200 px-3 py-2 text-center text-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              />
+            </div>
+            <input
+              value={requestForm.title}
+              onChange={(e) => setRequestForm(prev => ({ ...prev, title: e.target.value }))}
+              placeholder="Job idea"
+              className="w-full rounded-xl bg-slate-900/70 border border-white/10 text-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            />
+            <textarea
+              value={requestForm.description}
+              onChange={(e) => setRequestForm(prev => ({ ...prev, description: e.target.value }))}
+              placeholder="What would you do?"
+              rows={2}
+              className="w-full rounded-xl bg-slate-900/70 border border-white/10 text-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            />
+            <div className="grid grid-cols-[1fr_90px] gap-2">
+              <select
+                value={requestForm.compensationType}
+                onChange={(e) => setRequestForm(prev => ({ ...prev, compensationType: e.target.value }))}
+                className="rounded-xl bg-slate-900/70 border border-white/10 text-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              >
+                <option value="tablet">Tablet min</option>
+                <option value="pc">PC min</option>
+                <option value="xbox">Xbox min</option>
+                <option value="money">Money</option>
+              </select>
+              <input
+                type="number"
+                min="0"
+                value={requestForm.compensationAmount}
+                onChange={(e) => setRequestForm(prev => ({ ...prev, compensationAmount: e.target.value }))}
+                className="rounded-xl bg-slate-900/70 border border-white/10 text-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              />
+            </div>
+            <button type="submit" className="w-full rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-black py-2.5 transition-all">
+              Send to Parent
+            </button>
+          </form>
+        </section>
+      </div>
 
       {/* PIN PAD */}
       {showPinPad && (
@@ -1705,6 +2019,183 @@ const SchoolMenuView = ({ theme, schoolMenu, selectedSchool, setSelectedSchool, 
 };
 
 /* --------------------------------------------------
+   HOUSEHOLD SUGGESTIONS VIEW
+-------------------------------------------------- */
+const SuggestionBoxView = ({ theme, childrenData = [], householdSuggestions = [], setHouseholdSuggestions }) => {
+  const kids = (childrenData || []).filter(c => c.role === "child");
+  const [form, setForm] = useState({
+    childId: "",
+    category: "food",
+    title: "",
+    note: "",
+    priority: "normal",
+  });
+
+  const activeSuggestions = householdSuggestions.filter(item => item.status !== "done" && item.status !== "dismissed");
+  const completedSuggestions = householdSuggestions.filter(item => item.status === "done" || item.status === "dismissed").slice(0, 8);
+
+  const categoryMeta = {
+    food: { label: "Food", icon: "🍎", color: "text-emerald-200 bg-emerald-500/10 border-emerald-400/20" },
+    household: { label: "House", icon: "🧻", color: "text-sky-200 bg-sky-500/10 border-sky-400/20" },
+    school: { label: "School", icon: "✏️", color: "text-indigo-200 bg-indigo-500/10 border-indigo-400/20" },
+    clothing: { label: "Clothes", icon: "👕", color: "text-pink-200 bg-pink-500/10 border-pink-400/20" },
+    help: { label: "Help", icon: "🛠️", color: "text-amber-200 bg-amber-500/10 border-amber-400/20" },
+  };
+
+  const submitSuggestion = (e) => {
+    e.preventDefault();
+    if (!form.title.trim()) return;
+    setHouseholdSuggestions(prev => [
+      {
+        id: `suggestion-${Date.now()}`,
+        createdAt: new Date().toISOString(),
+        status: "open",
+        ...form,
+        title: form.title.trim(),
+        note: form.note.trim(),
+      },
+      ...prev,
+    ]);
+    setForm(prev => ({ ...prev, title: "", note: "" }));
+  };
+
+  const updateSuggestionStatus = (id, status) => {
+    setHouseholdSuggestions(prev => prev.map(item => (
+      item.id === id ? { ...item, status, updatedAt: new Date().toISOString() } : item
+    )));
+  };
+
+  const deleteSuggestion = (id) => {
+    if (window.confirm("Delete this request?")) {
+      setHouseholdSuggestions(prev => prev.filter(item => item.id !== id));
+    }
+  };
+
+  const renderSuggestion = (item) => {
+    const meta = categoryMeta[item.category] || categoryMeta.household;
+    const child = kids.find(kid => kid.id === item.childId);
+    const isDone = item.status === "done" || item.status === "dismissed";
+    return (
+      <div key={item.id} className={`rounded-2xl border p-4 transition-all ${isDone ? "bg-slate-950/25 border-white/5 opacity-70" : "bg-slate-950/45 border-white/10 hover:border-cyan-300/25"}`}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-widest ${meta.color}`}>
+                <span>{meta.icon}</span>
+                {meta.label}
+              </span>
+              {item.priority === "soon" && <span className="rounded-full bg-rose-500/10 border border-rose-400/20 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-rose-200">Soon</span>}
+              {child && <span className="text-[11px] text-slate-500">from {child.name}</span>}
+            </div>
+            <h3 className="text-base font-black text-white leading-tight break-words">{item.title}</h3>
+            {item.note && <p className="text-sm text-slate-400 mt-1 leading-relaxed">{item.note}</p>}
+          </div>
+          {child && <ChildAvatar child={child} className="w-10 h-10 shrink-0 ring-1 ring-white/10" textSize="text-xs" />}
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2 border-t border-white/5 pt-3">
+          {!isDone && (
+            <>
+              <button onClick={() => updateSuggestionStatus(item.id, "done")} className="rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-2 flex items-center gap-1">
+                <Check className="w-3.5 h-3.5" />
+                Got It
+              </button>
+              <button onClick={() => updateSuggestionStatus(item.id, "dismissed")} className="rounded-xl border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 text-xs font-bold px-3 py-2">
+                Not Now
+              </button>
+            </>
+          )}
+          {isDone && (
+            <button onClick={() => updateSuggestionStatus(item.id, "open")} className="rounded-xl border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 text-xs font-bold px-3 py-2">
+              Reopen
+            </button>
+          )}
+          <button onClick={() => deleteSuggestion(item.id)} className="ml-auto rounded-xl border border-rose-400/20 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 text-xs font-bold px-3 py-2">
+            Delete
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="h-full w-full pb-24 overflow-hidden flex flex-col">
+      <header className="shrink-0 bg-slate-950/35 border border-white/10 rounded-2xl px-5 py-4 mb-4 backdrop-blur-md flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-2xl bg-cyan-500/15 border border-cyan-300/20 flex items-center justify-center text-cyan-200">
+            <ShoppingBasket className="w-7 h-7" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-black text-white tracking-tight">Request Basket</h1>
+            <p className="text-xs text-slate-400 uppercase tracking-widest mt-1">Food, supplies, clothes, and help requests</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2 min-w-[220px]">
+          <div className="rounded-xl border border-cyan-400/20 bg-cyan-950/25 px-3 py-2">
+            <div className="text-lg font-black text-cyan-100 leading-none">{activeSuggestions.length}</div>
+            <div className="text-[10px] uppercase tracking-widest text-slate-500 mt-1">Open</div>
+          </div>
+          <div className="rounded-xl border border-emerald-400/20 bg-emerald-950/20 px-3 py-2">
+            <div className="text-lg font-black text-emerald-100 leading-none">{completedSuggestions.length}</div>
+            <div className="text-[10px] uppercase tracking-widest text-slate-500 mt-1">Handled</div>
+          </div>
+        </div>
+      </header>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[0.75fr_1.25fr] gap-4 min-h-0 flex-1">
+        <section className={`${theme.cardBg} rounded-[2rem] p-5 h-fit`}>
+          <h2 className="text-sm font-black uppercase tracking-widest text-cyan-200 mb-1">Add a Request</h2>
+          <p className="text-[11px] text-slate-500 mb-4">Use this for snacks, lunch ideas, supplies, clothes, or things that need fixing.</p>
+          <form onSubmit={submitSuggestion} className="space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <select value={form.childId} onChange={(e) => setForm(prev => ({ ...prev, childId: e.target.value }))} className="rounded-xl bg-slate-900/70 border border-white/10 text-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                <option value="">Who?</option>
+                {kids.map(child => <option key={child.id} value={child.id}>{child.name}</option>)}
+              </select>
+              <select value={form.category} onChange={(e) => setForm(prev => ({ ...prev, category: e.target.value }))} className="rounded-xl bg-slate-900/70 border border-white/10 text-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                {Object.entries(categoryMeta).map(([id, meta]) => <option key={id} value={id}>{meta.label}</option>)}
+              </select>
+            </div>
+            <input value={form.title} onChange={(e) => setForm(prev => ({ ...prev, title: e.target.value }))} placeholder="What do you need?" className="w-full rounded-xl bg-slate-900/70 border border-white/10 text-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+            <textarea value={form.note} onChange={(e) => setForm(prev => ({ ...prev, note: e.target.value }))} placeholder="Any details?" rows={3} className="w-full rounded-xl bg-slate-900/70 border border-white/10 text-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => setForm(prev => ({ ...prev, priority: "normal" }))} className={`rounded-xl border px-3 py-2 text-xs font-bold ${form.priority === "normal" ? "bg-cyan-600 border-cyan-500 text-white" : "bg-white/5 border-white/10 text-slate-400"}`}>Normal</button>
+              <button type="button" onClick={() => setForm(prev => ({ ...prev, priority: "soon" }))} className={`rounded-xl border px-3 py-2 text-xs font-bold ${form.priority === "soon" ? "bg-rose-600 border-rose-500 text-white" : "bg-white/5 border-white/10 text-slate-400"}`}>Soon</button>
+            </div>
+            <button type="submit" className="w-full rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-black py-3 transition-all flex items-center justify-center gap-2">
+              <MessageSquare className="w-4 h-4" />
+              Add Request
+            </button>
+          </form>
+        </section>
+
+        <section className="min-h-0 flex flex-col rounded-[2rem] border border-white/10 bg-slate-950/28 overflow-hidden">
+          <div className="p-4 border-b border-white/5 bg-slate-900/35">
+            <h2 className="text-sm font-black uppercase tracking-widest text-slate-200">Open Requests</h2>
+          </div>
+          <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-4 space-y-3">
+            {activeSuggestions.length === 0 ? (
+              <div className="min-h-[220px] rounded-2xl border border-dashed border-white/10 bg-slate-950/20 flex flex-col items-center justify-center text-center px-4">
+                <ShoppingBasket className="w-10 h-10 text-slate-600 mb-3" />
+                <div className="text-sm font-bold text-slate-400">No requests right now</div>
+                <div className="text-xs text-slate-600 mt-1">Add food ideas or household needs here.</div>
+              </div>
+            ) : activeSuggestions.map(renderSuggestion)}
+
+            {completedSuggestions.length > 0 && (
+              <>
+                <div className="pt-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Handled Recently</div>
+                {completedSuggestions.map(renderSuggestion)}
+              </>
+            )}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+};
+
+/* --------------------------------------------------
    SETTINGS VIEW (Updated: Fixed squished child circles)
 -------------------------------------------------- */
 
@@ -1716,7 +2207,9 @@ const SettingsView = ({
   calendarFilters, setCalendarFilters,
   childrenData, setChildrenData,
   wallet, setWallet,
-  hiddenEventIds, setHiddenEventIds
+  hiddenEventIds, setHiddenEventIds,
+  gigRequests, setGigRequests,
+  householdSuggestions, setHouseholdSuggestions
 }) => {
 
   // --- ADMIN LOCK STATE ---
@@ -1982,6 +2475,48 @@ const SettingsView = ({
   // ✅ INSERT THIS LOGIC HERE (Before the 'return' statement)
   const activeGigs = gigs.filter(g => !g.completed);
   const completedGigsList = gigs.filter(g => g.completed);
+  const pendingGigRequests = (gigRequests || []).filter(req => req.status !== "approved" && req.status !== "declined");
+  const openHouseholdSuggestions = (householdSuggestions || []).filter(item => item.status !== "done" && item.status !== "dismissed");
+
+  const approveGigRequest = (req) => {
+    const payload = {
+      title: req.title,
+      description: req.description || "",
+      successCriteria: req.successCriteria || "Parent reviews the finished work before payout.",
+      expectedMinutes: req.expectedMinutes === "" ? "" : Number(req.expectedMinutes) || 0,
+      compensationType: req.compensationType || "tablet",
+      compensationAmount: req.compensationAmount === "" ? "" : Number(req.compensationAmount) || 0,
+      icon: req.icon || "✨",
+    };
+    setGigs(prev => [
+      ...prev,
+      {
+        id: `gig-${Date.now()}`,
+        ...payload,
+        claimedBy: req.childId || req.requestedBy || null,
+        completed: false,
+        requestedBy: req.childId || req.requestedBy || "",
+      },
+    ]);
+    setGigRequests(prev => prev.map(item => item.id === req.id ? { ...item, status: "approved", reviewedAt: new Date().toISOString() } : item));
+    upsertTemplateFromPayload(payload);
+  };
+
+  const declineGigRequest = (id) => {
+    setGigRequests(prev => prev.map(item => item.id === id ? { ...item, status: "declined", reviewedAt: new Date().toISOString() } : item));
+  };
+
+  const deleteGigRequest = (id) => {
+    if (window.confirm("Delete this gig request?")) {
+      setGigRequests(prev => prev.filter(item => item.id !== id));
+    }
+  };
+
+  const updateSuggestionStatusFromConfig = (id, status) => {
+    setHouseholdSuggestions(prev => prev.map(item => (
+      item.id === id ? { ...item, status, updatedAt: new Date().toISOString() } : item
+    )));
+  };
 
 
   const handleCalendarChange = (field, value) => setCalForm((prev) => ({ ...prev, [field]: value }));
@@ -2512,6 +3047,76 @@ const SettingsView = ({
               </div>
             </section>
           )}
+
+          <section className="p-6 rounded-[2rem] bg-cyan-950/10 backdrop-blur-xl border border-cyan-400/20">
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-sm font-bold text-cyan-300 uppercase tracking-widest">Kid Gig Requests</h2>
+                <p className="text-xs text-slate-500 mt-1">Approve requests to post them to the board.</p>
+              </div>
+              <span className="rounded-full bg-cyan-500/10 border border-cyan-400/20 px-3 py-1 text-xs font-black text-cyan-200">{pendingGigRequests.length}</span>
+            </div>
+            <div className="space-y-3">
+              {pendingGigRequests.length === 0 ? (
+                <p className="text-xs text-slate-500">No pending gig ideas.</p>
+              ) : pendingGigRequests.map((req) => {
+                const child = childrenData.find(c => c.id === (req.childId || req.requestedBy));
+                const rewardText = req.compensationType === "money" ? `$${req.compensationAmount || 0}` : `${req.compensationAmount || 0}m ${req.compensationType || "time"}`;
+                return (
+                  <div key={req.id} className="rounded-xl bg-slate-900/55 border border-white/10 p-3 flex flex-col gap-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-slate-950 border border-white/10 flex items-center justify-center text-2xl shrink-0">{req.icon || "✨"}</div>
+                        <div className="min-w-0">
+                          <h3 className="text-sm font-black text-slate-100 break-words">{req.title}</h3>
+                          {req.description && <p className="text-xs text-slate-400 mt-1 leading-relaxed">{req.description}</p>}
+                          <div className="flex flex-wrap gap-2 mt-2 text-[10px] font-bold uppercase tracking-widest">
+                            <span className="text-emerald-300 bg-emerald-500/10 border border-emerald-400/20 rounded-full px-2 py-1">{rewardText}</span>
+                            {child && <span className="text-slate-400 bg-white/5 border border-white/10 rounded-full px-2 py-1">from {child.name}</span>}
+                          </div>
+                        </div>
+                      </div>
+                      {child && <ChildAvatar child={child} className="w-9 h-9 shrink-0" textSize="text-xs" />}
+                    </div>
+                    <div className="flex flex-wrap gap-2 border-t border-white/5 pt-3">
+                      <button onClick={() => approveGigRequest(req)} className="rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-2 flex items-center gap-1">
+                        <Check className="w-3.5 h-3.5" />
+                        Approve
+                      </button>
+                      <button onClick={() => declineGigRequest(req.id)} className="rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold px-3 py-2">Decline</button>
+                      <button onClick={() => deleteGigRequest(req.id)} className="ml-auto rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-400/20 text-xs font-bold px-3 py-2">Delete</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="p-6 rounded-[2rem] bg-slate-800/40 backdrop-blur-xl border border-white/10">
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Request Basket</h2>
+                <p className="text-xs text-slate-500 mt-1">Open food and household requests from the new basket page.</p>
+              </div>
+              <span className="rounded-full bg-white/5 border border-white/10 px-3 py-1 text-xs font-black text-slate-200">{openHouseholdSuggestions.length}</span>
+            </div>
+            <div className="space-y-2">
+              {openHouseholdSuggestions.length === 0 ? (
+                <p className="text-xs text-slate-500">No open household requests.</p>
+              ) : openHouseholdSuggestions.slice(0, 6).map((item) => {
+                const child = childrenData.find(c => c.id === item.childId);
+                return (
+                  <div key={item.id} className="rounded-xl bg-slate-900/50 border border-white/5 p-3 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-bold text-slate-200 truncate">{item.title}</h3>
+                      <p className="text-[10px] text-slate-500 uppercase tracking-widest">{item.category || "request"}{child ? ` · ${child.name}` : ""}</p>
+                    </div>
+                    <button onClick={() => updateSuggestionStatusFromConfig(item.id, "done")} className="rounded-lg bg-emerald-600/80 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-2">Done</button>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
         </div>
       </div>
 
@@ -3119,6 +3724,20 @@ function FamilyDashboard() {
     } catch (e) { return []; }
   });
 
+  const [gigRequests, setGigRequests] = useState(() => {
+    try {
+      const saved = localStorage.getItem("familyGigRequests");
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) { return []; }
+  });
+
+  const [householdSuggestions, setHouseholdSuggestions] = useState(() => {
+    try {
+      const saved = localStorage.getItem("familyHouseholdSuggestions");
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) { return []; }
+  });
+
   const [calendarSources, setCalendarSources] = useState(() => {
     try {
       const raw = localStorage.getItem("calendarSources");
@@ -3164,6 +3783,8 @@ function FamilyDashboard() {
         if (Array.isArray(data.masterTasks)) setMasterTasks(data.masterTasks);
         if (Array.isArray(data.gigs)) setGigs(data.gigs);
         if (Array.isArray(data.gigTemplates)) setGigTemplates(data.gigTemplates);
+        if (Array.isArray(data.gigRequests)) setGigRequests(data.gigRequests);
+        if (Array.isArray(data.householdSuggestions)) setHouseholdSuggestions(data.householdSuggestions);
         if (Array.isArray(data.calendarSources)) setCalendarSources(data.calendarSources);
         if (Array.isArray(data.calendarFilters)) setCalendarFilters(data.calendarFilters);
 
@@ -3213,7 +3834,7 @@ function FamilyDashboard() {
   // NEW (Correct - uses Local Device Time):
   const todayKey = currentTime.toLocaleDateString("en-CA"); // Returns "YYYY-MM-DD" in local time
   useEffect(() => { const t = setInterval(() => setCurrentTime(new Date()), 1000); return () => clearInterval(t); }, []);
-  const theme = THEMES[themePhase];
+  const theme = useMemo(() => buildTheme(themePhase, currentTime), [themePhase, currentTime]);
 
   // 2. PERSIST DATA
   useEffect(() => { localStorage.setItem("familyChildren", JSON.stringify(childrenData)); }, [childrenData]);
@@ -3223,6 +3844,8 @@ function FamilyDashboard() {
   useEffect(() => { localStorage.setItem("familyMasterTasks", JSON.stringify(masterTasks)); }, [masterTasks]);
   useEffect(() => { localStorage.setItem("familyGigs", JSON.stringify(gigs)); }, [gigs]);
   useEffect(() => { localStorage.setItem("gigTemplates", JSON.stringify(gigTemplates)); }, [gigTemplates]);
+  useEffect(() => { localStorage.setItem("familyGigRequests", JSON.stringify(gigRequests)); }, [gigRequests]);
+  useEffect(() => { localStorage.setItem("familyHouseholdSuggestions", JSON.stringify(householdSuggestions)); }, [householdSuggestions]);
   useEffect(() => { localStorage.setItem("calendarSources", JSON.stringify(calendarSources)); }, [calendarSources]);
   useEffect(() => { localStorage.setItem("calendarFilters", JSON.stringify(calendarFilters)); }, [calendarFilters]);
   useEffect(() => { localStorage.setItem("familyCompletedTasks", JSON.stringify(completedTasks)); }, [completedTasks]);
@@ -3241,6 +3864,8 @@ function FamilyDashboard() {
       masterTasks,
       gigs,
       gigTemplates,
+      gigRequests,
+      householdSuggestions,
       calendarSources,
       calendarFilters,
       dailyRewards,
@@ -3264,7 +3889,7 @@ function FamilyDashboard() {
     };
   }, [
     childrenData, wallet, customEvents, hiddenEventIds, masterTasks, gigs,
-    gigTemplates, calendarSources, calendarFilters,
+    gigTemplates, gigRequests, householdSuggestions, calendarSources, calendarFilters,
     dailyRewards, completedTasks
   ]);
 
@@ -3683,6 +4308,8 @@ function FamilyDashboard() {
               childrenData={childrenData}
               wallet={wallet}
               setWallet={setWallet}
+              gigRequests={gigRequests}
+              setGigRequests={setGigRequests}
             />
           )}
 
@@ -3727,6 +4354,10 @@ function FamilyDashboard() {
               // 5. Wallet
               wallet={wallet}
               setWallet={setWallet}
+              gigRequests={gigRequests}
+              setGigRequests={setGigRequests}
+              householdSuggestions={householdSuggestions}
+              setHouseholdSuggestions={setHouseholdSuggestions}
             />
           )}
 
@@ -3741,6 +4372,16 @@ function FamilyDashboard() {
             />
           )}
 
+          {/* 7. REQUEST BASKET */}
+          {view === "suggestions" && (
+            <SuggestionBoxView
+              theme={theme}
+              childrenData={childrenData}
+              householdSuggestions={householdSuggestions}
+              setHouseholdSuggestions={setHouseholdSuggestions}
+            />
+          )}
+
         </main>
 
         {/* Floating Nav */}
@@ -3751,6 +4392,7 @@ function FamilyDashboard() {
           <NavButton view={view} target="balances" icon={<CreditCard className="w-5 h-5" />} label="Balances" setView={setView} color="bg-purple-600" />
           <div className="w-px h-8 bg-white/10 mx-1" />
           <NavButton view={view} target="schoolmenu" icon={<BookOpen className="w-5 h-5" />} label="Lunch" setView={setView} color="bg-indigo-600" />
+          <NavButton view={view} target="suggestions" icon={<ShoppingBasket className="w-5 h-5" />} label="Basket" setView={setView} color="bg-cyan-600" />
           <div className="w-px h-8 bg-white/10 mx-1" />
           <NavButton view={view} target="settings" icon={<Settings className="w-5 h-5" />} label="Config" setView={setView} color="bg-slate-700" />
         </nav>
