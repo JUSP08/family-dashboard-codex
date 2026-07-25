@@ -43,7 +43,6 @@ import {
   DollarSign,
   Save,
   MessageSquare,
-  ShoppingBasket,
   WandSparkles
 } from "lucide-react";
 import "./index.css";
@@ -1457,6 +1456,7 @@ const CoachView = ({
 const GigsView = ({ theme, gigs, setGigs, childrenData = [], wallet, setWallet, gigRequests = [], setGigRequests }) => {
   const [claimModeId, setClaimModeId] = useState(null);
   const [ideaOffset, setIdeaOffset] = useState(0);
+  const [acceptingIdeaTitle, setAcceptingIdeaTitle] = useState(null);
   const [requestForm, setRequestForm] = useState({
     childId: "",
     title: "",
@@ -1545,13 +1545,19 @@ const GigsView = ({ theme, gigs, setGigs, childrenData = [], wallet, setWallet, 
     ]);
   };
 
-  const requestIdea = (idea) => {
-    queueGigRequest({
-      ...idea,
-      childId: "",
-      requestedBy: "",
-      source: "idea_bank",
-    });
+  const acceptIdea = (idea, childId) => {
+    setGigs(prev => [
+      {
+        ...idea,
+        id: `gig-idea-${Date.now()}-${childId}`,
+        claimedBy: childId,
+        completed: false,
+        acceptedAt: new Date().toISOString(),
+        source: "idea_bank",
+      },
+      ...prev,
+    ]);
+    setAcceptingIdeaTitle(null);
   };
 
   const submitRequest = (e) => {
@@ -1718,7 +1724,7 @@ const GigsView = ({ theme, gigs, setGigs, childrenData = [], wallet, setWallet, 
   };
 
   return (
-    <div className="h-full w-full pb-24 overflow-hidden flex flex-col relative">
+    <div className="min-h-full w-full pb-24 relative">
       <header className="shrink-0 bg-slate-950/35 border border-white/10 rounded-2xl px-5 py-4 mb-4 backdrop-blur-md flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <div className="flex items-center gap-3">
@@ -1756,7 +1762,7 @@ const GigsView = ({ theme, gigs, setGigs, childrenData = [], wallet, setWallet, 
           <div className="flex items-center justify-between gap-3 mb-3">
             <div>
               <h2 className="text-sm font-black uppercase tracking-widest text-emerald-200">Mission Ideas</h2>
-              <p className="text-[11px] text-slate-500">Ask a parent to add one to the board.</p>
+              <p className="text-[11px] text-slate-500">Accept a mission and it moves straight into your active gigs.</p>
             </div>
             <button
               onClick={() => setIdeaOffset((prev) => (prev + 4) % HOUSEHOLD_GIG_IDEAS.length)}
@@ -1767,11 +1773,16 @@ const GigsView = ({ theme, gigs, setGigs, childrenData = [], wallet, setWallet, 
             </button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-            {ideaCards.map((idea) => (
-              <button
+            {ideaCards.map((idea) => {
+              const isAccepting = acceptingIdeaTitle === idea.title;
+              return (
+              <div
                 key={idea.title}
-                onClick={() => requestIdea(idea)}
-                className="text-left rounded-2xl border border-white/10 bg-slate-900/55 hover:bg-slate-800/80 hover:border-emerald-300/30 p-3 transition-all min-h-[128px] flex flex-col"
+                className={`text-left rounded-2xl border p-3 transition-all min-h-[150px] flex flex-col ${
+                  isAccepting
+                    ? "bg-emerald-950/45 border-emerald-300/35"
+                    : "bg-slate-900/55 border-white/10 hover:bg-slate-800/80 hover:border-emerald-300/30"
+                }`}
               >
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <span className="text-2xl">{idea.icon}</span>
@@ -1781,9 +1792,38 @@ const GigsView = ({ theme, gigs, setGigs, childrenData = [], wallet, setWallet, 
                 </div>
                 <h3 className="text-sm font-black text-white leading-tight">{idea.title}</h3>
                 <p className="mt-1 text-[11px] text-slate-400 line-clamp-2">{idea.description}</p>
-                <span className="mt-auto pt-2 text-[10px] font-bold uppercase tracking-widest text-cyan-300">Request</span>
-              </button>
-            ))}
+                {isAccepting ? (
+                  <div className="mt-auto pt-3">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-200 mb-2">Who is accepting?</p>
+                    <div className="flex flex-wrap gap-2">
+                      {kids.map(child => (
+                        <button
+                          key={child.id}
+                          type="button"
+                          onClick={() => acceptIdea(idea, child.id)}
+                          className="flex items-center gap-2 rounded-xl border border-emerald-300/20 bg-emerald-500/10 px-2 py-1.5 hover:bg-emerald-500/20"
+                        >
+                          <ChildAvatar child={child} className="w-8 h-8 ring-1 ring-emerald-300/40" textSize="text-xs" />
+                          <span className="text-xs font-black text-white">{child.name}</span>
+                        </button>
+                      ))}
+                      <button type="button" onClick={() => setAcceptingIdeaTitle(null)} className="rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-400 hover:text-white">
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setAcceptingIdeaTitle(idea.title)}
+                    className="mt-auto pt-3 flex items-center justify-between text-xs font-black uppercase tracking-widest text-emerald-300"
+                  >
+                    <span>Accept</span>
+                    <Check className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            )})}
           </div>
         </section>
 
@@ -1847,7 +1887,7 @@ const GigsView = ({ theme, gigs, setGigs, childrenData = [], wallet, setWallet, 
 
       {/* PIN PAD */}
       {showPinPad && (
-        <div className="absolute inset-0 z-50 bg-slate-900/90 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 bg-slate-900/90 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-slate-800 border border-white/10 rounded-3xl p-6 shadow-2xl w-full max-w-xs flex flex-col gap-4">
             <div className="flex items-center justify-center gap-2 mb-2 text-slate-300"><Lock className="w-4 h-4" /><span className="text-xs font-bold uppercase tracking-widest">Parent Approval</span></div>
             <div className={`h-12 bg-slate-900 rounded-xl flex items-center justify-center gap-2 text-2xl font-mono text-white tracking-[0.5em] border border-white/5 ${pinError ? 'border-rose-500 animate-pulse text-rose-500' : ''}`}>{"•".repeat(pinInput.length)}{pinInput.length < 4 && <span className="opacity-20 animate-pulse">|</span>}</div>
@@ -1857,8 +1897,8 @@ const GigsView = ({ theme, gigs, setGigs, childrenData = [], wallet, setWallet, 
         </div>
       )}
 
-      <div className="flex-1 min-h-0 overflow-hidden">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full min-h-[500px]">
+      <div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-[500px] items-start">
           {renderColumn("open", openGigs)}
           {renderColumn("claimed", claimedGigs)}
           {renderColumn("completed", completedGigs)}
@@ -2044,7 +2084,7 @@ const SuggestionBoxView = ({ theme, childrenData = [], householdSuggestions = []
 
   const submitSuggestion = (e) => {
     e.preventDefault();
-    if (!form.title.trim()) return;
+    if (!form.childId || !form.title.trim()) return;
     setHouseholdSuggestions(prev => [
       {
         id: `suggestion-${Date.now()}`,
@@ -2119,15 +2159,15 @@ const SuggestionBoxView = ({ theme, childrenData = [], householdSuggestions = []
   };
 
   return (
-    <div className="h-full w-full pb-24 overflow-hidden flex flex-col">
-      <header className="shrink-0 bg-slate-950/35 border border-white/10 rounded-2xl px-5 py-4 mb-4 backdrop-blur-md flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-cyan-500/15 border border-cyan-300/20 flex items-center justify-center text-cyan-200">
-            <ShoppingBasket className="w-7 h-7" />
+    <div className="min-h-full w-full pb-24">
+      <header className="bg-slate-950/35 border border-white/10 rounded-2xl px-6 py-5 mb-4 backdrop-blur-md flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-2xl bg-cyan-500/15 border border-cyan-300/20 flex items-center justify-center text-cyan-200">
+            <MessageSquare className="w-9 h-9" />
           </div>
           <div>
-            <h1 className="text-2xl font-black text-white tracking-tight">Request Basket</h1>
-            <p className="text-xs text-slate-400 uppercase tracking-widest mt-1">Food, supplies, clothes, and help requests</p>
+            <h1 className="text-3xl font-black text-white tracking-tight">Suggestion Box</h1>
+            <p className="text-sm text-slate-400 mt-1">Share food ideas, things you need, or ways we can help.</p>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2 min-w-[220px]">
@@ -2142,43 +2182,94 @@ const SuggestionBoxView = ({ theme, childrenData = [], householdSuggestions = []
         </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[0.75fr_1.25fr] gap-4 min-h-0 flex-1">
-        <section className={`${theme.cardBg} rounded-[2rem] p-5 h-fit`}>
-          <h2 className="text-sm font-black uppercase tracking-widest text-cyan-200 mb-1">Add a Request</h2>
-          <p className="text-[11px] text-slate-500 mb-4">Use this for snacks, lunch ideas, supplies, clothes, or things that need fixing.</p>
-          <form onSubmit={submitSuggestion} className="space-y-3">
-            <div className="grid grid-cols-2 gap-2">
-              <select value={form.childId} onChange={(e) => setForm(prev => ({ ...prev, childId: e.target.value }))} className="rounded-xl bg-slate-900/70 border border-white/10 text-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500">
-                <option value="">Who?</option>
-                {kids.map(child => <option key={child.id} value={child.id}>{child.name}</option>)}
-              </select>
-              <select value={form.category} onChange={(e) => setForm(prev => ({ ...prev, category: e.target.value }))} className="rounded-xl bg-slate-900/70 border border-white/10 text-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500">
-                {Object.entries(categoryMeta).map(([id, meta]) => <option key={id} value={id}>{meta.label}</option>)}
-              </select>
+      <div className="grid grid-cols-1 lg:grid-cols-[0.95fr_1.05fr] gap-4 items-start">
+        <section className={`${theme.cardBg} rounded-[2rem] p-6`}>
+          <h2 className="text-lg font-black text-cyan-100 mb-1">Make a Suggestion</h2>
+          <p className="text-sm text-slate-400 mb-5">Tap your name, choose a type, and tell us what is on your mind.</p>
+          <form onSubmit={submitSuggestion} className="space-y-5">
+            <fieldset>
+              <legend className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">Who are you?</legend>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {kids.map(child => {
+                  const selected = form.childId === child.id;
+                  return (
+                    <button
+                      key={child.id}
+                      type="button"
+                      onClick={() => setForm(prev => ({ ...prev, childId: child.id }))}
+                      className={`min-h-[86px] rounded-2xl border px-3 py-3 flex items-center gap-3 transition-all ${
+                        selected
+                          ? "bg-cyan-500/20 border-cyan-300/60 ring-2 ring-cyan-400/20"
+                          : "bg-slate-900/55 border-white/10 hover:border-cyan-300/30 hover:bg-slate-800/70"
+                      }`}
+                    >
+                      <ChildAvatar child={child} className="w-14 h-14 shrink-0 ring-2 ring-white/10" textSize="text-base" />
+                      <span className={`text-base font-black truncate ${selected ? "text-white" : "text-slate-200"}`}>{child.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">What kind?</legend>
+              <div className="grid grid-cols-5 gap-2">
+                {Object.entries(categoryMeta).map(([id, meta]) => {
+                  const selected = form.category === id;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setForm(prev => ({ ...prev, category: id }))}
+                      className={`min-h-[76px] rounded-2xl border px-2 py-2 flex flex-col items-center justify-center gap-1.5 transition-all ${
+                        selected
+                          ? "bg-cyan-500/20 border-cyan-300/60 ring-2 ring-cyan-400/20 text-white"
+                          : "bg-slate-900/55 border-white/10 text-slate-300 hover:bg-slate-800/70"
+                      }`}
+                    >
+                      <span className="text-2xl">{meta.icon}</span>
+                      <span className="text-xs font-black">{meta.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
+
+            <div className="space-y-3">
+              <input value={form.title} onChange={(e) => setForm(prev => ({ ...prev, title: e.target.value }))} placeholder="What would you like?" className="w-full min-h-14 rounded-2xl bg-slate-900/70 border border-white/10 text-white px-4 py-3 text-lg font-bold placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+              <textarea value={form.note} onChange={(e) => setForm(prev => ({ ...prev, note: e.target.value }))} placeholder="Tell us a little more..." rows={3} className="w-full rounded-2xl bg-slate-900/70 border border-white/10 text-slate-200 px-4 py-3 text-base placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500" />
             </div>
-            <input value={form.title} onChange={(e) => setForm(prev => ({ ...prev, title: e.target.value }))} placeholder="What do you need?" className="w-full rounded-xl bg-slate-900/70 border border-white/10 text-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500" />
-            <textarea value={form.note} onChange={(e) => setForm(prev => ({ ...prev, note: e.target.value }))} placeholder="Any details?" rows={3} className="w-full rounded-xl bg-slate-900/70 border border-white/10 text-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500" />
-            <div className="grid grid-cols-2 gap-2">
-              <button type="button" onClick={() => setForm(prev => ({ ...prev, priority: "normal" }))} className={`rounded-xl border px-3 py-2 text-xs font-bold ${form.priority === "normal" ? "bg-cyan-600 border-cyan-500 text-white" : "bg-white/5 border-white/10 text-slate-400"}`}>Normal</button>
-              <button type="button" onClick={() => setForm(prev => ({ ...prev, priority: "soon" }))} className={`rounded-xl border px-3 py-2 text-xs font-bold ${form.priority === "soon" ? "bg-rose-600 border-rose-500 text-white" : "bg-white/5 border-white/10 text-slate-400"}`}>Soon</button>
+
+            <div>
+              <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2">How soon?</div>
+              <div className="grid grid-cols-2 gap-3">
+                <button type="button" onClick={() => setForm(prev => ({ ...prev, priority: "normal" }))} className={`min-h-12 rounded-2xl border px-4 py-3 text-sm font-black ${form.priority === "normal" ? "bg-cyan-600 border-cyan-400 text-white" : "bg-white/5 border-white/10 text-slate-400"}`}>Whenever</button>
+                <button type="button" onClick={() => setForm(prev => ({ ...prev, priority: "soon" }))} className={`min-h-12 rounded-2xl border px-4 py-3 text-sm font-black ${form.priority === "soon" ? "bg-rose-600 border-rose-400 text-white" : "bg-white/5 border-white/10 text-slate-400"}`}>Soon, please</button>
+              </div>
             </div>
-            <button type="submit" className="w-full rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-black py-3 transition-all flex items-center justify-center gap-2">
-              <MessageSquare className="w-4 h-4" />
-              Add Request
+
+            <button
+              type="submit"
+              disabled={!form.childId || !form.title.trim()}
+              className="w-full min-h-14 rounded-2xl bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed text-white text-base font-black py-3 transition-all flex items-center justify-center gap-2 active:scale-[0.99]"
+            >
+              <MessageSquare className="w-5 h-5" />
+              {!form.childId ? "Choose Your Name" : "Add to the Suggestion Box"}
             </button>
           </form>
         </section>
 
-        <section className="min-h-0 flex flex-col rounded-[2rem] border border-white/10 bg-slate-950/28 overflow-hidden">
-          <div className="p-4 border-b border-white/5 bg-slate-900/35">
-            <h2 className="text-sm font-black uppercase tracking-widest text-slate-200">Open Requests</h2>
+        <section className="min-h-[620px] flex flex-col rounded-[2rem] border border-white/10 bg-slate-950/28 overflow-hidden">
+          <div className="p-5 border-b border-white/5 bg-slate-900/35">
+            <h2 className="text-lg font-black text-slate-100">Family Suggestions</h2>
+            <p className="text-sm text-slate-500 mt-1">New ideas and needs show up here.</p>
           </div>
-          <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-4 space-y-3">
+          <div className="flex-1 p-5 space-y-3">
             {activeSuggestions.length === 0 ? (
               <div className="min-h-[220px] rounded-2xl border border-dashed border-white/10 bg-slate-950/20 flex flex-col items-center justify-center text-center px-4">
-                <ShoppingBasket className="w-10 h-10 text-slate-600 mb-3" />
-                <div className="text-sm font-bold text-slate-400">No requests right now</div>
-                <div className="text-xs text-slate-600 mt-1">Add food ideas or household needs here.</div>
+                <MessageSquare className="w-12 h-12 text-slate-600 mb-3" />
+                <div className="text-base font-bold text-slate-300">The box is ready for ideas</div>
+                <div className="text-sm text-slate-600 mt-1">Choose your name and add the first suggestion.</div>
               </div>
             ) : activeSuggestions.map(renderSuggestion)}
 
@@ -3095,8 +3186,8 @@ const SettingsView = ({
           <section className="p-6 rounded-[2rem] bg-slate-800/40 backdrop-blur-xl border border-white/10">
             <div className="flex items-center justify-between gap-3 mb-4">
               <div>
-                <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Request Basket</h2>
-                <p className="text-xs text-slate-500 mt-1">Open food and household requests from the new basket page.</p>
+                <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Suggestion Box</h2>
+                <p className="text-xs text-slate-500 mt-1">Open food and household requests from the Suggestion Box page.</p>
               </div>
               <span className="rounded-full bg-white/5 border border-white/10 px-3 py-1 text-xs font-black text-slate-200">{openHouseholdSuggestions.length}</span>
             </div>
@@ -4372,7 +4463,7 @@ function FamilyDashboard() {
             />
           )}
 
-          {/* 7. REQUEST BASKET */}
+          {/* 7. SUGGESTION BOX */}
           {view === "suggestions" && (
             <SuggestionBoxView
               theme={theme}
@@ -4392,7 +4483,7 @@ function FamilyDashboard() {
           <NavButton view={view} target="balances" icon={<CreditCard className="w-5 h-5" />} label="Balances" setView={setView} color="bg-purple-600" />
           <div className="w-px h-8 bg-white/10 mx-1" />
           <NavButton view={view} target="schoolmenu" icon={<BookOpen className="w-5 h-5" />} label="Lunch" setView={setView} color="bg-indigo-600" />
-          <NavButton view={view} target="suggestions" icon={<ShoppingBasket className="w-5 h-5" />} label="Basket" setView={setView} color="bg-cyan-600" />
+          <NavButton view={view} target="suggestions" icon={<MessageSquare className="w-5 h-5" />} label="Suggest" setView={setView} color="bg-cyan-600" />
           <div className="w-px h-8 bg-white/10 mx-1" />
           <NavButton view={view} target="settings" icon={<Settings className="w-5 h-5" />} label="Config" setView={setView} color="bg-slate-700" />
         </nav>
