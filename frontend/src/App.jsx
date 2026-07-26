@@ -46,6 +46,11 @@ import {
   WandSparkles
 } from "lucide-react";
 import "./index.css";
+import {
+  DAILY_COACH_ACTIVITIES,
+  getDailyCoachTasksForDate,
+  isSummerCoachDate,
+} from "./dailyCoachActivities";
 import "./App.css";
 
 // Determine which theme to use based on time
@@ -784,7 +789,7 @@ const DashboardView = ({
   useEffect(() => { fetchSparkle(false); }, []);
   const regenerateSparkle = () => fetchSparkle(true);
 
-  const todayKey = currentTime.toISOString().split("T")[0];
+  const todayKey = currentTime.toLocaleDateString("en-CA");
   const dow = currentTime.getDay();
   const weekday = dow === 0 ? 7 : dow;
   const getTodayTasksForChild = (childId) => masterTasks.filter((t) => { const isAssigned = t.assignees.includes("all") || t.assignees.includes(childId); if (!isAssigned) return false; if (t.recurrence === "schooldays") return t.days?.includes(weekday); return true; });
@@ -1255,16 +1260,9 @@ const CoachView = ({
 
   const phaseLabel = phase === "morning" ? "Morning Coach" : phase === "afternoon" ? "Afternoon Coach" : "Evening Coach";
 
-  // Calculate Day ID (1=Mon ... 7=Sun) to match your Settings
   const jsDay = currentTime.getDay();
-  const currentDayId = jsDay === 0 ? 7 : jsDay;
 
-  // Filter by Phase AND Day of Week
-  const tasksForPhase = masterTasks.filter((t) => {
-    const isCorrectPhase = t.category === phase;
-    const isCorrectDay = t.days ? t.days.includes(currentDayId) : true;
-    return isCorrectPhase && isCorrectDay;
-  });
+  const tasksForPhase = masterTasks.filter((t) => t.category === phase);
 
   // OLD (Incorrect - uses UTC):
   // const todayKey = currentTime.toISOString().split("T")[0];
@@ -1327,8 +1325,11 @@ const CoachView = ({
           </div>
           <div>
             <h1 className="text-xl font-bold text-white tracking-tight">{phaseLabel}</h1>
-            <p className="text-[10px] text-slate-400 uppercase tracking-widest font-medium">
-              {currentTime.toLocaleDateString([], { weekday: "long" })}
+            <p className="text-[10px] text-slate-400 uppercase tracking-widest font-medium flex items-center gap-2">
+              <span>{currentTime.toLocaleDateString([], { weekday: "long" })}</span>
+              {isSummerCoachDate(currentTime) && (
+                <span className="text-amber-300">Summer Mix · {DAILY_COACH_ACTIVITIES.length} ideas</span>
+              )}
             </p>
           </div>
         </div>
@@ -1424,14 +1425,22 @@ const CoachView = ({
                       childTasks.map((task) => {
                         const key = `${todayKey}-${child.id}-${task.id}`;
                         const done = !!completedTasks[key];
+                        const challengeClass = task.type === "physical"
+                          ? "bg-cyan-950/35 border-cyan-400/20 text-cyan-100 hover:bg-cyan-900/45"
+                          : task.type === "helpful"
+                            ? "bg-amber-950/30 border-amber-400/20 text-amber-100 hover:bg-amber-900/40"
+                            : "bg-slate-900/40 border-white/5 text-slate-300 hover:bg-slate-700 hover:text-slate-100";
                         return (
                           <button
                             key={task.id}
                             onClick={() => toggleTask(child.id, task.id)}
-                            className={`min-h-9 px-3.5 py-2 rounded-xl border text-[13px] font-semibold flex items-center gap-2 transition-all ${done ? "bg-emerald-500/10 border-emerald-500/50 text-emerald-300" : "bg-slate-900/40 border-white/5 text-slate-300 hover:bg-slate-700 hover:text-slate-100"}`}
+                            className={`min-h-9 px-3.5 py-2 rounded-xl border text-[13px] font-semibold flex items-center gap-2 transition-all ${done ? "bg-emerald-500/10 border-emerald-500/50 text-emerald-300" : challengeClass}`}
                           >
                             <span className="text-base leading-none">{task.icon}</span>
                             <span className="leading-tight">{task.label}</span>
+                            {task.minutes && (
+                              <span className="text-[10px] font-mono text-slate-500 whitespace-nowrap">{task.minutes}m</span>
+                            )}
                           </button>
                         );
                       })
@@ -3926,6 +3935,14 @@ function FamilyDashboard() {
   const todayKey = currentTime.toLocaleDateString("en-CA"); // Returns "YYYY-MM-DD" in local time
   useEffect(() => { const t = setInterval(() => setCurrentTime(new Date()), 1000); return () => clearInterval(t); }, []);
   const theme = useMemo(() => buildTheme(themePhase, currentTime), [themePhase, currentTime]);
+  const dailyCoachTasks = useMemo(
+    () => getDailyCoachTasksForDate({
+      masterTasks,
+      childrenData,
+      date: fromLocalDateString(todayKey),
+    }),
+    [masterTasks, childrenData, todayKey]
+  );
 
   // 2. PERSIST DATA
   useEffect(() => { localStorage.setItem("familyChildren", JSON.stringify(childrenData)); }, [childrenData]);
@@ -4001,8 +4018,6 @@ function FamilyDashboard() {
 
     const dayOfWeek = currentTime.getDay(); // 0=Sun, 6=Sat
     const dateKey = currentTime.toLocaleDateString("en-CA"); // Local YYYY-MM-DD
-    const currentDayId = dayOfWeek === 0 ? 7 : dayOfWeek;
-
     // Saturday rule: no automatic daily reward on Saturdays.
     if (dayOfWeek !== 6) {
       childrenData.forEach(child => {
@@ -4011,11 +4026,9 @@ function FamilyDashboard() {
         const rewardKey = `${dateKey}-${child.id}`;
         if (dailyRewards[rewardKey]) return;
 
-        const childTasks = masterTasks.filter(t => {
-          const assigned = t.assignees.includes("all") || t.assignees.includes(child.id);
-          const scheduled = t.days ? t.days.includes(currentDayId) : true;
-          return assigned && scheduled;
-        });
+        const childTasks = dailyCoachTasks.filter(
+          (task) => task.assignees.includes("all") || task.assignees.includes(child.id)
+        );
 
         if (childTasks.length === 0) return;
 
@@ -4098,7 +4111,7 @@ function FamilyDashboard() {
 
       setDailyRewards(prev => ({ ...prev, [maintenanceKey]: true }));
     }
-  }, [currentTime, masterTasks, completedTasks, childrenData, dailyRewards]);
+  }, [currentTime, dailyCoachTasks, completedTasks, childrenData, dailyRewards]);
 
   // Weather & Menu Fetch (Standard)
   useEffect(() => { const fetchWeather = async () => { try { const url = `https://api.open-meteo.com/v1/forecast?latitude=41.3712&longitude=-73.414&current_weather=true&hourly=temperature_2m,precipitation_probability,relative_humidity_2m,wind_speed_10m,weathercode&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode&temperature_unit=fahrenheit&timezone=America%2FNew_York`; const res = await fetch(url); const data = await res.json(); if (!data.current_weather) return; const daily = data.daily.time.map((iso, i) => ({ date: fromLocalDateString(iso), high: data.daily.temperature_2m_max[i], low: data.daily.temperature_2m_min[i], code: data.daily.weathercode[i], })).slice(0, 7); setWeather({ current: { temperature: data.current_weather.temperature, code: data.current_weather.weathercode }, daily, unit: "F" }); } catch (e) { } }; fetchWeather(); }, []);
@@ -4209,7 +4222,7 @@ function FamilyDashboard() {
   }, [selectedSchool, currentTime.getFullYear(), currentTime.getMonth()]);
 
   const toggleTask = (childId, taskId) => { const key = `${todayKey}-${childId}-${taskId}`; setCompletedTasks((prev) => { const c = { ...prev }; if (c[key]) delete c[key]; else c[key] = Date.now(); return c; }); };
-  const getProgress = (childId, category) => { const dow = currentTime.getDay(); const weekday = dow === 0 ? 7 : dow; const tasks = masterTasks.filter((t) => { if (category && t.category !== category) return false; if (!(t.assignees.includes("all") || t.assignees.includes(childId))) return false; if (t.days && t.days.length > 0 && !t.days.includes(weekday)) return false; return true; }); let completed = 0; tasks.forEach((t) => { if (completedTasks[`${todayKey}-${childId}-${t.id}`]) completed++; }); return { completed, total: tasks.length }; };
+  const getProgress = (childId, category) => { const tasks = dailyCoachTasks.filter((t) => { if (category && t.category !== category) return false; return t.assignees.includes("all") || t.assignees.includes(childId); }); let completed = 0; tasks.forEach((t) => { if (completedTasks[`${todayKey}-${childId}-${t.id}`]) completed++; }); return { completed, total: tasks.length }; };
 
   const addCustomEvent = (payload) => { const newEvent = { ...payload, id: `local-${Date.now()}` }; setCustomEvents(prev => [...prev, newEvent]); };
   const updateCustomEvent = (updated) => { setCustomEvents(prev => prev.map(evt => evt.id === updated.id ? { ...evt, ...updated } : evt)); };
@@ -4367,7 +4380,7 @@ function FamilyDashboard() {
                 if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
                 resetTimerRef.current = setTimeout(() => setCalendarDate(new Date()), 30000);
               }}
-              masterTasks={masterTasks}
+              masterTasks={dailyCoachTasks}
               completedTasks={completedTasks}
               childrenData={childrenData}
               addCustomEvent={addCustomEvent}
@@ -4382,7 +4395,7 @@ function FamilyDashboard() {
             <CoachView
               theme={theme}
               currentTime={currentTime}
-              masterTasks={masterTasks}
+              masterTasks={dailyCoachTasks}
               completedTasks={completedTasks}
               toggleTask={toggleTask}
               getProgress={getProgress}
