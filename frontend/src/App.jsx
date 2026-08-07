@@ -43,7 +43,8 @@ import {
   DollarSign,
   Save,
   MessageSquare,
-  WandSparkles
+  WandSparkles,
+  Lightbulb
 } from "lucide-react";
 import "./index.css";
 import {
@@ -52,6 +53,7 @@ import {
   isSummerCoachDate,
 } from "./dailyCoachActivities";
 import "./App.css";
+import SmartHomeView from "./SmartHomeView";
 
 // Determine which theme to use based on time
 export function getDayPhase(date = new Date()) {
@@ -4429,6 +4431,9 @@ function FamilyDashboard() {
             />
           )}
 
+          {/* SMART HOME */}
+          {view === "smarthome" && <SmartHomeView />}
+
           {/* 5. CONFIG / SETTINGS */}
           {view === "settings" && (
             <SettingsView
@@ -4494,6 +4499,7 @@ function FamilyDashboard() {
           <NavButton view={view} target="coach" icon={<Coffee className="w-5 h-5" />} label="Coach" setView={setView} color="bg-amber-500" />
           <NavButton view={view} target="gigs" icon={<Banknote className="w-5 h-5" />} label="Gigs" setView={setView} color="bg-emerald-600" />
           <NavButton view={view} target="balances" icon={<CreditCard className="w-5 h-5" />} label="Balances" setView={setView} color="bg-purple-600" />
+          <NavButton view={view} target="smarthome" icon={<Lightbulb className="w-5 h-5" />} label="Smart" setView={setView} color="bg-amber-500" />
           <div className="w-px h-8 bg-white/10 mx-1" />
           <NavButton view={view} target="schoolmenu" icon={<BookOpen className="w-5 h-5" />} label="Lunch" setView={setView} color="bg-indigo-600" />
           <NavButton view={view} target="suggestions" icon={<MessageSquare className="w-5 h-5" />} label="Suggest" setView={setView} color="bg-cyan-600" />
