@@ -32,6 +32,8 @@ class Settings:
     )
 
     ha_url: str = os.getenv("HA_URL", "http://192.168.50.50:8123").rstrip("/")
+    ha_token: str = os.getenv("HA_TOKEN", "")
+    ha_entity_allowlist: str = os.getenv("HA_ENTITY_ALLOWLIST", "")
     ha_redemption_webhook_id: str = os.getenv("HA_REDEMPTION_WEBHOOK_ID", "redemption_notice")
     ha_notify_timeout_seconds: int = int(os.getenv("HA_NOTIFY_TIMEOUT_SECONDS", "20"))
 

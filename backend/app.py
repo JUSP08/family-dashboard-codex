@@ -8,6 +8,12 @@ from waitress import serve
 from config import FRONTEND_DIST, PROJECT_ROOT, settings
 from db import init_db, log_event
 from services.health_service import build_status
+from services.home_assistant_service import (
+    HomeAssistantError,
+    broadcast_google_message,
+    get_smart_home_entities,
+    run_smart_home_action,
+)
 from services.notify_service import send_redemption_notification
 from services.qustodio_exact import QustodioController
 from services.qustodio_service import grant_tablet_time, refresh_qustodio_token
@@ -159,6 +165,43 @@ def create_app() -> Flask:
         )
         status_code = 200 if result.get("success") else 503
         return jsonify(result), status_code
+
+    @app.get("/api/smart-home/entities")
+    def api_smart_home_entities():
+        try:
+            return jsonify(get_smart_home_entities())
+        except HomeAssistantError as exc:
+            return jsonify({"success": False, "error": str(exc)}), 503
+
+    @app.post("/api/smart-home/action")
+    def api_smart_home_action():
+        payload = request.get_json(silent=True) if request.is_json else None
+        if not isinstance(payload, dict):
+            return jsonify({"success": False, "error": "Expected JSON body"}), 400
+        try:
+            result = run_smart_home_action(
+                entity_id=str(payload.get("entityId", "")).strip(),
+                action=str(payload.get("action", "")).strip(),
+                value=payload.get("value"),
+            )
+            return jsonify(result)
+        except HomeAssistantError as exc:
+            return jsonify({"success": False, "error": str(exc)}), 400
+
+    @app.post("/api/smart-home/broadcast")
+    def api_smart_home_broadcast():
+        payload = request.get_json(silent=True) if request.is_json else None
+        if not isinstance(payload, dict):
+            return jsonify({"success": False, "error": "Expected JSON body"}), 400
+        targets = payload.get("targets", [])
+        if not isinstance(targets, list):
+            targets = []
+        try:
+            return jsonify(
+                broadcast_google_message(str(payload.get("message", "")), targets)
+            )
+        except HomeAssistantError as exc:
+            return jsonify({"success": False, "error": str(exc)}), 400
 
     @app.route("/", defaults={"path": ""})
     @app.route("/<path:path>")
