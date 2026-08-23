@@ -180,48 +180,48 @@ const THEMES = {
     backgroundStyle: {
       backgroundImage: "radial-gradient(circle at 18% 16%, rgba(251,191,36,0.48), transparent 24%), radial-gradient(circle at 78% 8%, rgba(244,114,182,0.24), transparent 30%), linear-gradient(135deg, #2f1b5b 0%, #0f766e 46%, #020617 100%)",
     },
-    overlayClass: "bg-slate-950/15",
+    overlayClass: "bg-slate-950/35",
     iconClass: "text-amber-300",
     glowClass: "bg-amber-400",
     text: "text-slate-100",
-    calendarBg: `bg-slate-950/60 ${commonGlass}`,
-    cardBg: `bg-slate-900/50 ${commonGlass}`,
+    calendarBg: `bg-slate-950/75 ${commonGlass}`,
+    cardBg: `bg-slate-900/70 ${commonGlass}`,
   },
   day: {
     appBg: "bg-[#082f49]",
     backgroundStyle: {
       backgroundImage: "radial-gradient(circle at 75% 14%, rgba(254,240,138,0.58), transparent 18%), radial-gradient(circle at 18% 24%, rgba(125,211,252,0.42), transparent 28%), linear-gradient(160deg, #0ea5e9 0%, #0369a1 42%, #064e3b 100%)",
     },
-    overlayClass: "bg-slate-950/20",
+    overlayClass: "bg-slate-950/40",
     iconClass: "text-yellow-200",
     glowClass: "bg-yellow-300",
     text: "text-slate-100",
-    calendarBg: `bg-slate-950/60 ${commonGlass}`,
-    cardBg: `bg-slate-900/50 ${commonGlass}`,
+    calendarBg: `bg-slate-950/75 ${commonGlass}`,
+    cardBg: `bg-slate-900/70 ${commonGlass}`,
   },
   sunset: {
     appBg: "bg-[#1e1b4b]",
     backgroundStyle: {
       backgroundImage: "radial-gradient(circle at 18% 24%, rgba(251,146,60,0.56), transparent 24%), radial-gradient(circle at 82% 10%, rgba(236,72,153,0.28), transparent 32%), linear-gradient(145deg, #7c2d12 0%, #be123c 36%, #312e81 72%, #020617 100%)",
     },
-    overlayClass: "bg-slate-950/24",
+    overlayClass: "bg-slate-950/42",
     iconClass: "text-orange-300",
     glowClass: "bg-orange-400",
     text: "text-slate-100",
-    calendarBg: `bg-slate-950/60 ${commonGlass}`,
-    cardBg: `bg-slate-900/50 ${commonGlass}`,
+    calendarBg: `bg-slate-950/75 ${commonGlass}`,
+    cardBg: `bg-slate-900/70 ${commonGlass}`,
   },
   night: {
     appBg: "bg-[#020617]",
     backgroundStyle: {
       backgroundImage: "radial-gradient(circle at 22% 18%, rgba(250,204,21,0.16), transparent 18%), radial-gradient(circle at 78% 12%, rgba(56,189,248,0.18), transparent 24%), linear-gradient(145deg, #020617 0%, #111827 48%, #3b2716 100%)",
     },
-    overlayClass: "bg-black/20",
+    overlayClass: "bg-black/35",
     iconClass: "text-amber-200",
     glowClass: "bg-amber-300",
     text: "text-slate-100",
-    calendarBg: `bg-black/60 ${commonGlass}`,
-    cardBg: `bg-white/5 ${commonGlass}`,
+    calendarBg: `bg-black/75 ${commonGlass}`,
+    cardBg: `bg-slate-900/70 ${commonGlass}`,
   },
 };
 
@@ -530,19 +530,20 @@ const NavButton = ({ view, target, icon, label, setView, color }) => {
   return (
     <button
       onClick={() => setView(target)}
-      className="flex flex-col items-center justify-center px-2 group"
+      aria-current={active ? "page" : undefined}
+      className="flex min-w-[64px] flex-col items-center justify-center px-1.5 group focus-visible:outline-none"
     >
       <div
-        className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all duration-300 ease-out 
+        className={`w-11 h-11 rounded-2xl flex items-center justify-center border transition-all duration-200 ease-out
         ${active
-            ? `${color} text-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.3)] border-white/50`
-            : "bg-white/5 border-white/10 text-slate-400 group-hover:bg-white/10"
+            ? `${color} text-white shadow-lg border-white/40`
+            : "bg-white/[0.04] border-white/10 text-slate-300 group-hover:bg-white/10 group-hover:text-white"
           }`}
       >
         {icon}
       </div>
       <span
-        className={`mt-1.5 text-[13px] font-medium tracking-wide transition-colors ${active ? "text-white" : "text-slate-500 group-hover:text-slate-300"
+        className={`mt-1 text-xs font-semibold tracking-wide transition-colors ${active ? "text-white" : "text-slate-400 group-hover:text-slate-200"
           }`}
       >
         {label}
@@ -2319,6 +2320,7 @@ const SettingsView = ({
   const [showAdminPin, setShowAdminPin] = useState(false);
   const [adminPinInput, setAdminPinInput] = useState("");
   const [adminPinError, setAdminPinError] = useState(false);
+  const [showSmartHomeAdmin, setShowSmartHomeAdmin] = useState(false);
   const [qustodioToken, setQustodioToken] = useState("");
   const [qustodioTokenLoading, setQustodioTokenLoading] = useState(false);
   const [qustodioTokenRefreshing, setQustodioTokenRefreshing] = useState(false);
@@ -2699,12 +2701,15 @@ const SettingsView = ({
           <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-slate-200 shadow-md">
             <Settings className="w-5 h-5" />
           </div>
-          <h1 className="text-2xl font-bold text-white">System Config</h1>
+          <div>
+            <h1 className="text-2xl font-black text-white">System Config</h1>
+            <p className="mt-1 text-sm text-slate-300">Household settings and protected admin tools</p>
+          </div>
         </div>
 
         <button
-          onClick={() => isAdmin ? setIsAdmin(false) : setShowAdminPin(true)}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${isAdmin ? "bg-rose-500/20 text-rose-400 hover:bg-rose-500/30" : "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30"}`}
+          onClick={() => { if (isAdmin) { setIsAdmin(false); setShowSmartHomeAdmin(false); } else { setShowAdminPin(true); } }}
+          className={`flex min-h-11 items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border ${isAdmin ? "bg-rose-500/15 border-rose-400/30 text-rose-300 hover:bg-rose-500/25" : "bg-emerald-500/15 border-emerald-400/30 text-emerald-300 hover:bg-emerald-500/25"}`}
         >
           {isAdmin ? <Lock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
           <span>{isAdmin ? "Lock Admin" : "Unlock Admin"}</span>
@@ -2728,6 +2733,33 @@ const SettingsView = ({
             <button onClick={handleAdminPinSubmit} disabled={adminPinInput.length !== 4} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold rounded-xl shadow-lg mt-2">Unlock</button>
           </div>
         </div>
+      )}
+
+      {isAdmin && (
+        <section className="rounded-[2rem] border border-amber-300/20 bg-slate-950/65 p-5 shadow-xl backdrop-blur-xl">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="rounded-2xl bg-amber-400/15 p-3 text-amber-300"><Lightbulb className="h-5 w-5" /></div>
+              <div>
+                <h2 className="text-base font-black text-white">Smart Home controls</h2>
+                <p className="mt-1 text-sm leading-relaxed text-slate-300">Lights, speakers, scenes, and Home Assistant diagnostics are kept inside the protected admin console.</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowSmartHomeAdmin((current) => !current)}
+              aria-expanded={showSmartHomeAdmin}
+              className="min-h-11 shrink-0 rounded-xl border border-amber-300/30 bg-amber-500/15 px-4 text-sm font-black text-amber-100 transition-colors hover:bg-amber-500/25"
+            >
+              {showSmartHomeAdmin ? "Close Smart Home" : "Open Smart Home"}
+            </button>
+          </div>
+          {showSmartHomeAdmin && (
+            <div className="mt-5 border-t border-white/10 pt-5">
+              <SmartHomeView embedded />
+            </div>
+          )}
+        </section>
       )}
 
 
@@ -4317,38 +4349,51 @@ function FamilyDashboard() {
   }, [calendarMonthKey, calendarSources, calendarFilters, customEvents, hiddenEventIds]);
 
   return (
-    <div className={`relative w-screen h-screen overflow-hidden font-sans transition-all duration-1000 ease-in-out ${theme.appBg}`} style={theme.backgroundStyle}>
+    <div className={`family-shell relative w-screen h-screen overflow-hidden font-sans transition-all duration-1000 ease-in-out ${theme.appBg}`} style={theme.backgroundStyle}>
       <div className={`pointer-events-none absolute inset-0 transition-colors duration-1000 ${theme.overlayClass}`} />
       <div className="relative z-10 h-full w-full flex flex-col">
         {/* UPDATED HEADER: DYNAMIC PIZZAZZ */}
-        <header className="flex justify-between items-center px-6 pt-5 pb-4 shrink-0">
+        <header className="flex justify-between items-center px-6 pt-4 pb-3 shrink-0">
           <div className="flex items-center gap-5">
+            <button
+              type="button"
+              onClick={() => setView("settings")}
+              aria-label="Open system configuration"
+              aria-current={view === "settings" ? "page" : undefined}
+              title="System Config"
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/80 ${view === "settings"
+                ? "border-white/15 bg-white/[0.07] text-slate-300 opacity-60"
+                : "border-white/[0.06] bg-black/10 text-slate-400 opacity-25 hover:border-white/15 hover:bg-white/[0.06] hover:text-slate-200 hover:opacity-80"
+                }`}
+            >
+              <Settings className="h-4 w-4" />
+            </button>
+
             {/* Glowing Icon */}
             <div className="relative group">
-              <div className={`absolute inset-0 ${theme.glowClass} rounded-2xl blur opacity-40 group-hover:opacity-100 transition duration-500 animate-pulse`}></div>
-              <div className="relative w-14 h-14 rounded-2xl bg-slate-900 border border-white/10 flex items-center justify-center text-white shadow-2xl">
-                <Sun className={`w-8 h-8 ${theme.iconClass}`} />
+              <div className={`absolute inset-0 ${theme.glowClass} rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-500`}></div>
+              <div className="relative w-12 h-12 rounded-2xl bg-slate-950/80 border border-white/15 flex items-center justify-center text-white shadow-xl">
+                <Sun className={`w-7 h-7 ${theme.iconClass}`} />
               </div>
             </div>
 
             {/* Styled Title */}
             <div>
-              <h1 className="text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-300 via-indigo-200 to-white drop-shadow-sm">
+              <h1 className="text-2xl font-black tracking-tight text-white drop-shadow-sm">
                 Lindstrom HQ
               </h1>
               <div className="flex items-center gap-2 mt-0.5">
                 <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                 </span>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.25em]">Family Command Center</p>
+                <p className="text-[11px] font-bold text-slate-300 uppercase tracking-[0.2em]">Family Command Center</p>
               </div>
             </div>
           </div>
 
           <div className="text-right">
-            <div className="text-6xl font-extralight text-white tracking-tighter drop-shadow-lg leading-none">
-              {currentTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }).replace(/(AM|PM)/, '')}<span className="text-lg font-bold text-slate-500 ml-1">{currentTime.toLocaleTimeString([], { hour12: true }).slice(-2)}</span>
+            <div className="text-5xl font-light text-white tracking-tighter drop-shadow-lg leading-none">
+              {currentTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }).replace(/(AM|PM)/, '')}<span className="text-base font-bold text-slate-300 ml-1">{currentTime.toLocaleTimeString([], { hour12: true }).slice(-2)}</span>
             </div>
             <div className="text-sm font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">
               {currentTime.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}
@@ -4431,9 +4476,6 @@ function FamilyDashboard() {
             />
           )}
 
-          {/* SMART HOME */}
-          {view === "smarthome" && <SmartHomeView />}
-
           {/* 5. CONFIG / SETTINGS */}
           {view === "settings" && (
             <SettingsView
@@ -4494,17 +4536,15 @@ function FamilyDashboard() {
         </main>
 
         {/* Floating Nav */}
-        <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/80 backdrop-blur-2xl text-white rounded-full px-2 py-2 flex items-center gap-2 z-50 border border-white/10 shadow-[0_10px_40px_rgba(0,0,0,0.5)]">
+        <nav aria-label="Primary dashboard" className="primary-nav fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-950/90 backdrop-blur-2xl text-white rounded-[1.75rem] px-2.5 py-2 flex items-center gap-1 z-50 border border-white/15 shadow-[0_12px_36px_rgba(0,0,0,0.55)]">
           <NavButton view={view} target="dashboard" icon={<Clock className="w-5 h-5" />} label="Home" setView={setView} color="bg-blue-600" />
           <NavButton view={view} target="coach" icon={<Coffee className="w-5 h-5" />} label="Coach" setView={setView} color="bg-amber-500" />
           <NavButton view={view} target="gigs" icon={<Banknote className="w-5 h-5" />} label="Gigs" setView={setView} color="bg-emerald-600" />
           <NavButton view={view} target="balances" icon={<CreditCard className="w-5 h-5" />} label="Balances" setView={setView} color="bg-purple-600" />
-          <NavButton view={view} target="smarthome" icon={<Lightbulb className="w-5 h-5" />} label="Smart" setView={setView} color="bg-amber-500" />
-          <div className="w-px h-8 bg-white/10 mx-1" />
+          <div className="w-px h-8 bg-white/10 mx-0.5" />
           <NavButton view={view} target="schoolmenu" icon={<BookOpen className="w-5 h-5" />} label="Lunch" setView={setView} color="bg-indigo-600" />
+          <div className="w-px h-8 bg-white/10 mx-0.5" />
           <NavButton view={view} target="suggestions" icon={<MessageSquare className="w-5 h-5" />} label="Suggest" setView={setView} color="bg-cyan-600" />
-          <div className="w-px h-8 bg-white/10 mx-1" />
-          <NavButton view={view} target="settings" icon={<Settings className="w-5 h-5" />} label="Config" setView={setView} color="bg-slate-700" />
         </nav>
       </div>
     </div>
