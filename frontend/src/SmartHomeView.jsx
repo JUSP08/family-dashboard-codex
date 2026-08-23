@@ -145,7 +145,7 @@ function Section({ title, icon, children, count }) {
 }
 
 
-export default function SmartHomeView() {
+export default function SmartHomeView({ embedded = false }) {
   const [entities, setEntities] = useState([]);
   const [configured, setConfigured] = useState(true);
   const [haUrl, setHaUrl] = useState("");
@@ -229,10 +229,10 @@ export default function SmartHomeView() {
   };
 
   return (
-    <div className="mx-auto max-w-[1500px] space-y-6 pb-8 pt-2">
+    <div className={embedded ? "space-y-5" : "mx-auto max-w-[1500px] space-y-6 pb-8 pt-2"}>
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-3"><div className="rounded-2xl bg-amber-400/15 p-3 text-amber-300"><Lightbulb className="h-7 w-7" /></div><div><h1 className="text-2xl font-black text-white">Smart Home</h1><p className="text-xs text-slate-400">Lights, speakers, scenes, and household controls</p></div></div>
+          <div className="flex items-center gap-3"><div className="rounded-2xl bg-amber-400/15 p-3 text-amber-300"><Lightbulb className="h-7 w-7" /></div><div><h1 className="text-2xl font-black text-white">{embedded ? "Home Assistant" : "Smart Home"}</h1><p className="text-sm text-slate-300">Lights, speakers, scenes, and household controls</p></div></div>
         </div>
         <div className="flex items-center gap-2">
           <button type="button" onClick={allLightsOff} disabled={!grouped.lights.some((light) => light.state === "on")} className="min-h-11 rounded-2xl border border-rose-300/20 bg-rose-500/10 px-4 text-xs font-black text-rose-200 disabled:opacity-40"><Power className="mr-2 inline h-4 w-4" />All lights off</button>
