@@ -1466,24 +1466,29 @@ const CoachView = ({
    GIGS VIEW (Pure Task Board)
 -------------------------------------------------- */
 const GigsView = ({ theme, gigs, setGigs, childrenData = [], wallet, setWallet, gigRequests = [], setGigRequests }) => {
-  const [claimModeId, setClaimModeId] = useState(null);
+  const kids = (childrenData || []).filter(c => c.role === "child");
+  const [selectedChildId, setSelectedChildId] = useState(() => kids[0]?.id || "");
+  const [activePanel, setActivePanel] = useState("mine");
   const [ideaOffset, setIdeaOffset] = useState(0);
-  const [acceptingIdeaTitle, setAcceptingIdeaTitle] = useState(null);
+  const [requestSent, setRequestSent] = useState(false);
+  const [recentlyCompletedId, setRecentlyCompletedId] = useState(null);
   const [requestForm, setRequestForm] = useState({
-    childId: "",
     title: "",
     description: "",
-    compensationType: "tablet",
-    compensationAmount: 15,
     icon: "✨",
   });
 
-  // PIN STATE (Still needed for "Approve & Pay")
   const [showPinPad, setShowPinPad] = useState(false);
   const [pendingGigId, setPendingGigId] = useState(null);
   const [pinInput, setPinInput] = useState("");
   const [pinError, setPinError] = useState(false);
   const PARENT_PIN = "8675";
+
+  useEffect(() => {
+    if (!kids.some(child => child.id === selectedChildId)) {
+      setSelectedChildId(kids[0]?.id || "");
+    }
+  }, [kids, selectedChildId]);
 
   const initiateCompletion = (gigId) => {
     const gig = gigs.find(g => g.id === gigId);
@@ -1527,21 +1532,48 @@ const GigsView = ({ theme, gigs, setGigs, childrenData = [], wallet, setWallet, 
     }
   };
 
-  // PIN LOGIC
   const handlePinClick = (num) => { if (pinInput.length < 4) { setPinInput(prev => prev + num); setPinError(false); } };
   const handlePinBackspace = () => { setPinInput(prev => prev.slice(0, -1)); };
-  const handlePinSubmit = () => { if (pinInput === PARENT_PIN) { initiateCompletion(pendingGigId); closePinPad(); } else { setPinError(true); setPinInput(""); setTimeout(() => setPinError(false), 500); } };
+  const handlePinSubmit = () => {
+    if (pinInput === PARENT_PIN) {
+      const completedId = pendingGigId;
+      initiateCompletion(completedId);
+      setRecentlyCompletedId(completedId);
+      closePinPad();
+    } else {
+      setPinError(true);
+      setPinInput("");
+      setTimeout(() => setPinError(false), 500);
+    }
+  };
   const closePinPad = () => { setShowPinPad(false); setPendingGigId(null); setPinInput(""); setPinError(false); };
 
-  const claimGig = (gigId, childId) => { setGigs((prev) => prev.map((g) => (g.id === gigId ? { ...g, claimedBy: childId } : g))); setClaimModeId(null); };
-  const unclaimGig = (gigId) => { if (window.confirm("Release this gig?")) { setGigs((prev) => prev.map((g) => (g.id === gigId ? { ...g, claimedBy: null, completed: false } : g))); } };
+  const claimGig = (gigId) => {
+    if (!selectedChildId) return;
+    setGigs((prev) => prev.map((g) => (g.id === gigId ? { ...g, claimedBy: selectedChildId } : g)));
+    setRecentlyCompletedId(null);
+    setActivePanel("mine");
+  };
+  const unclaimGig = (gigId) => {
+    if (window.confirm("Put this gig back so someone else can choose it?")) {
+      setGigs((prev) => prev.map((g) => (g.id === gigId ? { ...g, claimedBy: null, completed: false } : g)));
+      setActivePanel("find");
+    }
+  };
 
-  const kids = (childrenData || []).filter(c => c.role === 'child');
   const openGigs = gigs.filter(g => !g.claimedBy && !g.completed);
   const claimedGigs = gigs.filter(g => g.claimedBy && !g.completed);
   const completedGigs = gigs.filter(g => g.completed);
-  const pendingRequests = gigRequests.filter(req => req.status !== "approved" && req.status !== "declined");
-  const ideaCards = [0, 1, 2, 3].map((n) => HOUSEHOLD_GIG_IDEAS[(ideaOffset + n) % HOUSEHOLD_GIG_IDEAS.length]);
+  const selectedChild = kids.find(child => child.id === selectedChildId);
+  const activeGig = claimedGigs.find(gig => gig.claimedBy === selectedChildId);
+  const childHistory = completedGigs.filter(gig => gig.claimedBy === selectedChildId).slice(-3).reverse();
+  const childWallet = wallet?.[selectedChildId] || { money: 0, time: 0 };
+  const childPendingRequests = gigRequests.filter(req =>
+    req.status !== "approved" &&
+    req.status !== "declined" &&
+    (req.childId || req.requestedBy) === selectedChildId
+  );
+  const ideaCards = [0, 1, 2].map((n) => HOUSEHOLD_GIG_IDEAS[(ideaOffset + n) % HOUSEHOLD_GIG_IDEAS.length]);
 
   const queueGigRequest = (payload) => {
     if (!setGigRequests) return;
@@ -1569,7 +1601,8 @@ const GigsView = ({ theme, gigs, setGigs, childrenData = [], wallet, setWallet, 
       },
       ...prev,
     ]);
-    setAcceptingIdeaTitle(null);
+    setRecentlyCompletedId(null);
+    setActivePanel("mine");
   };
 
   const submitRequest = (e) => {
@@ -1578,22 +1611,20 @@ const GigsView = ({ theme, gigs, setGigs, childrenData = [], wallet, setWallet, 
     queueGigRequest({
       title: requestForm.title.trim(),
       description: requestForm.description.trim(),
-      successCriteria: "Parent reviews the finished work before payout.",
+      successCriteria: requestForm.description.trim() || "Parent and child agree on what finished looks like.",
       expectedMinutes: "",
-      compensationType: requestForm.compensationType,
-      compensationAmount: Number(requestForm.compensationAmount) || 0,
+      compensationType: "tablet",
+      compensationAmount: 0,
       icon: requestForm.icon || "✨",
-      childId: requestForm.childId,
+      childId: selectedChildId,
       source: "child_request",
     });
     setRequestForm({
-      childId: requestForm.childId,
       title: "",
       description: "",
-      compensationType: "tablet",
-      compensationAmount: 15,
       icon: "✨",
     });
+    setRequestSent(true);
   };
 
   const getRewardLabel = (gig) => {
@@ -1602,320 +1633,242 @@ const GigsView = ({ theme, gigs, setGigs, childrenData = [], wallet, setWallet, 
     return `${amount}m screen time`;
   };
 
-  const getColumnMeta = (type, count) => {
-    const meta = {
-      open: { label: "Available", hint: "Pick a job to claim", tone: "slate", dot: "bg-slate-400" },
-      claimed: { label: "In Progress", hint: "Waiting for parent approval", tone: "indigo", dot: "bg-indigo-400 animate-pulse" },
-      completed: { label: "Paid", hint: "Finished and added to balances", tone: "emerald", dot: "bg-emerald-400" },
-    }[type];
-    return { ...meta, count };
-  };
-
-  const renderGigCard = (gig) => {
-    const isClaimed = !!gig.claimedBy;
-    const claimer = isClaimed ? (childrenData || []).find((c) => c.id === gig.claimedBy) : null;
-    const rewardIsMoney = gig.compensationType === "money";
-    const rewardClass = rewardIsMoney
-      ? "bg-emerald-500/10 text-emerald-300 border-emerald-400/30"
-      : "bg-purple-500/10 text-purple-300 border-purple-400/30";
-    const statusLabel = gig.completed ? "Paid" : isClaimed ? "Claimed" : "Open";
-
-    return (
-      <div
-        key={gig.id}
-        className={`relative flex flex-col rounded-2xl border p-4 transition-all duration-300 min-h-[220px] ${
-          gig.completed
-            ? "bg-emerald-950/20 border-emerald-400/20 opacity-75"
-            : isClaimed
-              ? "bg-indigo-950/30 border-indigo-400/35 shadow-[0_0_0_1px_rgba(129,140,248,0.08)]"
-              : "bg-slate-950/45 border-white/10 hover:bg-slate-900/70 hover:border-white/20"
-        }`}
-      >
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-12 h-12 shrink-0 rounded-2xl bg-slate-900/80 border border-white/10 flex items-center justify-center text-3xl shadow-inner">
-              {gig.icon || "$"}
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-black ${rewardClass}`}>
-                  {getRewardLabel(gig)}
-                </span>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{statusLabel}</span>
-              </div>
-              <h3 className="text-base font-bold text-white leading-snug break-words">{gig.title}</h3>
-            </div>
-          </div>
-
-          {gig.expectedMinutes && (
-            <div className="shrink-0 rounded-full bg-slate-900/70 border border-white/10 px-2.5 py-1 text-xs font-mono text-slate-300 flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5 text-slate-500" />
-              {gig.expectedMinutes}m
-            </div>
-          )}
-        </div>
-
-        {gig.description && (
-          <p className="text-sm leading-relaxed text-slate-400 line-clamp-3 mb-4">
-            {gig.description}
-          </p>
-        )}
-
-        <div className="mt-auto pt-3 border-t border-white/5">
-          {isClaimed && !gig.completed ? (
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between gap-3 rounded-xl bg-indigo-500/10 border border-indigo-400/15 px-3 py-2">
-                <span className="text-xs text-slate-400">Claimed by</span>
-                <div className="flex items-center gap-2 min-w-0">
-                  {claimer && <ChildAvatar child={claimer} className="w-8 h-8 ring-1 ring-indigo-300/40" textSize="text-xs" />}
-                  <span className="text-sm text-slate-100 font-bold truncate">{claimer?.name || "Someone"}</span>
-                </div>
-              </div>
-              <div className="grid grid-cols-[auto_1fr] gap-2">
-                <button onClick={() => unclaimGig(gig.id)} className="px-3 py-2 rounded-xl border border-rose-400/20 text-xs font-bold text-rose-300 hover:bg-rose-500/10 transition-all">Release</button>
-                <button onClick={() => { setPendingGigId(gig.id); setShowPinPad(true); }} className="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold px-4 py-2 rounded-xl shadow-lg shadow-emerald-900/20 flex items-center justify-center gap-2 transition-all active:scale-95"><Lock className="w-4 h-4" /><span>Approve & Pay</span></button>
-              </div>
-            </div>
-          ) : isClaimed && gig.completed ? (
-            <div className="flex items-center justify-between gap-3 text-emerald-300">
-              <div className="flex items-center gap-2 min-w-0">
-                {claimer && <ChildAvatar child={claimer} className="w-8 h-8 ring-1 ring-emerald-300/40" textSize="text-xs" />}
-                <span className="text-sm font-bold truncate">{claimer?.name || "Completed"}</span>
-              </div>
-              <span className="text-xs font-black uppercase tracking-widest flex items-center gap-1"><Check className="w-4 h-4" /> Paid</span>
-            </div>
-          ) : (
-            claimModeId === gig.id ? (
-              <div className="animate-in fade-in slide-in-from-bottom-2 duration-200 rounded-xl bg-slate-900/60 border border-white/10 p-3">
-                <p className="text-xs text-slate-400 uppercase font-bold mb-3 text-center tracking-widest">Who is taking this?</p>
-                <div className="flex justify-center gap-3 flex-wrap">
-                  {kids.map((child) => (<button key={child.id} onClick={() => claimGig(gig.id, child.id)} className="flex flex-col items-center gap-1 group" title={child.name}><ChildAvatar child={child} className="w-11 h-11 group-hover:ring-2 ring-emerald-500 transition-all" textSize="text-sm" /><span className="text-[10px] text-slate-500 group-hover:text-slate-300">{child.name}</span></button>))}
-                  <button onClick={() => setClaimModeId(null)} className="w-11 h-11 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-slate-400 hover:bg-slate-700">X</button>
-                </div>
-              </div>
-            ) : (<button onClick={() => setClaimModeId(gig.id)} className="w-full bg-slate-100 hover:bg-white text-slate-950 text-sm font-black py-3 rounded-xl transition-all active:scale-95 shadow-lg shadow-black/10">Claim Job</button>)
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  const renderColumn = (type, items) => {
-    const meta = getColumnMeta(type, items.length);
-    const toneClasses = {
-      slate: "text-slate-300 bg-slate-800/35",
-      indigo: "text-indigo-200 bg-indigo-950/25",
-      emerald: "text-emerald-200 bg-emerald-950/20",
-    }[meta.tone];
-
-    return (
-      <section className="flex flex-col rounded-2xl border border-white/10 bg-slate-950/28 overflow-hidden min-h-0">
-        <div className={`p-4 border-b border-white/5 ${toneClasses}`}>
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <h2 className="font-black text-sm uppercase tracking-widest flex items-center gap-2">
-                <span className={`w-2.5 h-2.5 rounded-full ${meta.dot}`} />
-                {meta.label}
-              </h2>
-              <p className="text-[11px] text-slate-500 mt-1 truncate">{meta.hint}</p>
-            </div>
-            <span className="shrink-0 min-w-8 h-8 rounded-full bg-black/25 border border-white/10 flex items-center justify-center text-sm font-mono text-slate-200">{meta.count}</span>
-          </div>
-        </div>
-        <div className="p-3 space-y-3 overflow-y-auto custom-scrollbar flex-1">
-          {items.length === 0 ? (
-            <div className="h-full min-h-[180px] rounded-2xl border border-dashed border-white/10 bg-slate-950/20 flex flex-col items-center justify-center text-center px-4">
-              <div className="text-2xl mb-2 opacity-60">{type === "open" ? "+" : type === "claimed" ? "..." : "Done"}</div>
-              <div className="text-sm font-bold text-slate-400">{type === "open" ? "No available gigs" : type === "claimed" ? "Nothing being worked" : "No paid gigs yet"}</div>
-              <div className="text-xs text-slate-600 mt-1">{type === "open" ? "Add gigs in Settings" : type === "claimed" ? "Claimed jobs will land here" : "Approved jobs move here"}</div>
-            </div>
-          ) : items.map(renderGigCard)}
-        </div>
-      </section>
-    );
-  };
-
   return (
-    <div className="min-h-full w-full pb-24 relative">
-      <header className="shrink-0 bg-slate-950/35 border border-white/10 rounded-2xl px-5 py-4 mb-4 backdrop-blur-md flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
+    <div className="min-h-full w-full pb-24 relative max-w-5xl mx-auto">
+      <header className="rounded-[2rem] border border-white/10 bg-slate-950/35 p-4 sm:p-6 backdrop-blur-md mb-4">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-emerald-500/15 border border-emerald-300/20 flex items-center justify-center text-emerald-200">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-300/20 flex items-center justify-center text-emerald-200">
               <WandSparkles className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="text-2xl font-black text-white tracking-tight">Gig Missions</h1>
-              <p className="text-xs text-slate-400 uppercase tracking-widest mt-1">Pick a mission, suggest a job, earn rewards</p>
+              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Gigs</h1>
+              <p className="text-sm text-slate-400 mt-0.5">Choose one helpful thing. Finish it well.</p>
             </div>
           </div>
+
+          <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar" aria-label="Choose your profile">
+            {kids.map(child => {
+              const isSelected = child.id === selectedChildId;
+              return (
+                <button
+                  key={child.id}
+                  type="button"
+                  onClick={() => { setSelectedChildId(child.id); setActivePanel("mine"); setRecentlyCompletedId(null); setRequestSent(false); }}
+                  className={`shrink-0 flex items-center gap-2 rounded-2xl border px-2.5 py-2 transition-all ${isSelected ? "bg-white text-slate-950 border-white shadow-lg" : "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10"}`}
+                  aria-pressed={isSelected}
+                >
+                  <ChildAvatar child={child} className="w-9 h-9" textSize="text-xs" />
+                  <span className="text-sm font-black pr-1">{child.name}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-        <div className="grid grid-cols-4 gap-2 min-w-[340px]">
-          <div className="rounded-xl border border-white/10 bg-slate-900/55 px-3 py-2">
-            <div className="text-lg font-black text-white leading-none">{openGigs.length}</div>
-            <div className="text-[10px] uppercase tracking-widest text-slate-500 mt-1">Available</div>
+
+        {selectedChild && (
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4">
+            <p className="text-sm text-slate-300"><span className="font-black text-white">Hi, {selectedChild.name}.</span> What would you like to do?</p>
+            <div className="flex gap-2 text-xs font-bold">
+              <span className="rounded-full bg-emerald-500/10 border border-emerald-400/20 px-3 py-1.5 text-emerald-200">${Number(childWallet.money || 0).toFixed(2)}</span>
+              <span className="rounded-full bg-violet-500/10 border border-violet-400/20 px-3 py-1.5 text-violet-200">{Number(childWallet.time || 0)}m time</span>
+            </div>
           </div>
-          <div className="rounded-xl border border-indigo-400/20 bg-indigo-950/25 px-3 py-2">
-            <div className="text-lg font-black text-indigo-200 leading-none">{claimedGigs.length}</div>
-            <div className="text-[10px] uppercase tracking-widest text-slate-500 mt-1">Active</div>
-          </div>
-          <div className="rounded-xl border border-emerald-400/20 bg-emerald-950/20 px-3 py-2">
-            <div className="text-lg font-black text-emerald-200 leading-none">{completedGigs.length}</div>
-            <div className="text-[10px] uppercase tracking-widest text-slate-500 mt-1">Paid</div>
-          </div>
-          <div className="rounded-xl border border-cyan-400/20 bg-cyan-950/20 px-3 py-2">
-            <div className="text-lg font-black text-cyan-200 leading-none">{pendingRequests.length}</div>
-            <div className="text-[10px] uppercase tracking-widest text-slate-500 mt-1">Ideas</div>
-          </div>
-        </div>
+        )}
       </header>
 
-      <div className="shrink-0 grid grid-cols-1 xl:grid-cols-[1.4fr_0.9fr] gap-4 mb-4">
-        <section className="rounded-2xl border border-white/10 bg-slate-950/30 p-4 backdrop-blur-md overflow-hidden">
-          <div className="flex items-center justify-between gap-3 mb-3">
-            <div>
-              <h2 className="text-sm font-black uppercase tracking-widest text-emerald-200">Mission Ideas</h2>
-              <p className="text-[11px] text-slate-500">Accept a mission and it moves straight into your active gigs.</p>
-            </div>
-            <button
-              onClick={() => setIdeaOffset((prev) => (prev + 4) % HOUSEHOLD_GIG_IDEAS.length)}
-              className="shrink-0 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/10 flex items-center gap-2"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              Shuffle
-            </button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-            {ideaCards.map((idea) => {
-              const isAccepting = acceptingIdeaTitle === idea.title;
+      {kids.length === 0 ? (
+        <section className="rounded-[2rem] border border-dashed border-white/15 bg-slate-950/30 p-10 text-center">
+          <div className="text-4xl mb-3">👋</div>
+          <h2 className="text-xl font-black text-white">Add a child profile first</h2>
+          <p className="text-sm text-slate-400 mt-2">Profiles are managed in the config area.</p>
+        </section>
+      ) : (
+        <>
+          <nav className="grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-slate-950/35 p-2 mb-4" aria-label="Gigs sections">
+            {[
+              { id: "mine", label: "My gig", icon: Check },
+              { id: "find", label: "Pick a gig", icon: Sparkles },
+              { id: "idea", label: "My idea", icon: Lightbulb },
+            ].map(item => {
+              const Icon = item.icon;
+              const isActive = activePanel === item.id;
               return (
-              <div
-                key={idea.title}
-                className={`text-left rounded-2xl border p-3 transition-all min-h-[150px] flex flex-col ${
-                  isAccepting
-                    ? "bg-emerald-950/45 border-emerald-300/35"
-                    : "bg-slate-900/55 border-white/10 hover:bg-slate-800/80 hover:border-emerald-300/30"
-                }`}
-              >
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <span className="text-2xl">{idea.icon}</span>
-                  <span className="rounded-full bg-emerald-500/10 border border-emerald-400/20 px-2 py-0.5 text-[10px] font-black text-emerald-200">
-                    {getRewardLabel(idea)}
-                  </span>
-                </div>
-                <h3 className="text-sm font-black text-white leading-tight">{idea.title}</h3>
-                <p className="mt-1 text-[11px] text-slate-400 line-clamp-2">{idea.description}</p>
-                {isAccepting ? (
-                  <div className="mt-auto pt-3">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-200 mb-2">Who is accepting?</p>
-                    <div className="flex flex-wrap gap-2">
-                      {kids.map(child => (
-                        <button
-                          key={child.id}
-                          type="button"
-                          onClick={() => acceptIdea(idea, child.id)}
-                          className="flex items-center gap-2 rounded-xl border border-emerald-300/20 bg-emerald-500/10 px-2 py-1.5 hover:bg-emerald-500/20"
-                        >
-                          <ChildAvatar child={child} className="w-8 h-8 ring-1 ring-emerald-300/40" textSize="text-xs" />
-                          <span className="text-xs font-black text-white">{child.name}</span>
-                        </button>
-                      ))}
-                      <button type="button" onClick={() => setAcceptingIdeaTitle(null)} className="rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-400 hover:text-white">
-                        Cancel
-                      </button>
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => { setActivePanel(item.id); setRequestSent(false); }}
+                  className={`min-h-14 rounded-xl flex items-center justify-center gap-2 text-sm font-black transition-all ${isActive ? "bg-white text-slate-950 shadow-lg" : "text-slate-400 hover:bg-white/5 hover:text-white"}`}
+                  aria-current={isActive ? "page" : undefined}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+
+          {activePanel === "mine" && (
+            <div className="space-y-4">
+              {recentlyCompletedId ? (
+                <section className="rounded-[2rem] border border-emerald-300/25 bg-emerald-950/30 p-6 sm:p-8 text-center">
+                  <div className="w-16 h-16 mx-auto rounded-full bg-emerald-500/20 border border-emerald-300/30 flex items-center justify-center mb-4"><Check className="w-8 h-8 text-emerald-200" /></div>
+                  <h2 className="text-2xl font-black text-white">Nice work, {selectedChild?.name}!</h2>
+                  <p className="text-sm text-slate-300 mt-2">Your parent approved it and your reward was added.</p>
+                  <button type="button" onClick={() => { setRecentlyCompletedId(null); setActivePanel("find"); }} className="mt-5 rounded-xl bg-white text-slate-950 px-5 py-3 text-sm font-black">Pick another gig</button>
+                </section>
+              ) : activeGig ? (
+                <section className="rounded-[2rem] border border-indigo-300/25 bg-gradient-to-br from-indigo-950/50 to-slate-950/45 p-5 sm:p-8 shadow-2xl">
+                  <div className="flex flex-col sm:flex-row sm:items-start gap-5">
+                    <div className="w-20 h-20 shrink-0 rounded-3xl bg-white/8 border border-white/10 flex items-center justify-center text-5xl">{activeGig.icon || "✨"}</div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-black uppercase tracking-[0.22em] text-indigo-300 mb-2">Your one thing</p>
+                      <h2 className="text-2xl sm:text-3xl font-black text-white leading-tight">{activeGig.title}</h2>
+                      {activeGig.description && <p className="text-base text-slate-300 mt-3 leading-relaxed">{activeGig.description}</p>}
+                      <div className="flex flex-wrap gap-2 mt-4">
+                        {activeGig.expectedMinutes && <span className="rounded-full bg-white/5 border border-white/10 px-3 py-1.5 text-xs font-bold text-slate-200 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" />About {activeGig.expectedMinutes} min</span>}
+                        <span className="rounded-full bg-emerald-500/10 border border-emerald-400/20 px-3 py-1.5 text-xs font-black text-emerald-200">Earn {getRewardLabel(activeGig)}</span>
+                      </div>
                     </div>
                   </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setAcceptingIdeaTitle(idea.title)}
-                    className="mt-auto pt-3 flex items-center justify-between text-xs font-black uppercase tracking-widest text-emerald-300"
-                  >
-                    <span>Accept</span>
-                    <Check className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            )})}
-          </div>
-        </section>
 
-        <section className="rounded-2xl border border-white/10 bg-slate-950/30 p-4 backdrop-blur-md">
-          <h2 className="text-sm font-black uppercase tracking-widest text-cyan-200 mb-1">Create Your Own</h2>
-          <p className="text-[11px] text-slate-500 mb-3">A parent approves it before it can pay out.</p>
-          <form onSubmit={submitRequest} className="space-y-2">
-            <div className="grid grid-cols-[1fr_70px] gap-2">
-              <select
-                value={requestForm.childId}
-                onChange={(e) => setRequestForm(prev => ({ ...prev, childId: e.target.value }))}
-                className="rounded-xl bg-slate-900/70 border border-white/10 text-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
-              >
-                <option value="">Who?</option>
-                {kids.map(child => <option key={child.id} value={child.id}>{child.name}</option>)}
-              </select>
-              <input
-                value={requestForm.icon}
-                onChange={(e) => setRequestForm(prev => ({ ...prev, icon: e.target.value }))}
-                className="rounded-xl bg-slate-900/70 border border-white/10 text-slate-200 px-3 py-2 text-center text-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-              />
+                  <div className="mt-6 rounded-2xl bg-slate-950/45 border border-white/10 p-4 sm:p-5">
+                    <h3 className="text-sm font-black text-white mb-3">What finished looks like</h3>
+                    <div className="space-y-3">
+                      {[
+                        activeGig.description || "Do the helpful job shown above.",
+                        activeGig.successCriteria || "Check the area and make sure the job is complete.",
+                        "Ask a parent to check it with you.",
+                      ].map((step, index) => (
+                        <div key={`${activeGig.id}-step-${index}`} className="flex items-start gap-3 text-sm text-slate-300">
+                          <span className="w-7 h-7 shrink-0 rounded-full bg-indigo-500/15 border border-indigo-300/20 flex items-center justify-center text-xs font-black text-indigo-200">{index + 1}</span>
+                          <span className="pt-1 leading-relaxed">{step}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="mt-5 grid gap-2 sm:grid-cols-[1fr_auto]">
+                    <button type="button" onClick={() => { setPendingGigId(activeGig.id); setShowPinPad(true); }} className="min-h-14 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-emerald-950 text-base font-black flex items-center justify-center gap-2 transition-all active:scale-[0.98]"><Check className="w-5 h-5" />I’m finished</button>
+                    <button type="button" onClick={() => unclaimGig(activeGig.id)} className="min-h-14 rounded-2xl border border-white/10 bg-white/5 px-5 text-sm font-bold text-slate-300 hover:bg-white/10">Choose a different gig</button>
+                  </div>
+                  <p className="text-center text-xs text-slate-500 mt-3">A parent will check the work before the reward is added.</p>
+                </section>
+              ) : (
+                <section className="rounded-[2rem] border border-dashed border-white/15 bg-slate-950/30 p-8 sm:p-12 text-center">
+                  <div className="text-5xl mb-4">🌟</div>
+                  <h2 className="text-2xl font-black text-white">Ready for a gig?</h2>
+                  <p className="text-sm text-slate-400 mt-2 max-w-md mx-auto">Pick one helpful job. You only need to focus on one at a time.</p>
+                  <button type="button" onClick={() => setActivePanel("find")} className="mt-6 min-h-14 rounded-2xl bg-white text-slate-950 px-6 text-base font-black">Show me 3 choices</button>
+                </section>
+              )}
+
+              {childHistory.length > 0 && (
+                <details className="rounded-2xl border border-white/10 bg-slate-950/25 p-4 group">
+                  <summary className="cursor-pointer list-none flex items-center justify-between gap-3 text-sm font-black text-slate-300">
+                    <span>Past wins ({childHistory.length})</span>
+                    <ChevronRight className="w-4 h-4 transition-transform group-open:rotate-90" />
+                  </summary>
+                  <div className="mt-3 space-y-2">
+                    {childHistory.map(gig => (
+                      <div key={gig.id} className="flex items-center justify-between gap-3 rounded-xl bg-white/5 border border-white/5 px-3 py-2.5">
+                        <div className="flex items-center gap-3 min-w-0"><span className="text-xl">{gig.icon || "✅"}</span><span className="text-sm font-bold text-slate-300 truncate">{gig.title}</span></div>
+                        <span className="text-xs font-black text-emerald-300 shrink-0">+{getRewardLabel(gig)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
             </div>
-            <input
-              value={requestForm.title}
-              onChange={(e) => setRequestForm(prev => ({ ...prev, title: e.target.value }))}
-              placeholder="Job idea"
-              className="w-full rounded-xl bg-slate-900/70 border border-white/10 text-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
-            />
-            <textarea
-              value={requestForm.description}
-              onChange={(e) => setRequestForm(prev => ({ ...prev, description: e.target.value }))}
-              placeholder="What would you do?"
-              rows={2}
-              className="w-full rounded-xl bg-slate-900/70 border border-white/10 text-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
-            />
-            <div className="grid grid-cols-[1fr_90px] gap-2">
-              <select
-                value={requestForm.compensationType}
-                onChange={(e) => setRequestForm(prev => ({ ...prev, compensationType: e.target.value }))}
-                className="rounded-xl bg-slate-900/70 border border-white/10 text-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
-              >
-                <option value="tablet">Tablet min</option>
-                <option value="pc">PC min</option>
-                <option value="xbox">Xbox min</option>
-                <option value="money">Money</option>
-              </select>
-              <input
-                type="number"
-                min="0"
-                value={requestForm.compensationAmount}
-                onChange={(e) => setRequestForm(prev => ({ ...prev, compensationAmount: e.target.value }))}
-                className="rounded-xl bg-slate-900/70 border border-white/10 text-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
-              />
-            </div>
-            <button type="submit" className="w-full rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-black py-2.5 transition-all">
-              Send to Parent
-            </button>
-          </form>
-        </section>
-      </div>
+          )}
+
+          {activePanel === "find" && (
+            <section className="rounded-[2rem] border border-white/10 bg-slate-950/30 p-4 sm:p-6">
+              <div className="flex items-center justify-between gap-3 mb-5">
+                <div>
+                  <h2 className="text-xl font-black text-white">Pick one</h2>
+                  <p className="text-sm text-slate-400 mt-1">Three clear choices—no endless scrolling.</p>
+                </div>
+                <button type="button" onClick={() => setIdeaOffset(prev => (prev + 3) % HOUSEHOLD_GIG_IDEAS.length)} className="shrink-0 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/10 flex items-center gap-2"><RefreshCw className="w-3.5 h-3.5" />New choices</button>
+              </div>
+
+              {activeGig ? (
+                <div className="rounded-2xl border border-indigo-300/20 bg-indigo-500/10 p-5 text-center">
+                  <p className="text-sm font-bold text-indigo-100">Finish or release <span className="font-black">{activeGig.title}</span> before choosing another gig.</p>
+                  <button type="button" onClick={() => setActivePanel("mine")} className="mt-3 rounded-xl bg-white text-slate-950 px-4 py-2.5 text-sm font-black">Back to my gig</button>
+                </div>
+              ) : (
+                <div className="grid gap-3 md:grid-cols-3">
+                  {[...openGigs.slice(0, 3), ...ideaCards].filter((item, index, list) => list.findIndex(other => other.title === item.title) === index).slice(0, 3).map(choice => {
+                    const isPostedGig = Boolean(choice.id);
+                    return (
+                      <article key={choice.id || choice.title} className="rounded-2xl border border-white/10 bg-slate-900/55 p-4 sm:p-5 flex flex-col min-h-[270px]">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="w-14 h-14 rounded-2xl bg-slate-950/60 border border-white/10 flex items-center justify-center text-3xl">{choice.icon || "✨"}</div>
+                          <span className="rounded-full bg-emerald-500/10 border border-emerald-400/20 px-2.5 py-1 text-xs font-black text-emerald-200">{getRewardLabel(choice)}</span>
+                        </div>
+                        <h3 className="text-lg font-black text-white mt-4 leading-tight">{choice.title}</h3>
+                        <p className="text-sm text-slate-400 mt-2 leading-relaxed">{choice.description}</p>
+                        {choice.expectedMinutes && <p className="text-xs text-slate-500 mt-3 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" />About {choice.expectedMinutes} minutes</p>}
+                        <button type="button" onClick={() => isPostedGig ? claimGig(choice.id) : acceptIdea(choice, selectedChildId)} className="mt-auto min-h-12 rounded-xl bg-white text-slate-950 text-sm font-black hover:bg-emerald-100 transition-colors">Choose this</button>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          )}
+
+          {activePanel === "idea" && (
+            <section className="rounded-[2rem] border border-cyan-300/20 bg-gradient-to-br from-cyan-950/35 to-slate-950/40 p-5 sm:p-8">
+              <div className="max-w-2xl mx-auto">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-12 h-12 rounded-2xl bg-cyan-500/15 border border-cyan-300/20 flex items-center justify-center"><Lightbulb className="w-6 h-6 text-cyan-200" /></div>
+                  <div><h2 className="text-xl font-black text-white">Share a gig idea</h2><p className="text-sm text-slate-400">A parent will set a fair reward.</p></div>
+                </div>
+
+                {requestSent ? (
+                  <div className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-6 text-center">
+                    <Check className="w-8 h-8 text-emerald-300 mx-auto mb-3" />
+                    <h3 className="text-lg font-black text-white">Idea sent!</h3>
+                    <p className="text-sm text-slate-300 mt-1">A parent can review it in config.</p>
+                    <button type="button" onClick={() => setRequestSent(false)} className="mt-4 rounded-xl bg-white/10 border border-white/10 px-4 py-2.5 text-sm font-bold text-white">Send another idea</button>
+                  </div>
+                ) : (
+                  <form onSubmit={submitRequest} className="space-y-4">
+                    <label className="block">
+                      <span className="text-sm font-black text-slate-200">What should the gig be called?</span>
+                      <div className="grid grid-cols-[64px_1fr] gap-2 mt-2">
+                        <input value={requestForm.icon} onChange={(e) => setRequestForm(prev => ({ ...prev, icon: e.target.value }))} aria-label="Gig icon" className="rounded-xl bg-slate-900/70 border border-white/10 text-slate-100 px-3 py-3 text-center text-xl focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+                        <input required value={requestForm.title} onChange={(e) => setRequestForm(prev => ({ ...prev, title: e.target.value }))} placeholder="Example: Organize the game shelf" className="rounded-xl bg-slate-900/70 border border-white/10 text-slate-100 px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+                      </div>
+                    </label>
+                    <label className="block">
+                      <span className="text-sm font-black text-slate-200">What will done look like?</span>
+                      <textarea required value={requestForm.description} onChange={(e) => setRequestForm(prev => ({ ...prev, description: e.target.value }))} placeholder="Tell your parent what you will do and how they can check it." rows={4} className="mt-2 w-full rounded-xl bg-slate-900/70 border border-white/10 text-slate-100 px-4 py-3 text-base leading-relaxed focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+                    </label>
+                    <button type="submit" className="w-full min-h-14 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-cyan-950 text-base font-black transition-all">Send my idea to a parent</button>
+                  </form>
+                )}
+
+                {childPendingRequests.length > 0 && <p className="mt-4 text-center text-xs text-slate-500">{childPendingRequests.length} idea{childPendingRequests.length === 1 ? " is" : "s are"} waiting for a parent.</p>}
+              </div>
+            </section>
+          )}
+        </>
+      )}
 
       {/* PIN PAD */}
       {showPinPad && (
         <div className="fixed inset-0 z-50 bg-slate-900/90 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-slate-800 border border-white/10 rounded-3xl p-6 shadow-2xl w-full max-w-xs flex flex-col gap-4">
-            <div className="flex items-center justify-center gap-2 mb-2 text-slate-300"><Lock className="w-4 h-4" /><span className="text-xs font-bold uppercase tracking-widest">Parent Approval</span></div>
+            <div className="text-center"><div className="flex items-center justify-center gap-2 text-slate-200"><Lock className="w-4 h-4" /><span className="text-xs font-bold uppercase tracking-widest">Parent check</span></div><p className="text-xs text-slate-500 mt-2">Enter the parent PIN after checking the finished gig.</p></div>
             <div className={`h-12 bg-slate-900 rounded-xl flex items-center justify-center gap-2 text-2xl font-mono text-white tracking-[0.5em] border border-white/5 ${pinError ? 'border-rose-500 animate-pulse text-rose-500' : ''}`}>{"•".repeat(pinInput.length)}{pinInput.length < 4 && <span className="opacity-20 animate-pulse">|</span>}</div>
             <div className="grid grid-cols-3 gap-3">{[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (<button key={num} onClick={() => handlePinClick(num.toString())} className="h-14 rounded-xl bg-slate-700/50 hover:bg-slate-600 text-white text-xl font-bold transition-colors active:scale-95">{num}</button>))}<button onClick={closePinPad} className="h-14 rounded-xl text-slate-500 text-xs font-bold hover:text-white uppercase tracking-wider">Cancel</button><button onClick={() => handlePinClick("0")} className="h-14 rounded-xl bg-slate-700/50 hover:bg-slate-600 text-white text-xl font-bold transition-colors active:scale-95">0</button><button onClick={handlePinBackspace} className="h-14 rounded-xl text-rose-400 hover:text-rose-300 hover:bg-rose-900/20 flex items-center justify-center active:scale-95"><Delete className="w-6 h-6" /></button></div>
-            <button onClick={handlePinSubmit} disabled={pinInput.length !== 4} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-lg mt-2 transition-all">Approve Payment</button>
+            <button onClick={handlePinSubmit} disabled={pinInput.length !== 4} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-lg mt-2 transition-all">Approve completion</button>
           </div>
         </div>
       )}
-
-      <div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-[500px] items-start">
-          {renderColumn("open", openGigs)}
-          {renderColumn("claimed", claimedGigs)}
-          {renderColumn("completed", completedGigs)}
-        </div>
-      </div>
     </div>
   );
 };
@@ -3195,7 +3148,11 @@ const SettingsView = ({
                 <p className="text-xs text-slate-500">No pending gig ideas.</p>
               ) : pendingGigRequests.map((req) => {
                 const child = childrenData.find(c => c.id === (req.childId || req.requestedBy));
-                const rewardText = req.compensationType === "money" ? `$${req.compensationAmount || 0}` : `${req.compensationAmount || 0}m ${req.compensationType || "time"}`;
+                const rewardAmount = Number(req.compensationAmount) || 0;
+                const rewardReady = rewardAmount > 0;
+                const rewardText = rewardReady
+                  ? req.compensationType === "money" ? `$${rewardAmount}` : `${rewardAmount}m ${req.compensationType || "time"}`
+                  : "Parent sets reward";
                 return (
                   <div key={req.id} className="rounded-xl bg-slate-900/55 border border-white/10 p-3 flex flex-col gap-3">
                     <div className="flex items-start justify-between gap-3">
@@ -3205,17 +3162,42 @@ const SettingsView = ({
                           <h3 className="text-sm font-black text-slate-100 break-words">{req.title}</h3>
                           {req.description && <p className="text-xs text-slate-400 mt-1 leading-relaxed">{req.description}</p>}
                           <div className="flex flex-wrap gap-2 mt-2 text-[10px] font-bold uppercase tracking-widest">
-                            <span className="text-emerald-300 bg-emerald-500/10 border border-emerald-400/20 rounded-full px-2 py-1">{rewardText}</span>
+                            <span className={`${rewardReady ? "text-emerald-300 bg-emerald-500/10 border-emerald-400/20" : "text-amber-200 bg-amber-500/10 border-amber-400/20"} border rounded-full px-2 py-1`}>{rewardText}</span>
                             {child && <span className="text-slate-400 bg-white/5 border border-white/10 rounded-full px-2 py-1">from {child.name}</span>}
                           </div>
                         </div>
                       </div>
                       {child && <ChildAvatar child={child} className="w-9 h-9 shrink-0" textSize="text-xs" />}
                     </div>
-                    <div className="flex flex-wrap gap-2 border-t border-white/5 pt-3">
-                      <button onClick={() => approveGigRequest(req)} className="rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-2 flex items-center gap-1">
+                    <div className="grid grid-cols-[1fr_90px] gap-2 border-t border-white/5 pt-3">
+                      <label>
+                        <span className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Reward</span>
+                        <select
+                          value={req.compensationType || "tablet"}
+                          onChange={(e) => setGigRequests(prev => prev.map(item => item.id === req.id ? { ...item, compensationType: e.target.value } : item))}
+                          className="w-full rounded-lg bg-slate-950/70 border border-white/10 text-slate-200 px-2.5 py-2 text-xs"
+                        >
+                          <option value="tablet">Tablet min</option>
+                          <option value="pc">PC min</option>
+                          <option value="xbox">Xbox min</option>
+                          <option value="money">Money</option>
+                        </select>
+                      </label>
+                      <label>
+                        <span className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Amount</span>
+                        <input
+                          type="number"
+                          min="0"
+                          value={req.compensationAmount ?? 0}
+                          onChange={(e) => setGigRequests(prev => prev.map(item => item.id === req.id ? { ...item, compensationAmount: e.target.value } : item))}
+                          className="w-full rounded-lg bg-slate-950/70 border border-white/10 text-slate-200 px-2.5 py-2 text-xs"
+                        />
+                      </label>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button disabled={!rewardReady} onClick={() => approveGigRequest(req)} className="rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold px-3 py-2 flex items-center gap-1">
                         <Check className="w-3.5 h-3.5" />
-                        Approve
+                        Approve & assign
                       </button>
                       <button onClick={() => declineGigRequest(req.id)} className="rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold px-3 py-2">Decline</button>
                       <button onClick={() => deleteGigRequest(req.id)} className="ml-auto rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-400/20 text-xs font-bold px-3 py-2">Delete</button>
