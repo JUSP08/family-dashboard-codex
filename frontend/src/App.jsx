@@ -54,6 +54,11 @@ import {
 } from "./dailyCoachActivities";
 import "./App.css";
 import SmartHomeView from "./SmartHomeView";
+import {
+  MAX_TIME_BALANCE_MINUTES,
+  applyWalletUpdate,
+  normalizeWallet,
+} from "./walletLimits";
 
 // Determine which theme to use based on time
 export function getDayPhase(date = new Date()) {
@@ -2851,12 +2856,13 @@ const SettingsView = ({
                       <Clock className="w-4 h-4" />
                     </div>
                     <div className="flex-1">
-                      <label className="block text-[10px] uppercase font-bold text-slate-500 tracking-wider mb-1">Time Balance (min)</label>
+                      <label className="block text-[10px] uppercase font-bold text-slate-500 tracking-wider mb-1">Time Balance (max {MAX_TIME_BALANCE_MINUTES} min)</label>
                       <div className="grid grid-cols-[44px_1fr_44px] gap-2 items-center">
                         <button
                           type="button"
                           onClick={() => adjustBalance(child.id, 'time', 5)}
-                          className="h-11 rounded-xl bg-emerald-600/20 border border-emerald-400/40 text-emerald-300 flex items-center justify-center hover:bg-emerald-600/30 active:scale-95 transition-all"
+                          disabled={Number(bal.time || 0) >= MAX_TIME_BALANCE_MINUTES}
+                          className="h-11 rounded-xl bg-emerald-600/20 border border-emerald-400/40 text-emerald-300 flex items-center justify-center hover:bg-emerald-600/30 active:scale-95 transition-all disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-emerald-600/20"
                           aria-label={`Add 5 minutes to ${child.name}`}
                         >
                           <Plus className="w-5 h-5" />
@@ -2865,6 +2871,7 @@ const SettingsView = ({
                           type="number"
                           step="1"
                           min="0"
+                          max={MAX_TIME_BALANCE_MINUTES}
                           value={bal.time}
                           onChange={(e) => {
                             const val = e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value, 10) || 0);
@@ -3798,12 +3805,18 @@ function FamilyDashboard() {
     } catch { return CHILDREN; }
   });
 
-  const [wallet, setWallet] = useState(() => {
+  const [wallet, setWalletState] = useState(() => {
     try {
       const saved = localStorage.getItem("familyWallet");
-      return saved ? JSON.parse(saved) : {};
+      return normalizeWallet(saved ? JSON.parse(saved) : {});
     } catch { return {}; }
   });
+
+  // Every wallet mutation passes through this boundary so screen-time balances
+  // can never exceed the household maximum, regardless of the reward source.
+  const setWallet = (update) => {
+    setWalletState(previousWallet => applyWalletUpdate(previousWallet, update));
+  };
 
   const [customEvents, setCustomEvents] = useState(() => {
     try {
