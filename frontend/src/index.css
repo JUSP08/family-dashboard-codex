@@ -20,7 +20,62 @@ body {
 }
 
 .family-shell .text-slate-600 {
-  color: rgb(100 116 139);
+  color: rgb(148 163 184);
+}
+
+/* Decoration varies; readable content and semantic status colors stay stable. */
+.family-shell {
+  height: 100dvh;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  line-height: 1.5;
+}
+
+.family-shell :is(h1, h2, h3) {
+  font-family: var(--theme-heading-font, "Segoe UI"), sans-serif;
+  text-wrap: balance;
+}
+
+.family-shell :is(.text-\[10px\], .text-\[11px\]) {
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.family-shell .tracking-widest { letter-spacing: 0.06em; }
+.family-shell .font-mono { font-variant-numeric: tabular-nums; }
+.family-shell .theme-caption { color: var(--theme-accent); }
+.family-shell .dashboard-header { background: rgb(8 17 31 / 0.65); }
+.family-shell main { scroll-padding-block: 1rem 7rem; }
+.family-shell main > div > header {
+  background-color: rgb(8 17 31 / 0.85);
+  border-color: var(--theme-accent);
+}
+.family-shell .primary-nav button[aria-current="page"] {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 2px;
+}
+.family-shell button:disabled { cursor: not-allowed; }
+
+@media (max-width: 600px) {
+  .family-shell .dashboard-header { padding: 0.75rem; gap: 0.5rem; }
+  .family-shell .dashboard-header > div:first-child { gap: 0.5rem; min-width: 0; }
+  .family-shell .dashboard-header h1 { font-size: 1rem; }
+  .family-shell .dashboard-header .text-5xl { font-size: 1.65rem; white-space: nowrap; }
+  .family-shell .dashboard-header .text-right { flex-shrink: 0; max-width: 44%; }
+  .family-shell .dashboard-header .text-right > div:last-child {
+    font-size: 0.7rem; letter-spacing: 0; font-weight: 500;
+  }
+  .family-shell .dashboard-header .relative.group { display: none; }
+  .family-shell main { padding-inline: 0.75rem; }
+  .family-shell input, .family-shell select, .family-shell textarea { font-size: 1rem; }
+  .family-shell .primary-nav {
+    width: calc(100% - 1rem); max-width: 30rem;
+    bottom: max(0.5rem, env(safe-area-inset-bottom));
+    gap: 0.125rem; padding: 0.4rem; border-radius: 1.25rem;
+  }
+  .family-shell .primary-nav > button {
+    flex: 1 1 0; min-width: 0; padding-inline: 0.15rem;
+  }
+  .family-shell .primary-nav > div { flex-shrink: 0; margin-inline: 0; }
 }
 
 .family-shell button,

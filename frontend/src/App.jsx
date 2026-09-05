@@ -54,6 +54,7 @@ import {
 } from "./dailyCoachActivities";
 import "./App.css";
 import SmartHomeView from "./SmartHomeView";
+import { getDailyTheme } from "./dailyTheme";
 import {
   MAX_TIME_BALANCE_MINUTES,
   applyWalletUpdate,
@@ -230,130 +231,14 @@ const THEMES = {
   },
 };
 
-const MONTHLY_THEME_ACCENTS = [
-  {
-    name: "January Lanterns",
-    byPhase: {
-      sunrise: "radial-gradient(circle at 10% 12%, rgba(125,211,252,0.22), transparent 18%)",
-      day: "radial-gradient(circle at 80% 20%, rgba(186,230,253,0.32), transparent 20%)",
-      sunset: "radial-gradient(circle at 24% 18%, rgba(244,114,182,0.18), transparent 22%)",
-      night: "radial-gradient(circle at 68% 14%, rgba(147,197,253,0.2), transparent 24%)",
-    },
-  },
-  {
-    name: "February Glow",
-    byPhase: {
-      sunrise: "radial-gradient(circle at 22% 14%, rgba(251,113,133,0.28), transparent 20%)",
-      day: "radial-gradient(circle at 74% 18%, rgba(252,165,165,0.28), transparent 22%)",
-      sunset: "radial-gradient(circle at 18% 20%, rgba(244,114,182,0.3), transparent 24%)",
-      night: "radial-gradient(circle at 82% 16%, rgba(190,24,93,0.18), transparent 24%)",
-    },
-  },
-  {
-    name: "March Sprouts",
-    byPhase: {
-      sunrise: "radial-gradient(circle at 16% 14%, rgba(134,239,172,0.26), transparent 22%)",
-      day: "radial-gradient(circle at 78% 18%, rgba(74,222,128,0.3), transparent 24%)",
-      sunset: "radial-gradient(circle at 18% 16%, rgba(45,212,191,0.18), transparent 24%)",
-      night: "radial-gradient(circle at 70% 16%, rgba(34,197,94,0.16), transparent 24%)",
-    },
-  },
-  {
-    name: "April Showers",
-    byPhase: {
-      sunrise: "radial-gradient(circle at 16% 16%, rgba(96,165,250,0.25), transparent 22%)",
-      day: "radial-gradient(circle at 82% 18%, rgba(56,189,248,0.28), transparent 24%)",
-      sunset: "radial-gradient(circle at 18% 20%, rgba(129,140,248,0.2), transparent 24%)",
-      night: "radial-gradient(circle at 72% 14%, rgba(59,130,246,0.16), transparent 24%)",
-    },
-  },
-  {
-    name: "May Garden",
-    byPhase: {
-      sunrise: "radial-gradient(circle at 18% 14%, rgba(250,204,21,0.28), transparent 20%)",
-      day: "radial-gradient(circle at 76% 18%, rgba(52,211,153,0.32), transparent 24%)",
-      sunset: "radial-gradient(circle at 22% 18%, rgba(251,146,60,0.22), transparent 24%)",
-      night: "radial-gradient(circle at 72% 16%, rgba(16,185,129,0.16), transparent 24%)",
-    },
-  },
-  {
-    name: "June Fireflies",
-    byPhase: {
-      sunrise: "radial-gradient(circle at 18% 16%, rgba(253,224,71,0.3), transparent 18%)",
-      day: "radial-gradient(circle at 82% 14%, rgba(45,212,191,0.26), transparent 22%)",
-      sunset: "radial-gradient(circle at 20% 20%, rgba(251,191,36,0.32), transparent 24%)",
-      night: "radial-gradient(circle at 76% 18%, rgba(250,204,21,0.18), transparent 18%)",
-    },
-  },
-  {
-    name: "July Parade",
-    byPhase: {
-      sunrise: "radial-gradient(circle at 16% 14%, rgba(248,113,113,0.28), transparent 20%)",
-      day: "radial-gradient(circle at 78% 16%, rgba(59,130,246,0.3), transparent 22%)",
-      sunset: "radial-gradient(circle at 20% 18%, rgba(239,68,68,0.26), transparent 24%)",
-      night: "radial-gradient(circle at 72% 16%, rgba(191,219,254,0.18), transparent 20%)",
-    },
-  },
-  {
-    name: "August Sun",
-    byPhase: {
-      sunrise: "radial-gradient(circle at 18% 16%, rgba(251,191,36,0.32), transparent 22%)",
-      day: "radial-gradient(circle at 80% 18%, rgba(20,184,166,0.26), transparent 24%)",
-      sunset: "radial-gradient(circle at 22% 18%, rgba(249,115,22,0.3), transparent 24%)",
-      night: "radial-gradient(circle at 76% 16%, rgba(217,119,6,0.16), transparent 24%)",
-    },
-  },
-  {
-    name: "September Pencils",
-    byPhase: {
-      sunrise: "radial-gradient(circle at 18% 14%, rgba(251,191,36,0.26), transparent 22%)",
-      day: "radial-gradient(circle at 78% 18%, rgba(14,165,233,0.26), transparent 24%)",
-      sunset: "radial-gradient(circle at 20% 18%, rgba(168,85,247,0.2), transparent 24%)",
-      night: "radial-gradient(circle at 72% 16%, rgba(99,102,241,0.16), transparent 24%)",
-    },
-  },
-  {
-    name: "October Porch",
-    byPhase: {
-      sunrise: "radial-gradient(circle at 18% 14%, rgba(251,146,60,0.3), transparent 22%)",
-      day: "radial-gradient(circle at 78% 18%, rgba(132,204,22,0.22), transparent 24%)",
-      sunset: "radial-gradient(circle at 22% 18%, rgba(249,115,22,0.34), transparent 24%)",
-      night: "radial-gradient(circle at 72% 16%, rgba(234,88,12,0.18), transparent 24%)",
-    },
-  },
-  {
-    name: "November Hearth",
-    byPhase: {
-      sunrise: "radial-gradient(circle at 18% 16%, rgba(245,158,11,0.26), transparent 22%)",
-      day: "radial-gradient(circle at 80% 18%, rgba(217,119,6,0.22), transparent 24%)",
-      sunset: "radial-gradient(circle at 20% 18%, rgba(220,38,38,0.22), transparent 24%)",
-      night: "radial-gradient(circle at 72% 16%, rgba(120,53,15,0.2), transparent 24%)",
-    },
-  },
-  {
-    name: "December Lights",
-    byPhase: {
-      sunrise: "radial-gradient(circle at 18% 14%, rgba(74,222,128,0.24), transparent 20%)",
-      day: "radial-gradient(circle at 78% 18%, rgba(248,113,113,0.24), transparent 22%)",
-      sunset: "radial-gradient(circle at 20% 18%, rgba(250,204,21,0.22), transparent 24%)",
-      night: "radial-gradient(circle at 74% 16%, rgba(34,197,94,0.18), transparent 22%)",
-    },
-  },
-];
 
 const buildTheme = (phase, date) => {
   const base = THEMES[phase] || THEMES.day;
-  const monthAccent = MONTHLY_THEME_ACCENTS[date.getMonth()] || MONTHLY_THEME_ACCENTS[0];
-  const phaseAccent = monthAccent.byPhase?.[phase] || monthAccent.byPhase?.day || "";
+  const dailyTheme = getDailyTheme(date, phase);
   return {
     ...base,
-    seasonalName: monthAccent.name,
-    backgroundStyle: {
-      ...base.backgroundStyle,
-      backgroundImage: phaseAccent
-        ? `${phaseAccent}, ${base.backgroundStyle.backgroundImage}`
-        : base.backgroundStyle.backgroundImage,
-    },
+    seasonalName: dailyTheme.name,
+    backgroundStyle: dailyTheme.style,
   };
 };
 
@@ -4348,7 +4233,7 @@ function FamilyDashboard() {
       <div className={`pointer-events-none absolute inset-0 transition-colors duration-1000 ${theme.overlayClass}`} />
       <div className="relative z-10 h-full w-full flex flex-col">
         {/* UPDATED HEADER: DYNAMIC PIZZAZZ */}
-        <header className="flex justify-between items-center px-6 pt-4 pb-3 shrink-0">
+        <header className="dashboard-header flex justify-between items-center px-6 pt-4 pb-3 shrink-0">
           <div className="flex items-center gap-5">
             <button
               type="button"
@@ -4381,7 +4266,7 @@ function FamilyDashboard() {
                 <span className="relative flex h-2 w-2">
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                 </span>
-                <p className="text-[11px] font-bold text-slate-300 uppercase tracking-[0.2em]">Family Command Center</p>
+                <p className="theme-caption text-[11px] font-bold text-slate-300" title="Theme changes daily with the local date and season">{theme.seasonalName}</p>
               </div>
             </div>
           </div>
