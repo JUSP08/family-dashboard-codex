@@ -138,12 +138,32 @@ const HELPFUL_ACTIVITIES = [
   ["tomorrow-prep", "Prepare one useful thing for tomorrow", "✅", 10],
 ];
 
+const YOUNGER_ACTIVITY_IDS = new Set([
+  "walk-block", "run-place", "jumping-jacks", "hopscotch", "dance-party", "freeze-dance",
+  "yoga-balance", "stretch-full", "animal-walks", "balloon-volley", "floor-lava",
+  "follow-leader", "movement-dice", "march-music", "pillow-course", "backyard-laps",
+  "make-bed", "bedroom-floor", "toy-basket", "toy-sort", "shoes-lineup", "dish-collect",
+  "wipe-table", "set-table", "living-pillows", "blanket-fold", "remote-gather", "pet-water",
+  "plant-check", "kind-note", "family-check", "tomorrow-prep",
+]);
+
+const OLDER_ACTIVITY_IDS = new Set([
+  "bike-hills", "hike-short", "swim-laps", "run-walk", "jog-easy", "sprint-yard",
+  "obstacle-outdoor", "stairs", "bodyweight-circuit", "squat-challenge", "plank-games",
+  "wall-sit", "core-circuit", "garden-movement", "water-carry", "outgrown-clothes",
+  "laundry-sort", "laundry-fold", "laundry-put-away", "dishwasher-unload", "dishwasher-load",
+  "fridge-check", "pantry-front", "water-bottles", "recycling-sort", "mail-sort",
+  "sports-gear", "car-organize", "windowsill", "baseboard", "vacuum-small",
+]);
+
 const toTask = (type) => ([id, label, icon, minutes]) => ({
   id,
   label,
   icon,
   minutes,
   type,
+  minAge: YOUNGER_ACTIVITY_IDS.has(id) ? 4 : OLDER_ACTIVITY_IDS.has(id) ? 10 : 6,
+  maxAge: YOUNGER_ACTIVITY_IDS.has(id) ? 9 : 17,
 });
 
 export const DAILY_COACH_ACTIVITIES = [
@@ -182,11 +202,22 @@ const ranked = (activities, seed) => (
   [...activities].sort((a, b) => hashString(`${seed}|${a.id}`) - hashString(`${seed}|${b.id}`))
 );
 
-const buildChallengesForChild = (child, dateKey) => {
-  const seed = `${dateKey}|${child.id}|daily-coach-v1`;
-  const count = 3 + (hashString(seed) % 2);
-  const physical = ranked(PHYSICAL_ACTIVITIES.map(toTask("physical")), `${seed}|physical`);
-  const helpful = ranked(HELPFUL_ACTIVITIES.map(toTask("helpful")), `${seed}|helpful`);
+const resolveChildAge = (child) => {
+  const age = Number(child.age);
+  return Number.isInteger(age) && age >= 3 && age <= 18 ? age : null;
+};
+
+const isAgeAppropriate = (activity, age) => {
+  if (age === null) return activity.minAge <= 7 && activity.maxAge >= 12;
+  return age >= activity.minAge && age <= activity.maxAge;
+};
+
+const buildChallengesForChild = (child, dateKey, count) => {
+  const seed = `${dateKey}|${child.id}|daily-coach-v2`;
+  const age = resolveChildAge(child);
+  const eligible = DAILY_COACH_ACTIVITIES.filter((activity) => isAgeAppropriate(activity, age));
+  const physical = ranked(eligible.filter((activity) => activity.type === "physical"), `${seed}|physical`);
+  const helpful = ranked(eligible.filter((activity) => activity.type === "helpful"), `${seed}|helpful`);
   const selected = [physical[0], helpful[0]];
   const remaining = ranked(
     [...physical.slice(1), ...helpful.slice(1)],
@@ -210,15 +241,16 @@ export const isSummerCoachDate = (date) => date.getMonth() >= 5 && date.getMonth
 
 export const getDailyCoachTasksForDate = ({ masterTasks, childrenData, date }) => {
   const scheduledTasks = (masterTasks || []).filter((task) => isScheduledForDate(task, date));
-  if (!isSummerCoachDate(date)) return scheduledTasks;
-
-  const essentials = scheduledTasks.filter(
-    (task) => SUMMER_ESSENTIAL_IDS.has(task.id) || HYGIENE_LABEL.test(task.label || "")
-  );
+  const summer = isSummerCoachDate(date);
+  const baseTasks = summer
+    ? scheduledTasks.filter(
+      (task) => SUMMER_ESSENTIAL_IDS.has(task.id) || HYGIENE_LABEL.test(task.label || "")
+    )
+    : scheduledTasks;
   const dateKey = localDateKey(date);
   const challenges = (childrenData || [])
     .filter((child) => child.role === "child")
-    .flatMap((child) => buildChallengesForChild(child, dateKey));
+    .flatMap((child) => buildChallengesForChild(child, dateKey, summer ? 3 : 2));
 
-  return [...essentials, ...challenges];
+  return [...baseTasks, ...challenges];
 };

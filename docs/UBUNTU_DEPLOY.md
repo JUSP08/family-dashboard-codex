@@ -1,0 +1,76 @@
+# Ubuntu Dashboard Deployment
+
+The Ubuntu dashboard lives at `~/family-dashboard-codex`. Runtime data is kept
+outside Git in `backend/data/family_dashboard.db` and `backend/.env`.
+
+## Routine update
+
+Connect to the Ubuntu computer and run:
+
+```bash
+ssh sire@192.168.50.242
+cd ~/family-dashboard-codex
+./ops/update-dashboard.sh
+```
+
+The script:
+
+1. Refuses to overwrite tracked local source changes or divergent history.
+2. Fetches and fast-forwards to `origin/main`.
+3. Stops only the Python dashboard process listening on port 8099.
+4. Backs up the newest dashboard database, `.env`, and prior commit ID under
+   `~/family-dashboard-backups/<timestamp>/`.
+5. Restores the database to the canonical `backend/data` location.
+6. Updates Python and Node dependencies and builds the frontend.
+7. Starts the backend and waits for a successful health check.
+
+After it succeeds, open `http://192.168.50.242:8099/` and use `Ctrl+F5` if the
+browser still shows an older bundle.
+
+## Verify manually
+
+```bash
+cd ~/family-dashboard-codex
+git rev-parse --short HEAD
+curl -fsS http://127.0.0.1:8099/health
+tail -n 30 backend/dashboard.log
+```
+
+## One-time recovery from pre-rewrite history
+
+If the script reports that the checkout cannot fast-forward, first protect the
+runtime data. Stop the dashboard, copy the newest database and `backend/.env`
+outside the repository, then update the rewritten branch:
+
+```bash
+cd ~/family-dashboard-codex
+git fetch --prune origin
+git reset --hard origin/main
+```
+
+Restore the database to `backend/data/family_dashboard.db`, restore
+`backend/.env`, and run `./ops/update-dashboard.sh`. The hard reset is only for
+this one-time transition; routine deployments use the guarded fast-forward
+workflow above.
+
+## Private configuration
+
+Keep installation-specific values in `backend/.env`. At minimum, verify the
+settings needed by the enabled integrations:
+
+```text
+DASHBOARD_ADMIN_PIN
+GOOGLE_API_KEY
+HA_TOKEN
+TOKEN or QUSTODIO_TOKEN
+QUSTODIO_ACCOUNT_UID
+QUSTODIO_PROFILES_JSON
+```
+
+Never paste these values into chat, commit them, or include them in screenshots.
+
+## Backups and rollback
+
+Every routine update prints its backup directory. To restore data, stop the
+dashboard and copy that directory's `family_dashboard.db` and `.env` back into
+`backend/data/family_dashboard.db` and `backend/.env`, then restart the backend.

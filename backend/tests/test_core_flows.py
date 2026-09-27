@@ -22,6 +22,7 @@ from db import get_connection, init_db  # noqa: E402
 from services.redemption_service import redeem  # noqa: E402
 from services.reward_service import process_daily_rewards  # noqa: E402
 from services.qustodio_service import enqueue_qustodio_request  # noqa: E402
+from services.sparkle_service import get_or_create_daily_sparkle  # noqa: E402
 from services.state_service import (  # noqa: E402
     StateConflictError,
     get_full_state,
@@ -193,6 +194,33 @@ class CoreFlowTests(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["related_redemption_id"], "redemption-1")
         self.assertIsNotNone(rows[0]["expires_at"])
+
+    @patch("services.sparkle_service._call_gemini")
+    def test_sparkle_retries_duplicates_from_the_last_30_days(self, call_gemini):
+        recent = "Octopuses have three hearts."
+        call_gemini.side_effect = [recent, "Honey never spoils when stored properly."]
+        with get_connection() as conn:
+            conn.execute(
+                "INSERT INTO app_state (key, json_value, updated_at) VALUES (?, ?, ?)",
+                (
+                    "dailySparkleHistory",
+                    json.dumps([{"date": "2026-09-20", "content": recent}]),
+                    "2026-09-20T12:00:00Z",
+                ),
+            )
+
+        result = get_or_create_daily_sparkle(force_refresh=True, today_key="2026-09-27")
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["content"], "Honey never spoils when stored properly.")
+        self.assertEqual(call_gemini.call_count, 2)
+        with get_connection() as conn:
+            saved = json.loads(
+                conn.execute(
+                    "SELECT json_value FROM app_state WHERE key = 'dailySparkleHistory'"
+                ).fetchone()["json_value"]
+            )
+        self.assertEqual(saved[0], {"date": "2026-09-27", "content": result["content"]})
 
 
 if __name__ == "__main__":

@@ -110,16 +110,15 @@ Runtime data is stored only in `backend/data/family_dashboard.db`. Database and
 environment files are excluded from Git. Before updating, stop the dashboard
 and copy the database plus `backend/.env` to encrypted storage.
 
-On Ubuntu:
+On Ubuntu, routine updates are handled by the guarded deployment script:
 
 ```bash
 cd ~/family-dashboard-codex
-cp backend/data/family_dashboard.db \
-  "$HOME/family_dashboard.db.backup-$(date +%Y%m%d-%H%M%S)"
-git pull --ff-only origin main
-npm --prefix frontend ci
-npm --prefix frontend run build
+./ops/update-dashboard.sh
 ```
+
+See [`docs/UBUNTU_DEPLOY.md`](docs/UBUNTU_DEPLOY.md) for the full update,
+verification, one-time history migration, and rollback instructions.
 
 On Windows, `RunScript.bat` rebuilds the latest frontend and starts the backend.
 Restoring consists of replacing the stopped dashboard's database and `.env`

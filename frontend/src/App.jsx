@@ -1217,9 +1217,9 @@ const CoachView = ({
             <h1 className="text-xl font-bold text-white tracking-tight">{phaseLabel}</h1>
             <p className="text-[10px] text-slate-400 uppercase tracking-widest font-medium flex items-center gap-2">
               <span>{currentTime.toLocaleDateString([], { weekday: "long" })}</span>
-              {isSummerCoachDate(currentTime) && (
-                <span className="text-amber-300">Summer Mix · {DAILY_COACH_ACTIVITIES.length} ideas</span>
-              )}
+              <span className="text-amber-300">
+                {isSummerCoachDate(currentTime) ? "Summer Mix" : "Daily Mix"} · {DAILY_COACH_ACTIVITIES.length} ideas
+              </span>
             </p>
           </div>
         </div>
@@ -2382,6 +2382,11 @@ const SettingsView = ({
 
   // Helper functions
   const updateChildColor = (childId, newColor) => { setChildrenData(prev => prev.map(c => c.id === childId ? { ...c, color: newColor } : c)); };
+  const updateChildAge = (childId, value) => {
+    const parsed = Number(value);
+    const age = value === "" || !Number.isFinite(parsed) ? null : Math.min(18, Math.max(3, Math.round(parsed)));
+    setChildrenData(prev => prev.map(c => c.id === childId ? { ...c, age } : c));
+  };
   const handleChange = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
   const resetForm = () => { setForm(emptyForm); setEditingId(null); };
   const upsertTemplateFromPayload = (payload) => { setGigTemplates((prev) => { const idx = prev.findIndex((t) => t.title.toLowerCase() === payload.title.toLowerCase()); const base = { id: idx >= 0 ? prev[idx].id : `tpl-${Date.now()}`, ...payload }; if (idx >= 0) { const copy = [...prev]; copy[idx] = { ...copy[idx], ...base }; return copy; } return [...prev, base]; }); };
@@ -2663,6 +2668,20 @@ const SettingsView = ({
                 </div>
                 <div className="text-center w-full">
                   <div className="font-bold text-slate-200">{child.name}</div>
+                  <label className="mt-2 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    Age
+                    <input
+                      type="number"
+                      min="3"
+                      max="18"
+                      inputMode="numeric"
+                      value={child.age ?? ""}
+                      onChange={(e) => updateChildAge(child.id, e.target.value)}
+                      className="mt-1 h-8 w-16 rounded-lg border border-white/10 bg-slate-950/60 px-2 text-center text-sm text-slate-200 focus:border-emerald-400 focus:outline-none"
+                      placeholder="--"
+                      aria-label={`${child.name} age`}
+                    />
+                  </label>
                   <div className="mt-2 mb-3"><label className="cursor-pointer inline-block px-3 py-1 bg-slate-700 hover:bg-slate-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-full transition-colors">Upload<input type="file" accept="image/*" className="hidden" onChange={(e) => handlePhotoUpload(e, child.id)} /></label></div>
                   <div className="flex flex-wrap justify-center gap-1.5 px-2">{COLOR_OPTIONS.map(color => (<button key={color} onClick={() => updateChildColor(child.id, color)} className={`w-4 h-4 rounded-full ${color} ${child.color === color ? 'ring-2 ring-white scale-110' : 'opacity-60 hover:opacity-100'}`} title="Pick Color" />))}</div>
                 </div>
