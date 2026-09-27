@@ -6,6 +6,7 @@ $FrontendDir = Join-Path $RepoRoot "frontend"
 
 $VenvPython = Join-Path $RepoRoot "backend\.venv\Scripts\python.exe"
 $PythonExe = if (Test-Path $VenvPython) { $VenvPython } else { "python" }
+$PidFile = Join-Path $BackendDir "data\dashboard.pid"
 
 Write-Host "== Family Dashboard Windows: START ==" -ForegroundColor Cyan
 Write-Host "RepoRoot: $RepoRoot"
@@ -13,13 +14,10 @@ Write-Host "BackendDir: $BackendDir"
 Write-Host "FrontendDir: $FrontendDir"
 Write-Host "PythonExe: $PythonExe"
 
-$DistIndex = Join-Path $FrontendDir "dist\index.html"
-if (-not (Test-Path $DistIndex)) {
-    Write-Host "Frontend build not found. Running npm run build..." -ForegroundColor Yellow
-    Push-Location $FrontendDir
-    npm run build
-    Pop-Location
-}
+Write-Host "Building the latest frontend..." -ForegroundColor Yellow
+Push-Location $FrontendDir
+npm run build
+Pop-Location
 
 $PortBusy = $false
 try {
@@ -36,6 +34,8 @@ if (-not $PortBusy) {
     Write-Host "Starting backend..." -ForegroundColor Yellow
     Push-Location $BackendDir
     $proc = Start-Process -FilePath $PythonExe -ArgumentList "app.py" -WorkingDirectory $BackendDir -PassThru
+    New-Item -ItemType Directory -Path (Split-Path -Parent $PidFile) -Force | Out-Null
+    Set-Content -LiteralPath $PidFile -Value $proc.Id
     Pop-Location
     Write-Host "Started backend PID: $($proc.Id)" -ForegroundColor Green
 } else {

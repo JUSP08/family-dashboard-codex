@@ -10,6 +10,8 @@ from db import get_connection, log_event, utc_now_iso
 from services.qustodio_exact import QustodioController
 
 TOKEN_REFRESH_INTERVAL_DAYS = 30
+MAX_QUEUE_RETRIES = 5
+QUEUE_LIFETIME_HOURS = 48
 _TOKEN_REFRESH_LOCK = threading.Lock()
 
 
@@ -19,14 +21,16 @@ def enqueue_qustodio_request(
     qustodio_uid: str,
     minutes: int,
     last_error: str,
+    redemption_id: str | None = None,
 ) -> None:
     now = datetime.datetime.now(timezone.utc)
     next_retry_at = now + timedelta(hours=6)
+    expires_at = now + timedelta(hours=QUEUE_LIFETIME_HOURS)
 
     with get_connection() as conn:
         conn.execute(
             """
-            INSERT INTO qustodio_queue (
+            INSERT OR IGNORE INTO qustodio_queue (
                 child_id,
                 child_name,
                 qustodio_uid,
@@ -36,9 +40,10 @@ def enqueue_qustodio_request(
                 next_retry_at,
                 created_at,
                 last_error,
-                related_redemption_id
+                related_redemption_id,
+                expires_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 child_id,
@@ -50,17 +55,16 @@ def enqueue_qustodio_request(
                 next_retry_at.isoformat(),
                 utc_now_iso(),
                 last_error,
-                None,
+                redemption_id,
+                expires_at.isoformat(),
             ),
         )
 
 
-def _mask_token(token: str | None, keep: int = 10) -> str:
+def _mask_token(token: str | None) -> str:
     if not token:
         return "(missing)"
-    if len(token) <= keep:
-        return token
-    return f"{token[:keep]}..."
+    return "configured"
 
 
 def refresh_qustodio_token(reason: str) -> tuple[bool, str, str]:
@@ -236,6 +240,7 @@ def grant_tablet_time(
     name: str,
     minutes: int,
     child_id: str | None = None,
+    redemption_id: str | None = None,
 ) -> dict:
     success, detail, captured_output = _run_exact_add_time_with_token_recovery(
         name=name,
@@ -275,6 +280,7 @@ def grant_tablet_time(
         qustodio_uid=uid,
         minutes=minutes,
         last_error=detail,
+        redemption_id=redemption_id,
     )
 
     log_event(
@@ -302,7 +308,8 @@ def retry_qustodio_queue_once() -> None:
     with get_connection() as conn:
         rows = conn.execute(
             """
-            SELECT id, child_id, child_name, qustodio_uid, minutes
+            SELECT id, child_id, child_name, qustodio_uid, minutes,
+                   retry_count, expires_at
             FROM qustodio_queue
             WHERE status IN ('pending', 'failed')
               AND (next_retry_at IS NULL OR next_retry_at <= ?)
@@ -317,6 +324,21 @@ def retry_qustodio_queue_once() -> None:
         child_name = row["child_name"]
         qustodio_uid = row["qustodio_uid"]
         minutes = row["minutes"]
+
+        if (
+            row["retry_count"] >= MAX_QUEUE_RETRIES
+            or (row["expires_at"] and row["expires_at"] <= now)
+        ):
+            with get_connection() as conn:
+                conn.execute(
+                    """
+                    UPDATE qustodio_queue
+                    SET status = ?, last_error = ?
+                    WHERE id = ?
+                    """,
+                    ("manual_review", "Automatic retry limit reached", queue_id),
+                )
+            continue
 
         success, detail, captured_output = _run_exact_add_time_with_token_recovery(
             name=child_name,

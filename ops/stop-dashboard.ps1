@@ -1,23 +1,30 @@
-$ErrorActionPreference = "SilentlyContinue"
+$ErrorActionPreference = "Stop"
 
 Write-Host "== Family Dashboard Windows: STOP ==" -ForegroundColor Cyan
 
-$Connections = Get-NetTCPConnection -LocalPort 8099 -ErrorAction SilentlyContinue
+$RepoRoot = Split-Path -Parent $PSScriptRoot
+$PidFile = Join-Path $RepoRoot "backend\data\dashboard.pid"
 
-if (-not $Connections) {
-    Write-Host "No process is using port 8099." -ForegroundColor Yellow
+if (-not (Test-Path -LiteralPath $PidFile)) {
+    Write-Host "No dashboard PID file was found. Nothing was stopped." -ForegroundColor Yellow
     return
 }
 
-$Pids = $Connections | Select-Object -ExpandProperty OwningProcess -Unique
+$DashboardPid = [int](Get-Content -LiteralPath $PidFile -Raw)
+$ProcessInfo = Get-CimInstance Win32_Process -Filter "ProcessId = $DashboardPid" -ErrorAction SilentlyContinue
 
-foreach ($pid in $Pids) {
-    if ($pid -and $pid -ne 0) {
-        try {
-            Stop-Process -Id $pid -Force
-            Write-Host "Stopped process on port 8099. PID: $pid" -ForegroundColor Green
-        } catch {
-            Write-Host "Failed to stop PID $pid" -ForegroundColor Red
-        }
-    }
+if (-not $ProcessInfo) {
+    Remove-Item -LiteralPath $PidFile -Force
+    Write-Host "The saved dashboard process is no longer running." -ForegroundColor Yellow
+    return
 }
+
+$PortOwner = Get-NetTCPConnection -LocalPort 8099 -State Listen -ErrorAction SilentlyContinue |
+    Where-Object { $_.OwningProcess -eq $DashboardPid }
+if (-not $PortOwner) {
+    throw "PID $DashboardPid does not own dashboard port 8099. Refusing to stop it."
+}
+
+Stop-Process -Id $DashboardPid -Force
+Remove-Item -LiteralPath $PidFile -Force
+Write-Host "Stopped dashboard PID: $DashboardPid" -ForegroundColor Green

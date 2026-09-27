@@ -115,3 +115,24 @@ def send_redemption_notification(
             "webhook_id": settings.ha_redemption_webhook_id,
             "error": str(exc),
         }
+
+
+def send_daily_reward_notification(payload: dict) -> dict:
+    webhook_url = f"{settings.ha_url}/api/webhook/{settings.ha_reward_webhook_id}"
+    try:
+        response = requests.post(
+            webhook_url,
+            json=payload,
+            timeout=settings.ha_notify_timeout_seconds,
+        )
+        response.raise_for_status()
+        return {"success": True, "status": "sent"}
+    except Exception as exc:
+        log_event(
+            event_type="daily_reward_notification_failed",
+            payload={"error": str(exc), "child_id": payload.get("child_id")},
+            status="failed",
+            entity_type="notification",
+            entity_id=settings.ha_reward_webhook_id,
+        )
+        return {"success": False, "status": "failed", "error": str(exc)}

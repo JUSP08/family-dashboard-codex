@@ -9,6 +9,7 @@ import requests
 from config import settings
 from db import get_connection, log_event
 from services.qustodio_service import refresh_qustodio_token_if_due, retry_qustodio_queue_once
+from services.reward_service import process_daily_rewards
 
 
 _WORKER_STARTED = False
@@ -45,6 +46,21 @@ def _retry_qustodio_queue_loop() -> None:
                 status="error",
                 entity_type="worker",
                 entity_id="qustodio_queue",
+            )
+        time.sleep(60)
+
+
+def _daily_reward_loop() -> None:
+    while True:
+        try:
+            process_daily_rewards()
+        except Exception as exc:
+            log_event(
+                event_type="daily_reward_worker_error",
+                payload={"error": str(exc)},
+                status="error",
+                entity_type="worker",
+                entity_id="daily_rewards",
             )
         time.sleep(60)
 
@@ -157,5 +173,8 @@ def start_background_workers() -> None:
 
     t2 = threading.Thread(target=_retry_qustodio_queue_loop, daemon=True)
     t2.start()
+
+    t3 = threading.Thread(target=_daily_reward_loop, daemon=True)
+    t3.start()
 
     _WORKER_STARTED = True

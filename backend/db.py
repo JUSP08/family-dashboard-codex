@@ -21,8 +21,9 @@ def ensure_parent_dir(path_str: str) -> None:
 @contextmanager
 def get_connection():
     ensure_parent_dir(settings.sqlite_path)
-    conn = sqlite3.connect(settings.sqlite_path)
+    conn = sqlite3.connect(settings.sqlite_path, timeout=15)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA busy_timeout = 15000")
     try:
         yield conn
         conn.commit()
@@ -41,6 +42,13 @@ def init_db() -> None:
                 json_value TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS state_meta (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                revision INTEGER NOT NULL DEFAULT 0
+            );
+
+            INSERT OR IGNORE INTO state_meta (id, revision) VALUES (1, 0);
 
             CREATE TABLE IF NOT EXISTS event_log (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -77,6 +85,37 @@ def init_db() -> None:
                 last_error TEXT,
                 related_redemption_id TEXT
             );
+
+            CREATE TABLE IF NOT EXISTS redemptions (
+                id TEXT PRIMARY KEY,
+                child_id TEXT NOT NULL,
+                child_name TEXT NOT NULL,
+                reward_type TEXT NOT NULL,
+                target TEXT NOT NULL,
+                amount REAL NOT NULL,
+                balance_before REAL NOT NULL,
+                balance_after REAL NOT NULL,
+                status TEXT NOT NULL,
+                notification_status TEXT,
+                qustodio_status TEXT,
+                detail TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+            """
+        )
+
+        columns = {
+            row["name"] for row in conn.execute("PRAGMA table_info(qustodio_queue)")
+        }
+        if "expires_at" not in columns:
+            conn.execute("ALTER TABLE qustodio_queue ADD COLUMN expires_at TEXT")
+
+        conn.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_qustodio_redemption
+            ON qustodio_queue (related_redemption_id)
+            WHERE related_redemption_id IS NOT NULL
             """
         )
 

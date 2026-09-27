@@ -1,0 +1,13 @@
+**/.env
+**/data/*.db
+**/data/*.db-*
+**/backend/data/*.db
+**/backend/data/*.db-*
+**/.tmp/
+**/__pycache__/
+**/*.pyc
+**/node_modules/
+**/dist/
+localstate-export*.json
+frontend/src/*BU*.jsx
+frontend/src/*Copy*.jsx

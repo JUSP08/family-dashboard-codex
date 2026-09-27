@@ -1,4 +1,5 @@
 import datetime
+import json
 
 import requests
 from dotenv import dotenv_values, set_key
@@ -12,14 +13,15 @@ class QustodioController:
         self.account_uid = settings.qustodio_account_uid
         self.base_url = "https://api.qustodio.com/v2"
         self.token = self._load_token()
+        try:
+            profiles = json.loads(settings.qustodio_profiles_json)
+        except json.JSONDecodeError:
+            profiles = {}
         self.kids = {
-            "tristan": "REMOVED_PRIVATE_IDENTIFIER",
-            "blake": "REMOVED_PRIVATE_IDENTIFIER",
-            "hannah": "REMOVED_PRIVATE_IDENTIFIER",
-            "sloane": "REMOVED_PRIVATE_IDENTIFIER",
-            "emerson": "REMOVED_PRIVATE_IDENTIFIER",
-            "guinevere": "",
-        }
+            str(name).lower(): str(uid)
+            for name, uid in profiles.items()
+            if name and uid
+        } if isinstance(profiles, dict) else {}
 
     def get_auth_header(self):
         self.token = self._load_token()
@@ -102,7 +104,7 @@ class QustodioController:
 
                 self.token = token
                 self._update_env(self.token)
-                print(f"SUCCESS: Token refreshed ({self.token[:10]}...)")
+                print("SUCCESS: Token refreshed.")
                 return self.token
 
             except Exception as exc:

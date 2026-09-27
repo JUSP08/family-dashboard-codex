@@ -10,6 +10,7 @@ STATE_KEYS = [
     "calendarFilters",
     "dailyRewards",
     "completedTasks",
+    "dailyCoachTaskManifest",
     "gigRequests",
     "householdSuggestions",
 ]

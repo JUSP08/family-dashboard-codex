@@ -1,4 +1,4 @@
 @echo off
-cd /d "C:\family-dashboard-windows\frontend"
+cd /d "%~dp0"
 call npm run build
 pause

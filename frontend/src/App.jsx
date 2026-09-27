@@ -90,12 +90,12 @@ const HA_URL = "http://192.168.50.50:8123"; // ⚠️ Replace with your real IP
    DATA CONSTANTS
 -------------------------------------------------- */
 const CHILDREN = [
-  { id: "c7", name: "Blake", role: "child", color: "bg-blue-500", avatar: "🧢", img: "/kids/blake.jpg", qustodioUid: "REMOVED_PRIVATE_IDENTIFIER" },
-  { id: "c8", name: "Hannah", role: "child", color: "bg-pink-500", avatar: "👱‍♀️", img: "/kids/hannah.jpg", qustodioUid: "REMOVED_PRIVATE_IDENTIFIER" },
-  { id: "c3", name: "Tristan", role: "child", color: "bg-emerald-500", avatar: "🦖", img: "/kids/tristan.jpg", qustodioUid: "REMOVED_PRIVATE_IDENTIFIER" },
-  { id: "c4", name: "Sloane", role: "child", color: "bg-rose-500", avatar: "🦄", img: "/kids/sloane.jpg", qustodioUid: "REMOVED_PRIVATE_IDENTIFIER" },
-  { id: "c5", name: "Emerson", role: "child", color: "bg-orange-500", avatar: "🦁", img: "/kids/emerson.jpg", qustodioUid: "REMOVED_PRIVATE_IDENTIFIER" },
-  { id: "c6", name: "Guinevere", role: "child", color: "bg-cyan-500", avatar: "👶", img: "/kids/guinevere.jpg", qustodioUid: "" },
+  { id: "c7", name: "Blake", role: "child", color: "bg-blue-500", avatar: "🧢", img: "/kids/blake.jpg" },
+  { id: "c8", name: "Hannah", role: "child", color: "bg-pink-500", avatar: "👱‍♀️", img: "/kids/hannah.jpg" },
+  { id: "c3", name: "Tristan", role: "child", color: "bg-emerald-500", avatar: "🦖", img: "/kids/tristan.jpg" },
+  { id: "c4", name: "Sloane", role: "child", color: "bg-rose-500", avatar: "🦄", img: "/kids/sloane.jpg" },
+  { id: "c5", name: "Emerson", role: "child", color: "bg-orange-500", avatar: "🦁", img: "/kids/emerson.jpg" },
+  { id: "c6", name: "Guinevere", role: "child", color: "bg-cyan-500", avatar: "👶", img: "/kids/guinevere.jpg" },
   { id: "p1", name: "Dad", role: "parent", color: "bg-slate-600", avatar: "👨" },
   { id: "p2", name: "Mom", role: "parent", color: "bg-slate-600", avatar: "👩" },
 ];
@@ -251,8 +251,6 @@ const CALENDAR_SOURCES = [
   { type: "google_api", id: "dfe3olntlh7eem1l3v7ra1tu3cfg8o3u@import.calendar.google.com", label: "RES Calendar", color: "border-rose-400" },
 ];
 
-const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || "";
-
 const HOUSEHOLD_GIG_IDEAS = [
   { title: "Sock Sort Sprint", description: "Match clean socks and put them in the right drawers.", successCriteria: "No loose sock pile left behind.", expectedMinutes: 10, compensationType: "tablet", compensationAmount: 10, icon: "🧦" },
   { title: "Entryway Reset", description: "Line up shoes, hang bags, and clear the floor near the door.", successCriteria: "The entryway is walkable and tidy.", expectedMinutes: 10, compensationType: "tablet", compensationAmount: 10, icon: "👟" },
@@ -273,7 +271,6 @@ const HOUSEHOLD_GIG_IDEAS = [
   { title: "Fridge Quick Check", description: "Find expired snacks or empty containers with parent approval before tossing.", successCriteria: "Questionable items are shown to a parent.", expectedMinutes: 10, compensationType: "tablet", compensationAmount: 10, icon: "🧊" },
   { title: "Remote Control Roundup", description: "Find remotes, game controllers, and chargers and return them to their spot.", successCriteria: "Shared electronics are easy to find.", expectedMinutes: 8, compensationType: "tablet", compensationAmount: 10, icon: "🎮" },
 ];
-
 /* --------------------------------------------------
    HELPERS
 -------------------------------------------------- */
@@ -2164,24 +2161,38 @@ const SettingsView = ({
   const [adminPinInput, setAdminPinInput] = useState("");
   const [adminPinError, setAdminPinError] = useState(false);
   const [showSmartHomeAdmin, setShowSmartHomeAdmin] = useState(false);
-  const [qustodioToken, setQustodioToken] = useState("");
+  const [qustodioTokenSummary, setQustodioTokenSummary] = useState("");
   const [qustodioTokenLoading, setQustodioTokenLoading] = useState(false);
   const [qustodioTokenRefreshing, setQustodioTokenRefreshing] = useState(false);
   const [qustodioTokenStatus, setQustodioTokenStatus] = useState("");
-  const CONFIG_PIN = "7433";
-
   const handleAdminPinClick = (num) => { if (adminPinInput.length < 4) setAdminPinInput(prev => prev + num); };
   const handleAdminPinBackspace = () => setAdminPinInput(prev => prev.slice(0, -1));
-  const handleAdminPinSubmit = () => {
-    if (adminPinInput === CONFIG_PIN) {
+  const handleAdminPinSubmit = async () => {
+    try {
+      const response = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin: adminPinInput })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) throw new Error(data.error || "Unable to unlock admin settings");
       setIsAdmin(true);
       setShowAdminPin(false);
       setAdminPinInput("");
-    } else {
+      loadQustodioToken();
+    } catch (err) {
       setAdminPinError(true);
+      setQustodioTokenStatus(err.message || "Unable to unlock admin settings");
       setAdminPinInput("");
       setTimeout(() => setAdminPinError(false), 500);
     }
+  };
+
+  const lockAdmin = async () => {
+    await fetch("/api/admin/logout", { method: "POST" }).catch(() => {});
+    setIsAdmin(false);
+    setQustodioTokenSummary("");
+    setQustodioTokenStatus("");
   };
 
   const loadQustodioToken = async () => {
@@ -2192,7 +2203,7 @@ const SettingsView = ({
       if (!response.ok || !data.success) {
         throw new Error(data.error || "Unable to load token");
       }
-      setQustodioToken(data.token || "");
+      setQustodioTokenSummary(data.masked_token || "");
       setQustodioTokenStatus(data.present ? "Token loaded." : "No token found.");
     } catch (err) {
       setQustodioTokenStatus(err.message || "Unable to load token.");
@@ -2201,19 +2212,13 @@ const SettingsView = ({
     }
   };
 
-  useEffect(() => {
-    if (isAdmin) {
-      loadQustodioToken();
-    }
-  }, [isAdmin]);
-
   const refreshQustodioToken = async () => {
     setQustodioTokenRefreshing(true);
     setQustodioTokenStatus("Refreshing token...");
     try {
       const response = await fetch("/api/qustodio/token/refresh", { method: "POST" });
       const data = await response.json();
-      setQustodioToken(data.token || "");
+      setQustodioTokenSummary(data.masked_token || "");
       if (!response.ok || !data.success) {
         throw new Error(data.detail || data.error || "Token refresh failed");
       }
@@ -2223,12 +2228,6 @@ const SettingsView = ({
     } finally {
       setQustodioTokenRefreshing(false);
     }
-  };
-
-  const copyQustodioToken = () => {
-    if (!qustodioToken) return;
-    navigator.clipboard?.writeText(qustodioToken);
-    setQustodioTokenStatus("Token copied.");
   };
 
   // --- EMOJI STATE ---
@@ -2551,7 +2550,7 @@ const SettingsView = ({
         </div>
 
         <button
-          onClick={() => { if (isAdmin) { setIsAdmin(false); setShowSmartHomeAdmin(false); } else { setShowAdminPin(true); } }}
+          onClick={() => { if (isAdmin) { lockAdmin(); setShowSmartHomeAdmin(false); } else { setShowAdminPin(true); } }}
           className={`flex min-h-11 items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border ${isAdmin ? "bg-rose-500/15 border-rose-400/30 text-rose-300 hover:bg-rose-500/25" : "bg-emerald-500/15 border-emerald-400/30 text-emerald-300 hover:bg-emerald-500/25"}`}
         >
           {isAdmin ? <Lock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
@@ -2624,14 +2623,6 @@ const SettingsView = ({
                 <span>Reload</span>
               </button>
               <button
-                onClick={copyQustodioToken}
-                disabled={!qustodioToken}
-                className="px-3 py-2 rounded-xl bg-indigo-600/80 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold flex items-center gap-2 transition-all"
-              >
-                <Copy className="w-4 h-4" />
-                <span>Copy</span>
-              </button>
-              <button
                 onClick={refreshQustodioToken}
                 disabled={qustodioTokenRefreshing}
                 className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold flex items-center gap-2 shadow-lg shadow-emerald-900/30 transition-all"
@@ -2643,9 +2634,9 @@ const SettingsView = ({
           </div>
 
           <div className="rounded-2xl bg-slate-950/70 border border-white/10 p-4">
-            <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-2">Current Token</div>
+            <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-2">Token Status</div>
             <div className="min-h-12 max-h-28 overflow-y-auto break-all font-mono text-xs leading-relaxed text-slate-200">
-              {qustodioTokenLoading ? "Loading..." : qustodioToken || "No token found."}
+              {qustodioTokenLoading ? "Loading..." : qustodioTokenSummary || "No token found."}
             </div>
           </div>
 
@@ -3321,12 +3312,14 @@ const SettingsView = ({
 /* --------------------------------------------------
    BALANCES VIEW (Wallet + Redemption)
 -------------------------------------------------- */
-const BalancesView = ({ theme, childrenData, wallet, setWallet, dailyRewards = {}, currentTime = new Date() }) => {
+const BalancesView = ({ theme, childrenData, wallet, setWallet, dailyRewards = {}, currentTime = new Date(), serverRevisionRef }) => {
   // REDEMPTION STATE
   const [redeemingChildId, setRedeemingChildId] = useState(null);
   const [redeemType, setRedeemType] = useState("time"); // 'time' or 'money'
   const [redeemAmount, setRedeemAmount] = useState("");
   const [redeemTarget, setRedeemTarget] = useState("Tablet");
+  const [redeemSubmitting, setRedeemSubmitting] = useState(false);
+  const [redeemError, setRedeemError] = useState("");
 
   const kids = childrenData.filter(c => c.role === 'child');
   const redeemingChild = childrenData.find(c => c.id === redeemingChildId);
@@ -3363,31 +3356,6 @@ const BalancesView = ({ theme, childrenData, wallet, setWallet, dailyRewards = {
     setRedeemAmount(next === 0 ? "" : String(next));
   };
 
-  // --- HELPER: Send Notification ---
-  const sendNotification = async (childName, type, amount, target) => {
-    const PI_IP = window.location.origin;
-
-    const payload = {
-      child_name: childName,
-      amount,
-      type: type === "time" ? "minutes" : type,
-      target,
-    };
-
-    const response = await fetch(`${PI_IP}/api/notify`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`Notify failed: ${response.status} ${text}`);
-    }
-
-    return response.json();
-  };
-
   const handleRedeemSubmit = async (e) => {
     e.preventDefault();
 
@@ -3411,65 +3379,54 @@ const BalancesView = ({ theme, childrenData, wallet, setWallet, dailyRewards = {
       return;
     }
 
-    // 1. Update Local Wallet (authoritative local redemption)
-      setWallet(prev => ({
-        ...prev,
-        [redeemingChildId]: {
-          ...prev[redeemingChildId],
-          [redeemType]: currentBalance - amount
-        }
-      }));
-
-      // 2. Send backend notification
+    setRedeemSubmitting(true);
+    setRedeemError("");
+    try {
+      const attemptKey = JSON.stringify({
+        child_id: child.id,
+        type: redeemType,
+        amount,
+        target: redeemTarget
+      });
+      let pendingAttempt = null;
       try {
-        await sendNotification(child.name, redeemType, amount, redeemTarget);
-        console.log("✅ Redemption notification sent");
-      } catch (err) {
-        console.error("❌ Notification failed:", err);
+        pendingAttempt = JSON.parse(sessionStorage.getItem("pendingRedemption") || "null");
+      } catch {
+        pendingAttempt = null;
+      }
+      const redemptionId = pendingAttempt?.attemptKey === attemptKey
+        ? pendingAttempt.redemptionId
+        : globalThis.crypto?.randomUUID?.() || `redeem-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      sessionStorage.setItem("pendingRedemption", JSON.stringify({ attemptKey, redemptionId }));
+      const response = await fetch("/api/redemptions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          redemption_id: redemptionId,
+          child_id: child.id,
+          child_name: child.name,
+          type: redeemType,
+          amount,
+          target: redeemTarget
+        })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Redemption could not be completed");
       }
 
-      // 3. Send Qustodio grant only for tablet time
-      const normalizedTarget = String(redeemTarget || "").toLowerCase();
-      const isTabletRedemption =
-        redeemType === "time" &&
-        (normalizedTarget.includes("tablet") || normalizedTarget.includes("ipad"));
-
-      const qUid = child.qustodioUid || "";
-
-      if (isTabletRedemption && qUid) {
-        try {
-          const response = await fetch("/api/qustodio", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              child_id: child.id,
-              uid: qUid,
-              name: child.name.toLowerCase(),
-              minutes: amount
-            })
-          });
-
-          const data = await response.json().catch(() => ({}));
-
-          if (!response.ok) {
-            console.error("❌ Qustodio HTTP error:", response.status, data);
-          } else {
-            console.log("✅ Qustodio response:", data);
-          }
-        } catch (err) {
-          console.error("❌ Qustodio fetch error:", err);
-        }
-      } else {
-        console.log("Qustodio skipped", {
-          redeemType,
-          redeemTarget,
-          hasUid: !!qUid
-        });
+      if (data.wallet && typeof data.wallet === "object") setWallet(data.wallet);
+      if (Number.isInteger(data.revision) && serverRevisionRef) {
+        serverRevisionRef.current = data.revision;
       }
-
-      // 4. Reset Form
+      sessionStorage.removeItem("pendingRedemption");
       setRedeemingChildId(null);
       setRedeemAmount("");
+    } catch (err) {
+      setRedeemError(err.message || "Redemption could not be completed");
+    } finally {
+      setRedeemSubmitting(false);
+    }
   };
 
   const amountNumber = Number(redeemAmount) || 0;
@@ -3654,9 +3611,10 @@ const BalancesView = ({ theme, childrenData, wallet, setWallet, dailyRewards = {
                 </div>
               </div>
 
-              <button type="submit" className="w-full py-4 mt-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl shadow-xl shadow-blue-900/20 transition-all flex items-center justify-center gap-2">
+              {redeemError && <p className="text-sm text-rose-300" role="alert">{redeemError}</p>}
+              <button type="submit" disabled={redeemSubmitting} className="w-full py-4 mt-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-2xl shadow-xl shadow-blue-900/20 transition-all flex items-center justify-center gap-2">
                 <span>
-                  {redeemType === "time" && amountNumber > 0
+                  {redeemSubmitting ? "Processing..." : redeemType === "time" && amountNumber > 0
                     ? `Redeem ${amountNumber} min Screen Time`
                     : redeemType === "money" && amountNumber > 0
                       ? `Redeem $${amountNumber.toFixed(2)}`
@@ -3768,12 +3726,26 @@ function FamilyDashboard() {
 
   // --- DAILY REWARD TRACKING ---
   const [dailyRewards, setDailyRewards] = useState({});
+  const [completedTasks, setCompletedTasks] = useState(() => {
+    try {
+      const saved = localStorage.getItem("familyCompletedTasks");
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
+  const [dailyCoachTaskManifest, setDailyCoachTaskManifest] = useState(() => {
+    try {
+      const saved = localStorage.getItem("dailyCoachTaskManifest");
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
 
   // --- Shared (Pi) persistence ---
   // We bootstrap from localStorage (fast/offline), then hydrate from the RPI4 via /api/state.
   // After hydration, we debounce-save back to the server so every device stays in sync.
   const serverHydratedRef = useRef(false);
   const serverSaveTimerRef = useRef(null);
+  const serverRevisionRef = useRef(0);
+  const skipNextServerSaveRef = useRef(false);
 
   const isPlainObject = (v) => v && typeof v === "object" && !Array.isArray(v);
 
@@ -3790,6 +3762,13 @@ function FamilyDashboard() {
         // Only set if present; otherwise keep what localStorage/defaults provided.
         if (cancelled) return;
 
+        serverRevisionRef.current = Number.isInteger(data._revision) ? data._revision : 0;
+        const hasServerState = [
+          "childrenData", "wallet", "customEvents", "hiddenEventIds", "masterTasks",
+          "gigs", "gigTemplates", "gigRequests", "householdSuggestions", "calendarSources", "calendarFilters",
+          "dailyRewards", "completedTasks", "dailyCoachTaskManifest"
+        ].some(key => Object.prototype.hasOwnProperty.call(data, key));
+
         if (Array.isArray(data.childrenData)) setChildrenData(data.childrenData);
         if (isPlainObject(data.wallet)) setWallet(data.wallet);
         if (Array.isArray(data.customEvents)) setCustomEvents(data.customEvents);
@@ -3805,8 +3784,29 @@ function FamilyDashboard() {
         // ✅ Load daily reward tracking and today's completed task state from server
         if (isPlainObject(data.dailyRewards)) setDailyRewards(data.dailyRewards);
         if (isPlainObject(data.completedTasks)) setCompletedTasks(data.completedTasks);
+        if (isPlainObject(data.dailyCoachTaskManifest)) setDailyCoachTaskManifest(data.dailyCoachTaskManifest);
 
+        if (!hasServerState) {
+          const bootstrapResponse = await fetch("/api/state", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              _revision: serverRevisionRef.current,
+              childrenData, wallet, customEvents, hiddenEventIds, masterTasks, gigs,
+              gigTemplates, gigRequests, householdSuggestions, calendarSources, calendarFilters,
+              dailyRewards, completedTasks, dailyCoachTaskManifest
+            })
+          });
+          const bootstrapData = await bootstrapResponse.json().catch(() => ({}));
+          if (!bootstrapResponse.ok) throw new Error(bootstrapData.error || `HTTP ${bootstrapResponse.status}`);
+          serverRevisionRef.current = bootstrapData.state?._revision ?? serverRevisionRef.current;
+        }
         serverHydratedRef.current = true;
+        if (!hasServerState) {
+          // The generated daily manifest is prepared during the first render.
+          // Clone it once after bootstrap so the shared-state save effect persists it.
+          setDailyCoachTaskManifest(previous => ({ ...previous }));
+        }
       } catch (e) {
         // Server might be offline (or you haven't deployed server.py yet). In that case,
         // keep using localStorage and don't start pushing writes to the server.
@@ -3827,13 +3827,8 @@ function FamilyDashboard() {
     };
   }, []);
 
-  const [completedTasks, setCompletedTasks] = useState(() => {
-    try {
-      const saved = localStorage.getItem("familyCompletedTasks");
-      return saved ? JSON.parse(saved) : {};
-    } catch { return {}; }
-  });
   const [calendarView, setCalendarView] = useState("week");
+  const [calendarRefreshTick, setCalendarRefreshTick] = useState(0);
   const [weather, setWeather] = useState(null);
   const [selectedSchool, setSelectedSchool] = useState("2607"); // Default to JES
   const [schoolMenu, setSchoolMenu] = useState([]);
@@ -3848,6 +3843,7 @@ function FamilyDashboard() {
   // NEW (Correct - uses Local Device Time):
   const todayKey = currentTime.toLocaleDateString("en-CA"); // Returns "YYYY-MM-DD" in local time
   useEffect(() => { const t = setInterval(() => setCurrentTime(new Date()), 1000); return () => clearInterval(t); }, []);
+  useEffect(() => { const t = setInterval(() => setCalendarRefreshTick(tick => tick + 1), 300000); return () => clearInterval(t); }, []);
   const theme = useMemo(() => buildTheme(themePhase, currentTime), [themePhase, currentTime]);
   const dailyCoachTasks = useMemo(
     () => getDailyCoachTasksForDate({
@@ -3857,6 +3853,22 @@ function FamilyDashboard() {
     }),
     [masterTasks, childrenData, todayKey]
   );
+  useEffect(() => {
+    const visibleTasks = dailyCoachTasks.map(({ id, assignees }) => ({ id, assignees }));
+    setDailyCoachTaskManifest(previous => {
+      const cutoff = new Date(fromLocalDateString(todayKey));
+      cutoff.setDate(cutoff.getDate() - 7);
+      const cutoffKey = cutoff.toLocaleDateString("en-CA");
+      const next = Object.fromEntries(
+        Object.entries(previous).filter(([dateKey]) => dateKey >= cutoffKey)
+      );
+      const tasksMatch = JSON.stringify(next[todayKey]) === JSON.stringify(visibleTasks);
+      const nothingPruned = Object.keys(next).length === Object.keys(previous).length;
+      if (tasksMatch && nothingPruned) return previous;
+      next[todayKey] = visibleTasks;
+      return next;
+    });
+  }, [dailyCoachTasks, todayKey]);
 
   // 2. PERSIST DATA
   useEffect(() => { localStorage.setItem("familyChildren", JSON.stringify(childrenData)); }, [childrenData]);
@@ -3871,12 +3883,50 @@ function FamilyDashboard() {
   useEffect(() => { localStorage.setItem("calendarSources", JSON.stringify(calendarSources)); }, [calendarSources]);
   useEffect(() => { localStorage.setItem("calendarFilters", JSON.stringify(calendarFilters)); }, [calendarFilters]);
   useEffect(() => { localStorage.setItem("familyCompletedTasks", JSON.stringify(completedTasks)); }, [completedTasks]);
+  useEffect(() => { localStorage.setItem("dailyCoachTaskManifest", JSON.stringify(dailyCoachTaskManifest)); }, [dailyCoachTaskManifest]);
+
+  // Pull backend-owned updates such as nightly rewards into long-running displays.
+  useEffect(() => {
+    const poll = setInterval(async () => {
+      if (!serverHydratedRef.current || serverSaveTimerRef.current) return;
+      try {
+        const response = await fetch("/api/state", { cache: "no-store" });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!Number.isInteger(data._revision) || data._revision <= serverRevisionRef.current) return;
+
+        skipNextServerSaveRef.current = true;
+        serverRevisionRef.current = data._revision;
+        if (Array.isArray(data.childrenData)) setChildrenData(data.childrenData);
+        if (isPlainObject(data.wallet)) setWallet(data.wallet);
+        if (Array.isArray(data.customEvents)) setCustomEvents(data.customEvents);
+        if (Array.isArray(data.hiddenEventIds)) setHiddenEventIds(data.hiddenEventIds);
+        if (Array.isArray(data.masterTasks)) setMasterTasks(data.masterTasks);
+        if (Array.isArray(data.gigs)) setGigs(data.gigs);
+        if (Array.isArray(data.gigTemplates)) setGigTemplates(data.gigTemplates);
+        if (Array.isArray(data.gigRequests)) setGigRequests(data.gigRequests);
+        if (Array.isArray(data.householdSuggestions)) setHouseholdSuggestions(data.householdSuggestions);
+        if (Array.isArray(data.calendarSources)) setCalendarSources(data.calendarSources);
+        if (Array.isArray(data.calendarFilters)) setCalendarFilters(data.calendarFilters);
+        if (isPlainObject(data.dailyRewards)) setDailyRewards(data.dailyRewards);
+        if (isPlainObject(data.completedTasks)) setCompletedTasks(data.completedTasks);
+        if (isPlainObject(data.dailyCoachTaskManifest)) setDailyCoachTaskManifest(data.dailyCoachTaskManifest);
+      } catch {
+        // Keep the current display state while the server is temporarily unavailable.
+      }
+    }, 60000);
+    return () => clearInterval(poll);
+  }, []);
 
   // 2b. PERSIST SHARED DATA (RPI4) — debounced to avoid spam
   useEffect(() => {
     // Don't push anything until we've successfully hydrated from the server.
     // This prevents overwriting the Pi's saved state with defaults on first load.
     if (!serverHydratedRef.current) return;
+    if (skipNextServerSaveRef.current) {
+      skipNextServerSaveRef.current = false;
+      return;
+    }
 
     const nextState = {
       childrenData,
@@ -3891,7 +3941,8 @@ function FamilyDashboard() {
       calendarSources,
       calendarFilters,
       dailyRewards,
-      completedTasks
+      completedTasks,
+      dailyCoachTaskManifest
     };
 
     if (serverSaveTimerRef.current) clearTimeout(serverSaveTimerRef.current);
@@ -3899,10 +3950,24 @@ function FamilyDashboard() {
       fetch("/api/state", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(nextState),
+        body: JSON.stringify({ ...nextState, _revision: serverRevisionRef.current }),
+      }).then(async response => {
+        const data = await response.json().catch(() => ({}));
+        if (response.status === 409) {
+          alert("The dashboard changed on another device. Reloading the latest saved version.");
+          window.location.reload();
+          return;
+        }
+        if (response.status === 401) {
+          alert("Admin access expired before the configuration was saved. Please unlock Admin and try again.");
+          return;
+        }
+        if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+        if (Number.isInteger(data.state?._revision)) serverRevisionRef.current = data.state._revision;
       }).catch((e) => {
-        // eslint-disable-next-line no-console
         console.warn("Family Dashboard: failed to save server state.", e);
+      }).finally(() => {
+        serverSaveTimerRef.current = null;
       });
     }, 500);
 
@@ -3912,123 +3977,11 @@ function FamilyDashboard() {
   }, [
     childrenData, wallet, customEvents, hiddenEventIds, masterTasks, gigs,
     gigTemplates, gigRequests, householdSuggestions, calendarSources, calendarFilters,
-    dailyRewards, completedTasks
+    dailyRewards, completedTasks, dailyCoachTaskManifest
   ]);
 
-  // --- DAILY SLIDING-SCALE REWARD AUTOMATION ---
-  const getDailyRewardMinutes = (completionPct) => {
-    if (completionPct > 90) return 75;
-    if (completionPct >= 61) return 60;
-    if (completionPct >= 31) return 40;
-    if (completionPct >= 10) return 20;
-    return 0;
-  };
-
-  useEffect(() => {
-    // Run during the end-of-day payout window.
-    // This gives the dashboard a few minutes of tolerance if it refreshes around payout time.
-    const isPayoutWindow = currentTime.getHours() === 23 && currentTime.getMinutes() >= 55;
-    if (!isPayoutWindow) return;
-
-    const dayOfWeek = currentTime.getDay(); // 0=Sun, 6=Sat
-    const dateKey = currentTime.toLocaleDateString("en-CA"); // Local YYYY-MM-DD
-    // Saturday rule: no automatic daily reward on Saturdays.
-    if (dayOfWeek !== 6) {
-      childrenData.forEach(child => {
-        if (child.role !== 'child') return;
-
-        const rewardKey = `${dateKey}-${child.id}`;
-        if (dailyRewards[rewardKey]) return;
-
-        const childTasks = dailyCoachTasks.filter(
-          (task) => task.assignees.includes("all") || task.assignees.includes(child.id)
-        );
-
-        if (childTasks.length === 0) return;
-
-        const completedCount = childTasks.filter(t => {
-          const key = `${dateKey}-${child.id}-${t.id}`;
-          return completedTasks[key];
-        }).length;
-
-        const completionPct = (completedCount / childTasks.length) * 100;
-        const roundedPct = Math.round(completionPct);
-        const rewardMinutes = getDailyRewardMinutes(completionPct);
-
-        if (rewardMinutes > 0) {
-          console.log(`🎉 Daily reward: ${child.name} completed ${roundedPct}% and earned ${rewardMinutes} minutes.`);
-
-          setWallet(prev => ({
-            ...prev,
-            [child.id]: {
-              ...prev[child.id],
-              time: ((prev[child.id]?.time) || 0) + rewardMinutes,
-              money: (prev[child.id]?.money) || 0
-            }
-          }));
-
-          const payload = {
-            child_id: child.id,
-            child_name: child.name,
-            amount: rewardMinutes,
-            completion_pct: roundedPct,
-            reason: `Daily task completion: ${roundedPct}%`
-          };
-
-          if (typeof HA_URL !== 'undefined') {
-            fetch(`${HA_URL}/api/webhook/family_dashboard_reward`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(payload)
-            }).catch(err => console.warn("Failed to notify HA", err));
-          }
-        }
-
-        setDailyRewards(prev => ({
-          ...prev,
-          [rewardKey]: {
-            paid: true,
-            pct: roundedPct,
-            minutes: rewardMinutes,
-            completed: completedCount,
-            total: childTasks.length,
-            scale: "sliding"
-          }
-        }));
-      });
-    }
-
-    // Nightly maintenance: prune task records older than 7 days.
-    const maintenanceKey = `${dateKey}-maintenance`;
-
-    if (!dailyRewards[maintenanceKey]) {
-      setCompletedTasks(prev => {
-        const cutoff = new Date();
-        cutoff.setDate(cutoff.getDate() - 7);
-
-        const next = { ...prev };
-        let prunedCount = 0;
-
-        Object.keys(next).forEach(key => {
-          const datePart = key.substring(0, 10);
-          const taskDate = new Date(`${datePart}T00:00:00`);
-
-          if (taskDate < cutoff) {
-            delete next[key];
-            prunedCount++;
-          }
-        });
-
-        if (prunedCount > 0) console.log(`🧹 Pruned ${prunedCount} old tasks.`);
-        return next;
-      });
-
-      setDailyRewards(prev => ({ ...prev, [maintenanceKey]: true }));
-    }
-  }, [currentTime, dailyCoachTasks, completedTasks, childrenData, dailyRewards]);
-
   // Weather & Menu Fetch (Standard)
-  useEffect(() => { const fetchWeather = async () => { try { const url = `https://api.open-meteo.com/v1/forecast?latitude=41.3712&longitude=-73.414&current_weather=true&hourly=temperature_2m,precipitation_probability,relative_humidity_2m,wind_speed_10m,weathercode&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode&temperature_unit=fahrenheit&timezone=America%2FNew_York`; const res = await fetch(url); const data = await res.json(); if (!data.current_weather) return; const daily = data.daily.time.map((iso, i) => ({ date: fromLocalDateString(iso), high: data.daily.temperature_2m_max[i], low: data.daily.temperature_2m_min[i], code: data.daily.weathercode[i], })).slice(0, 7); setWeather({ current: { temperature: data.current_weather.temperature, code: data.current_weather.weathercode }, daily, unit: "F" }); } catch (e) { } }; fetchWeather(); }, []);
+  useEffect(() => { const fetchWeather = async () => { try { const url = `https://api.open-meteo.com/v1/forecast?latitude=41.3712&longitude=-73.414&current_weather=true&hourly=temperature_2m,precipitation_probability,relative_humidity_2m,wind_speed_10m,weathercode&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode&temperature_unit=fahrenheit&timezone=America%2FNew_York`; const res = await fetch(url); const data = await res.json(); if (!data.current_weather) return; const daily = data.daily.time.map((iso, i) => ({ date: fromLocalDateString(iso), high: data.daily.temperature_2m_max[i], low: data.daily.temperature_2m_min[i], code: data.daily.weathercode[i], })).slice(0, 7); setWeather({ current: { temperature: data.current_weather.temperature, code: data.current_weather.weathercode }, daily, unit: "F" }); } catch (e) { console.warn("Weather update failed", e); } }; fetchWeather(); }, []);
   useEffect(() => {
     const fetchMenu = async () => {
       const isShownOnMenu = (value) => value === 1 || value === true || value === "1" || value === "true";
@@ -4153,8 +4106,13 @@ function FamilyDashboard() {
 
       for (const src of calendarSources) {
         try {
-          if (src.type === "google_api" && GOOGLE_API_KEY) {
-            const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(src.id)}/events?key=${GOOGLE_API_KEY}&timeMin=${start.toISOString()}&timeMax=${end.toISOString()}&singleEvents=true&orderBy=startTime`);
+          if (src.type === "google_api") {
+            const params = new URLSearchParams({
+              calendarId: src.id,
+              timeMin: start.toISOString(),
+              timeMax: end.toISOString()
+            });
+            const res = await fetch(`/api/calendar/events?${params.toString()}`);
             const data = await res.json();
             if (!res.ok) { errs.push({ id: src.label }); continue; }
             if (data.items) {
@@ -4226,7 +4184,7 @@ function FamilyDashboard() {
       setCalendarErrors(errs);
     };
     fetchAllCalendars();
-  }, [calendarMonthKey, calendarSources, calendarFilters, customEvents, hiddenEventIds]);
+  }, [calendarMonthKey, calendarRefreshTick, calendarSources, calendarFilters, customEvents, hiddenEventIds]);
 
   return (
     <div className={`family-shell relative w-screen h-screen overflow-hidden font-sans transition-all duration-1000 ease-in-out ${theme.appBg}`} style={theme.backgroundStyle}>
@@ -4353,6 +4311,7 @@ function FamilyDashboard() {
               setWallet={setWallet}
               dailyRewards={dailyRewards}
               currentTime={currentTime}
+              serverRevisionRef={serverRevisionRef}
             />
           )}
 

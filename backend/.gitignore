@@ -3,6 +3,8 @@ __pycache__/
 .env
 data/*.db
 data/*.db-*
+data/.dashboard-secret
+data/dashboard.pid
 logs/*.log
 .venv/
 venv/

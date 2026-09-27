@@ -1,4 +1,4 @@
 @echo off
-cd /d "C:\family-dashboard-windows"
+cd /d "%~dp0"
 powershell -ExecutionPolicy Bypass -File ".\ops\restart-dashboard.ps1"
 pause

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import secrets
+from datetime import timedelta
 from pathlib import Path
 
 from flask import Flask, jsonify, request, send_from_directory
@@ -14,17 +16,45 @@ from services.home_assistant_service import (
     get_smart_home_entities,
     run_smart_home_action,
 )
+from services.auth_service import is_admin, login_admin, logout_admin, require_admin
+from services.calendar_service import fetch_calendar_events
 from services.notify_service import send_redemption_notification
 from services.qustodio_exact import QustodioController
 from services.qustodio_service import grant_tablet_time, refresh_qustodio_token
 from services.queue_service import start_background_workers
+from services.redemption_service import RedemptionError, redeem
 from services.sparkle_service import get_or_create_daily_sparkle
-from services.state_service import get_full_state, save_full_state
+from services.state_service import (
+    StateConflictError,
+    get_full_state,
+    has_protected_state_changes,
+    save_full_state,
+)
+
+
+def _load_session_secret() -> str:
+    if settings.dashboard_secret_key:
+        return settings.dashboard_secret_key
+
+    secret_path = Path(settings.sqlite_path).resolve().parent / ".dashboard-secret"
+    secret_path.parent.mkdir(parents=True, exist_ok=True)
+    if secret_path.exists():
+        return secret_path.read_text(encoding="utf-8").strip()
+
+    secret = secrets.token_hex(32)
+    secret_path.write_text(secret, encoding="utf-8")
+    return secret
 
 
 def create_app() -> Flask:
     static_folder = str(FRONTEND_DIST)
     app = Flask(__name__, static_folder=static_folder, static_url_path="")
+    app.secret_key = _load_session_secret()
+    app.config.update(
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE="Strict",
+        PERMANENT_SESSION_LIFETIME=timedelta(hours=8),
+    )
 
     @app.get("/health")
     def health():
@@ -34,9 +64,35 @@ def create_app() -> Flask:
     def status():
         return jsonify(build_status())
 
+    @app.post("/api/admin/login")
+    def api_admin_login():
+        payload = request.get_json(silent=True) if request.is_json else {}
+        if not isinstance(payload, dict):
+            return jsonify({"success": False, "error": "Invalid JSON payload"}), 400
+        result, status_code = login_admin(str(payload.get("pin", "")))
+        return jsonify(result), status_code
+
+    @app.post("/api/admin/logout")
+    def api_admin_logout():
+        logout_admin()
+        return jsonify({"success": True})
+
+    @app.get("/api/admin/status")
+    def api_admin_status():
+        return jsonify({"success": True, "is_admin": is_admin()})
+
     @app.get("/api/state")
     def api_get_state():
         return jsonify(get_full_state())
+
+    @app.get("/api/calendar/events")
+    def api_calendar_events():
+        result, status_code = fetch_calendar_events(
+            calendar_id=str(request.args.get("calendarId", "")).strip(),
+            time_min=str(request.args.get("timeMin", "")).strip(),
+            time_max=str(request.args.get("timeMax", "")).strip(),
+        )
+        return jsonify(result), status_code
 
     @app.put("/api/state")
     def api_put_state():
@@ -47,10 +103,32 @@ def create_app() -> Flask:
         if not isinstance(payload, dict):
             return jsonify({"success": False, "error": "Invalid JSON payload"}), 400
 
-        saved = save_full_state(payload)
+        if has_protected_state_changes(payload) and not is_admin():
+            return jsonify({"success": False, "error": "Admin access required for configuration changes"}), 401
+
+        expected_revision = payload.pop("_revision", None)
+        if expected_revision is not None:
+            try:
+                expected_revision = int(expected_revision)
+            except (TypeError, ValueError):
+                return jsonify({"success": False, "error": "Invalid revision"}), 400
+        try:
+            saved = save_full_state(payload, expected_revision=expected_revision)
+        except StateConflictError as exc:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": str(exc),
+                        "current_revision": exc.current_revision,
+                    }
+                ),
+                409,
+            )
         return jsonify({"success": True, "state": saved})
 
     @app.post("/api/notify")
+    @require_admin
     def api_notify():
         if not request.is_json:
             return jsonify({"success": False, "error": "Expected JSON body"}), 400
@@ -84,6 +162,7 @@ def create_app() -> Flask:
         return jsonify(result)
 
     @app.post("/api/qustodio")
+    @require_admin
     def api_qustodio():
         if not request.is_json:
             return jsonify({"success": False, "error": "Expected JSON body"}), 400
@@ -121,17 +200,19 @@ def create_app() -> Flask:
         return jsonify(result)
 
     @app.get("/api/qustodio/token")
+    @require_admin
     def api_qustodio_get_token():
         token = QustodioController().token or ""
         return jsonify(
             {
                 "success": True,
-                "token": token,
+                "masked_token": f"{token[:8]}...{token[-4:]}" if len(token) > 12 else "configured",
                 "present": bool(token),
             }
         )
 
     @app.post("/api/qustodio/token/refresh")
+    @require_admin
     def api_qustodio_refresh_token():
         success, detail, captured_output = refresh_qustodio_token(
             reason="manual_system_config"
@@ -143,7 +224,7 @@ def create_app() -> Flask:
                 {
                     "success": success,
                     "detail": detail,
-                    "token": token,
+                    "masked_token": f"{token[:8]}...{token[-4:]}" if len(token) > 12 else "configured",
                     "present": bool(token),
                     "captured_output": captured_output,
                 }
@@ -158,6 +239,9 @@ def create_app() -> Flask:
             payload = {}
         if not isinstance(payload, dict):
             return jsonify({"success": False, "error": "Invalid JSON payload"}), 400
+
+        if payload.get("forceRefresh") and not is_admin():
+            return jsonify({"success": False, "error": "Admin access required"}), 401
 
         result = get_or_create_daily_sparkle(
             force_refresh=bool(payload.get("forceRefresh", False)),
@@ -202,6 +286,27 @@ def create_app() -> Flask:
             )
         except HomeAssistantError as exc:
             return jsonify({"success": False, "error": str(exc)}), 400
+
+    @app.post("/api/redemptions")
+    def api_redemptions():
+        if not request.is_json:
+            return jsonify({"success": False, "error": "Expected JSON body"}), 400
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            return jsonify({"success": False, "error": "Invalid JSON payload"}), 400
+
+        try:
+            result = redeem(
+                redemption_id=str(payload.get("redemption_id", "")).strip(),
+                child_id=str(payload.get("child_id", "")).strip(),
+                child_name=str(payload.get("child_name", "")).strip(),
+                reward_type=str(payload.get("type", "")).strip(),
+                target=str(payload.get("target", "")).strip(),
+                amount=payload.get("amount"),
+            )
+        except RedemptionError as exc:
+            return jsonify({"success": False, "error": str(exc)}), exc.status_code
+        return jsonify(result)
 
     @app.route("/", defaults={"path": ""})
     @app.route("/<path:path>")

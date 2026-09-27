@@ -62,6 +62,24 @@ Google Cast or another compatible media-player integration.
 - `POST /api/smart-home/action` - validated device actions
 - `POST /api/smart-home/broadcast` - Google Assistant announcements
 
+## Private configuration
+
+Copy `backend/.env.example` to `backend/.env` and configure:
+
+- A private four-digit `DASHBOARD_ADMIN_PIN` and long random `DASHBOARD_SECRET_KEY`
+- Qustodio email, password, token, account UID, and child profile UID map
+- `GOOGLE_API_KEY` for Google Calendar; the key remains on the backend
+- Home Assistant URL, token, webhook IDs, and optional entity allowlist
+
+Normal family interactions remain available on the trusted home network. Admin
+configuration, direct notification/Qustodio calls, and token refresh require a
+server-validated admin session. The Qustodio token is never returned to the
+browser.
+
+Redemptions use unique transaction IDs. Qustodio retries retain that ID, stop
+after five attempts or 48 hours, and then require manual review. Daily rewards
+are calculated once by the backend and catch up after downtime.
+
 ## Build and run
 
 Build the frontend:
@@ -86,30 +104,26 @@ Run it on Windows PowerShell:
 
 The backend serves the production frontend from `frontend/dist`.
 
-## Ubuntu deployment notes
+## Data, backups, and deployment
 
-Before pulling an update, protect runtime database and lockfile changes:
+Runtime data is stored only in `backend/data/family_dashboard.db`. Database and
+environment files are excluded from Git. Before updating, stop the dashboard
+and copy the database plus `backend/.env` to encrypted storage.
+
+On Ubuntu:
 
 ```bash
 cd ~/family-dashboard-codex
-cp backend/backend/data/family_dashboard.db \
+cp backend/data/family_dashboard.db \
   "$HOME/family_dashboard.db.backup-$(date +%Y%m%d-%H%M%S)"
-git stash push -m "Ubuntu runtime files before update" -- \
-  backend/backend/data/family_dashboard.db \
-  frontend/package-lock.json
 git pull --ff-only origin main
+npm --prefix frontend ci
+npm --prefix frontend run build
 ```
 
-Restore only the live runtime database after pulling:
-
-```bash
-git restore --source='stash@{0}' -- \
-  backend/backend/data/family_dashboard.db
-```
-
-Keep the stash until the rebuilt dashboard has been verified. Then rebuild the
-frontend and restart the backend using the host's existing service or startup
-method.
+On Windows, `RunScript.bat` rebuilds the latest frontend and starts the backend.
+Restoring consists of replacing the stopped dashboard's database and `.env`
+with the backed-up copies before restarting.
 
 ## Smart Home validation status
 
