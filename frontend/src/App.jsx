@@ -3768,6 +3768,14 @@ function FamilyDashboard() {
           "gigs", "gigTemplates", "gigRequests", "householdSuggestions", "calendarSources", "calendarFilters",
           "dailyRewards", "completedTasks", "dailyCoachTaskManifest"
         ].some(key => Object.prototype.hasOwnProperty.call(data, key));
+        const serverHasChildren = Object.prototype.hasOwnProperty.call(data, "childrenData");
+        const serverHasMasterTasks = Object.prototype.hasOwnProperty.call(data, "masterTasks");
+        const bootstrapChildren = Array.isArray(childrenData) && childrenData.length > 0
+          ? childrenData
+          : CHILDREN;
+        const bootstrapMasterTasks = Array.isArray(masterTasks) && masterTasks.length > 0
+          ? masterTasks
+          : INITIAL_MASTER_TASKS;
 
         if (Array.isArray(data.childrenData)) setChildrenData(data.childrenData);
         if (isPlainObject(data.wallet)) setWallet(data.wallet);
@@ -3786,15 +3794,37 @@ function FamilyDashboard() {
         if (isPlainObject(data.completedTasks)) setCompletedTasks(data.completedTasks);
         if (isPlainObject(data.dailyCoachTaskManifest)) setDailyCoachTaskManifest(data.dailyCoachTaskManifest);
 
-        if (!hasServerState) {
+        if (!serverHasChildren) setChildrenData(bootstrapChildren);
+        if (!serverHasMasterTasks) setMasterTasks(bootstrapMasterTasks);
+
+        if (!serverHasChildren || !serverHasMasterTasks) {
+          const bootstrapPayload = !hasServerState
+            ? {
+                childrenData: bootstrapChildren,
+                wallet,
+                customEvents,
+                hiddenEventIds,
+                masterTasks: bootstrapMasterTasks,
+                gigs,
+                gigTemplates,
+                gigRequests,
+                householdSuggestions,
+                calendarSources,
+                calendarFilters,
+                dailyRewards,
+                completedTasks,
+                dailyCoachTaskManifest,
+              }
+            : {
+                ...(!serverHasChildren ? { childrenData: bootstrapChildren } : {}),
+                ...(!serverHasMasterTasks ? { masterTasks: bootstrapMasterTasks } : {}),
+              };
           const bootstrapResponse = await fetch("/api/state", {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               _revision: serverRevisionRef.current,
-              childrenData, wallet, customEvents, hiddenEventIds, masterTasks, gigs,
-              gigTemplates, gigRequests, householdSuggestions, calendarSources, calendarFilters,
-              dailyRewards, completedTasks, dailyCoachTaskManifest
+              ...bootstrapPayload,
             })
           });
           const bootstrapData = await bootstrapResponse.json().catch(() => ({}));
