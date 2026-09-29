@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import threading
 from datetime import date, datetime, timedelta
 from difflib import SequenceMatcher
 from hashlib import sha256
@@ -14,10 +15,14 @@ from db import get_connection, log_event, utc_now_iso
 
 SPARKLE_TODAY_KEY = "dailySparkleToday"
 SPARKLE_HISTORY_KEY = "dailySparkleHistory"
+SPARKLE_POOL_KEY = "weeklySparklePool"
 HISTORY_WINDOW_DAYS = 30
 MAX_HISTORY_ITEMS = 120
 MAX_GENERATION_ATTEMPTS = 3
 MAX_WORDS = 30
+WEEKLY_POOL_SIZE = 100
+POOL_GENERATION_ATTEMPTS = 3
+_POOL_REFRESH_LOCK = threading.Lock()
 
 SPARKLE_TOPICS = [
     ("science-body", "Science", "a surprising human-body fact"),
@@ -71,6 +76,7 @@ SPARKLE_TOPICS = [
     ("math-big-numbers", "Math", "a delightful big-number comparison"),
     ("math-puzzle", "Math", "a very short math puzzle with its answer"),
 ]
+SPARKLE_CATEGORIES = tuple(dict.fromkeys(topic[1] for topic in SPARKLE_TOPICS))
 
 
 def _load_json_state(key: str, default):
@@ -115,6 +121,15 @@ def _display_date(today_key: str) -> str:
     except ValueError:
         now = datetime.now()
         return f"{now.strftime('%A, %B')} {now.day}"
+
+
+def _week_key(today_key: str) -> str:
+    try:
+        parsed = date.fromisoformat(today_key)
+    except ValueError:
+        parsed = date.today()
+    iso_year, iso_week, _ = parsed.isocalendar()
+    return f"{iso_year}-W{iso_week:02d}"
 
 
 def _clean_sparkle(text: str) -> str:
@@ -236,7 +251,7 @@ You are creating a unique "Daily Sparkle" for kids.
 """.strip()
 
 
-def _call_gemini(prompt: str) -> str:
+def _gemini_generate(prompt: str, generation_config: dict | None = None, timeout: int | None = None) -> str:
     if not settings.gemini_api_key:
         raise RuntimeError("GEMINI_API_KEY is not configured")
 
@@ -244,11 +259,15 @@ def _call_gemini(prompt: str) -> str:
         "https://generativelanguage.googleapis.com/v1beta/models/"
         f"{settings.gemini_model}:generateContent"
     )
+    payload = {"contents": [{"parts": [{"text": prompt}]}]}
+    if generation_config:
+        payload["generationConfig"] = generation_config
+
     response = requests.post(
         url,
         params={"key": settings.gemini_api_key},
-        json={"contents": [{"parts": [{"text": prompt}]}]},
-        timeout=settings.gemini_timeout_seconds,
+        json=payload,
+        timeout=timeout or settings.gemini_timeout_seconds,
     )
 
     try:
@@ -266,6 +285,240 @@ def _call_gemini(prompt: str) -> str:
         raise RuntimeError("Gemini returned an empty response")
 
     return text
+
+
+def _call_gemini(prompt: str) -> str:
+    return _gemini_generate(prompt)
+
+
+def _call_gemini_pool(prompt: str) -> list[dict]:
+    text = _gemini_generate(
+        prompt,
+        generation_config={
+            "temperature": 1.1,
+            "maxOutputTokens": 16384,
+            "responseMimeType": "application/json",
+            "responseSchema": {
+                "type": "ARRAY",
+                "items": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "content": {"type": "STRING"},
+                        "category": {
+                            "type": "STRING",
+                            "enum": list(SPARKLE_CATEGORIES),
+                        },
+                        "topic": {"type": "STRING"},
+                    },
+                    "required": ["content", "category", "topic"],
+                },
+            },
+        },
+        timeout=settings.gemini_pool_timeout_seconds,
+    )
+    parsed = json.loads(text)
+    if not isinstance(parsed, list):
+        raise RuntimeError("Gemini returned an invalid Sparkle pool")
+    return [item for item in parsed if isinstance(item, dict)]
+
+
+def _build_pool_prompt(count: int, recent: list[str]) -> str:
+    categories = ", ".join(SPARKLE_CATEGORIES)
+    return f"""
+Create exactly {count} unique Daily Sparkles for children.
+- Categories: {categories}.
+- Balance the results as evenly as possible across all categories.
+- Each content value must be accurate, self-contained, delightful, and no more than {MAX_WORDS} words.
+- Mix surprising facts, short riddles with answers, playful word facts, and tiny positive challenges.
+- Each topic value must be a short, specific subject that is unique within this batch.
+- Do not repeat or closely paraphrase these recent Sparkles: {json.dumps(recent[:100], ensure_ascii=False)}.
+- Return only the requested JSON array.
+""".strip()
+
+
+def _validate_pool_items(raw_items: list[dict], recent: list[str], accepted: list[dict]) -> None:
+    category_lookup = {category.casefold(): category for category in SPARKLE_CATEGORIES}
+    known_content = [*recent, *[item["content"] for item in accepted]]
+    known_topics = {str(item.get("topic", "")).casefold() for item in accepted}
+
+    for item in raw_items:
+        content = _clean_sparkle(str(item.get("content", "")))
+        category = category_lookup.get(str(item.get("category", "")).strip().casefold())
+        topic = str(item.get("topic", "")).strip()
+        if not content or not category or not topic or topic.casefold() in known_topics:
+            continue
+        if _is_too_similar(content, known_content):
+            continue
+        accepted.append({"content": content, "category": category, "topic": topic})
+        known_content.append(content)
+        known_topics.add(topic.casefold())
+        if len(accepted) >= WEEKLY_POOL_SIZE:
+            return
+
+
+def refresh_sparkle_pool_if_due(today_key: str | None = None, force: bool = False) -> dict:
+    today = today_key or _today_key()
+    week = _week_key(today)
+    current_pool = _load_json_state(SPARKLE_POOL_KEY, {})
+    if (
+        not force
+        and isinstance(current_pool, dict)
+        and current_pool.get("week") == week
+        and current_pool.get("generatedAt")
+    ):
+        return {
+            "success": True,
+            "status": "current",
+            "count": len(current_pool.get("items", [])),
+            "week": week,
+        }
+
+    if not _POOL_REFRESH_LOCK.acquire(blocking=False):
+        return {"success": True, "status": "already-refreshing", "week": week}
+
+    try:
+        history = _load_json_state(SPARKLE_HISTORY_KEY, [])
+        recent = [record["content"] for record in _recent_history(history, today)]
+        accepted = []
+        for _ in range(POOL_GENERATION_ATTEMPTS):
+            missing = WEEKLY_POOL_SIZE - len(accepted)
+            if missing <= 0:
+                break
+            raw_items = _call_gemini_pool(_build_pool_prompt(missing, [*recent, *[item["content"] for item in accepted]]))
+            _validate_pool_items(raw_items, recent, accepted)
+
+        if not accepted:
+            raise RuntimeError("Gemini did not return any usable Sparkles for the weekly pool")
+
+        pool = {
+            "week": week,
+            "generatedAt": utc_now_iso(),
+            "items": accepted[:WEEKLY_POOL_SIZE],
+        }
+        _save_json_state(SPARKLE_POOL_KEY, pool)
+        log_event(
+            event_type="sparkle_pool_refreshed",
+            payload={"week": week, "count": len(pool["items"])},
+            status="success",
+            entity_type="sparkle",
+            entity_id=week,
+        )
+        return {
+            "success": True,
+            "status": "refreshed",
+            "count": len(pool["items"]),
+            "week": week,
+        }
+    except Exception as exc:
+        log_event(
+            event_type="sparkle_pool_refresh_failed",
+            payload={"week": week, "error": str(exc)},
+            status="error",
+            entity_type="sparkle",
+            entity_id=week,
+        )
+        return {"success": False, "status": "error", "error": str(exc), "week": week}
+    finally:
+        _POOL_REFRESH_LOCK.release()
+
+
+def _consume_pool_item(today: str) -> dict | None:
+    week = _week_key(today)
+    now = utc_now_iso()
+    with get_connection() as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        pool_row = conn.execute(
+            "SELECT json_value FROM app_state WHERE key = ?",
+            (SPARKLE_POOL_KEY,),
+        ).fetchone()
+        if not pool_row:
+            return None
+        try:
+            pool = json.loads(pool_row["json_value"])
+        except json.JSONDecodeError:
+            return None
+        items = pool.get("items", []) if isinstance(pool, dict) else []
+        if pool.get("week") != week or not isinstance(items, list) or not items:
+            return None
+
+        item = items.pop(0)
+        if not isinstance(item, dict) or not item.get("content"):
+            return None
+        pool["items"] = items
+
+        history_row = conn.execute(
+            "SELECT json_value FROM app_state WHERE key = ?",
+            (SPARKLE_HISTORY_KEY,),
+        ).fetchone()
+        try:
+            history = json.loads(history_row["json_value"]) if history_row else []
+        except json.JSONDecodeError:
+            history = []
+
+        record = {
+            "date": today,
+            "content": _clean_sparkle(str(item["content"])),
+            "topic": str(item.get("topic", "weekly-pool")),
+            "category": str(item.get("category", "Sparkle")),
+        }
+        prior_records = [
+            prior for prior in _history_records(history)
+            if _normalize_sparkle(prior["content"]) != _normalize_sparkle(record["content"])
+        ]
+        next_history = [record, *prior_records][:MAX_HISTORY_ITEMS]
+
+        for key, value in (
+            (SPARKLE_POOL_KEY, pool),
+            (SPARKLE_TODAY_KEY, record),
+            (SPARKLE_HISTORY_KEY, next_history),
+        ):
+            conn.execute(
+                """
+                INSERT INTO app_state (key, json_value, updated_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT(key) DO UPDATE SET
+                    json_value=excluded.json_value,
+                    updated_at=excluded.updated_at
+                """,
+                (key, json.dumps(value, ensure_ascii=False), now),
+            )
+
+    return {
+        "success": True,
+        "status": "pool",
+        **record,
+        "remaining": len(items),
+    }
+
+
+def get_next_sparkle(today_key: str | None = None) -> dict:
+    today = today_key or _today_key()
+    pooled = _consume_pool_item(today)
+    if pooled:
+        return pooled
+    return {
+        "success": False,
+        "status": "empty",
+        "error": "Fresh Sparkles are still being prepared for this week",
+        "date": today,
+    }
+
+
+def get_current_sparkle(today_key: str | None = None) -> dict:
+    today = today_key or _today_key()
+    today_saved = _load_json_state(SPARKLE_TODAY_KEY, {})
+    if (
+        isinstance(today_saved, dict)
+        and today_saved.get("date") == today
+        and today_saved.get("content")
+    ):
+        return {
+            "success": True,
+            "status": "cached",
+            "content": today_saved["content"],
+            "date": today,
+        }
+    return get_next_sparkle(today_key=today)
 
 
 def get_or_create_daily_sparkle(force_refresh: bool = False, today_key: str | None = None) -> dict:

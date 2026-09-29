@@ -10,6 +10,7 @@ from config import settings
 from db import get_connection, log_event
 from services.qustodio_service import refresh_qustodio_token_if_due, retry_qustodio_queue_once
 from services.reward_service import process_daily_rewards
+from services.sparkle_service import refresh_sparkle_pool_if_due
 
 
 _WORKER_STARTED = False
@@ -63,6 +64,21 @@ def _daily_reward_loop() -> None:
                 entity_id="daily_rewards",
             )
         time.sleep(60)
+
+
+def _sparkle_pool_loop() -> None:
+    while True:
+        try:
+            refresh_sparkle_pool_if_due()
+        except Exception as exc:
+            log_event(
+                event_type="sparkle_pool_worker_error",
+                payload={"error": str(exc)},
+                status="error",
+                entity_type="worker",
+                entity_id="sparkle_pool",
+            )
+        time.sleep(6 * 60 * 60)
 
 
 def process_notification_queue() -> None:
@@ -176,5 +192,8 @@ def start_background_workers() -> None:
 
     t3 = threading.Thread(target=_daily_reward_loop, daemon=True)
     t3.start()
+
+    t4 = threading.Thread(target=_sparkle_pool_loop, daemon=True)
+    t4.start()
 
     _WORKER_STARTED = True

@@ -54,6 +54,7 @@ class Settings:
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", os.getenv("VITE_GEMINI_API_KEY", ""))
     gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
     gemini_timeout_seconds: int = int(os.getenv("GEMINI_TIMEOUT_SECONDS", "20"))
+    gemini_pool_timeout_seconds: int = int(os.getenv("GEMINI_POOL_TIMEOUT_SECONDS", "90"))
 
     google_api_key: str = os.getenv("GOOGLE_API_KEY", os.getenv("VITE_GOOGLE_API_KEY", ""))
     google_timeout_seconds: int = int(os.getenv("GOOGLE_TIMEOUT_SECONDS", "20"))

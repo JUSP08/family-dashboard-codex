@@ -23,7 +23,11 @@ from services.qustodio_exact import QustodioController
 from services.qustodio_service import grant_tablet_time, refresh_qustodio_token
 from services.queue_service import start_background_workers
 from services.redemption_service import RedemptionError, redeem
-from services.sparkle_service import get_or_create_daily_sparkle
+from services.sparkle_service import (
+    get_current_sparkle,
+    get_next_sparkle,
+    get_or_create_daily_sparkle,
+)
 from services.state_service import (
     StateConflictError,
     get_full_state,
@@ -240,13 +244,20 @@ def create_app() -> Flask:
         if not isinstance(payload, dict):
             return jsonify({"success": False, "error": "Invalid JSON payload"}), 400
 
-        if payload.get("forceRefresh") and not is_admin():
+        next_sparkle = bool(payload.get("nextSparkle", False))
+        if payload.get("forceRefresh") and not next_sparkle and not is_admin():
             return jsonify({"success": False, "error": "Admin access required"}), 401
 
-        result = get_or_create_daily_sparkle(
-            force_refresh=bool(payload.get("forceRefresh", False)),
-            today_key=str(payload.get("todayKey", "")).strip() or None,
-        )
+        today_key = str(payload.get("todayKey", "")).strip() or None
+        if next_sparkle:
+            result = get_next_sparkle(today_key=today_key)
+        elif not payload.get("forceRefresh"):
+            result = get_current_sparkle(today_key=today_key)
+        else:
+            result = get_or_create_daily_sparkle(
+                force_refresh=bool(payload.get("forceRefresh", False)),
+                today_key=today_key,
+            )
         status_code = 200 if result.get("success") else 503
         return jsonify(result), status_code
 

@@ -46,6 +46,12 @@ The script:
 The project pins a Playwright release with Ubuntu 26.04 support so the
 Qustodio token-refresh browser can be installed during deployment.
 
+The backend also maintains a persistent weekly pool of up to 100 Daily
+Sparkles. It refills the pool in a background worker at the beginning of each
+ISO week, so child button presses are fast and do not expose the Gemini API
+key. `GEMINI_POOL_TIMEOUT_SECONDS` controls the batch request timeout and
+defaults to 90 seconds.
+
 After it succeeds, open `http://192.168.50.242:8099/` and use `Ctrl+F5` if the
 browser still shows an older bundle.
 

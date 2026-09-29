@@ -104,6 +104,11 @@ Run it on Windows PowerShell:
 
 The backend serves the production frontend from `frontend/dist`.
 
+Daily Sparkles are served from a persistent weekly pool. A background worker
+generates up to 100 varied, schema-validated Sparkles at the start of each ISO
+week. Any child can press the Sparkle refresh button to consume the next item;
+the Gemini key remains private on the backend.
+
 ## Data, backups, and deployment
 
 Runtime data is stored only in `backend/data/family_dashboard.db`. Database and

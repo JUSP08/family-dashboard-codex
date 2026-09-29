@@ -22,7 +22,10 @@ from db import get_connection, init_db  # noqa: E402
 from services.redemption_service import redeem  # noqa: E402
 from services.reward_service import process_daily_rewards  # noqa: E402
 from services.qustodio_service import enqueue_qustodio_request  # noqa: E402
-from services.sparkle_service import get_or_create_daily_sparkle  # noqa: E402
+from services.sparkle_service import (  # noqa: E402
+    get_or_create_daily_sparkle,
+    refresh_sparkle_pool_if_due,
+)
 from services.state_service import (  # noqa: E402
     StateConflictError,
     get_full_state,
@@ -255,6 +258,76 @@ class CoreFlowTests(unittest.TestCase):
         self.assertTrue(result["success"])
         self.assertNotEqual(result["topic"], "space-planets")
         self.assertNotEqual(result["category"], "Space")
+
+    def test_kids_can_advance_through_the_sparkle_pool_without_admin(self):
+        pool = {
+            "week": "2026-W40",
+            "generatedAt": "2026-09-29T12:00:00Z",
+            "items": [
+                {"content": "First fresh Sparkle.", "category": "Science", "topic": "first"},
+                {"content": "Second fresh Sparkle.", "category": "Arts", "topic": "second"},
+            ],
+        }
+        with get_connection() as conn:
+            conn.execute(
+                "INSERT INTO app_state (key, json_value, updated_at) VALUES (?, ?, ?)",
+                ("weeklySparklePool", json.dumps(pool), "2026-09-29T12:00:00Z"),
+            )
+
+        client = self.app.test_client()
+        first = client.post(
+            "/api/sparkle",
+            json={"nextSparkle": True, "todayKey": "2026-09-29"},
+        )
+        second = client.post(
+            "/api/sparkle",
+            json={"nextSparkle": True, "todayKey": "2026-09-29"},
+        )
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(first.get_json()["content"], "First fresh Sparkle.")
+        self.assertEqual(second.get_json()["content"], "Second fresh Sparkle.")
+        self.assertEqual(second.get_json()["remaining"], 0)
+
+    @patch("services.sparkle_service._call_gemini")
+    def test_empty_kid_sparkle_pool_does_not_trigger_paid_generation(self, call_gemini):
+        client = self.app.test_client()
+
+        response = client.post(
+            "/api/sparkle",
+            json={"nextSparkle": True, "todayKey": "2026-09-29"},
+        )
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.get_json()["status"], "empty")
+        call_gemini.assert_not_called()
+
+    @patch("services.sparkle_service._is_too_similar", return_value=False)
+    @patch("services.sparkle_service._call_gemini_pool")
+    def test_weekly_sparkle_refill_stores_100_items(self, call_gemini_pool, _similar):
+        call_gemini_pool.return_value = [
+            {
+                "content": f"Sparkle {index}: token{index:03d} meets idea{index:03d} today.",
+                "category": ("Science", "Space", "Nature", "History")[index % 4],
+                "topic": f"topic-{index:03d}",
+            }
+            for index in range(100)
+        ]
+
+        result = refresh_sparkle_pool_if_due(today_key="2026-09-29", force=True)
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["count"], 100)
+        self.assertEqual(call_gemini_pool.call_count, 1)
+        with get_connection() as conn:
+            saved = json.loads(
+                conn.execute(
+                    "SELECT json_value FROM app_state WHERE key = 'weeklySparklePool'"
+                ).fetchone()["json_value"]
+            )
+        self.assertEqual(saved["week"], "2026-W40")
+        self.assertEqual(len(saved["items"]), 100)
 
 
 if __name__ == "__main__":
