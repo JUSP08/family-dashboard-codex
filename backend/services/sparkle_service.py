@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import re
 from datetime import date, datetime, timedelta
+from difflib import SequenceMatcher
+from hashlib import sha256
 
 import requests
 
@@ -16,6 +18,59 @@ HISTORY_WINDOW_DAYS = 30
 MAX_HISTORY_ITEMS = 120
 MAX_GENERATION_ATTEMPTS = 3
 MAX_WORDS = 30
+
+SPARKLE_TOPICS = [
+    ("science-body", "Science", "a surprising human-body fact"),
+    ("science-chemistry", "Science", "a safe and surprising chemistry fact"),
+    ("science-physics", "Science", "a kid-friendly physics fact"),
+    ("science-senses", "Science", "a surprising fact about senses"),
+    ("science-sound", "Science", "a surprising fact about sound"),
+    ("space-planets", "Space", "a lesser-known planet fact"),
+    ("space-moon", "Space", "a surprising Moon fact"),
+    ("space-stars", "Space", "a surprising star fact"),
+    ("space-spacecraft", "Space", "a kid-friendly spacecraft fact"),
+    ("space-galaxies", "Space", "a surprising galaxy fact"),
+    ("nature-ocean", "Nature", "a surprising ocean fact"),
+    ("nature-plants", "Nature", "a surprising plant fact"),
+    ("nature-insects", "Nature", "a surprising insect fact"),
+    ("nature-birds", "Nature", "a surprising bird fact"),
+    ("nature-weather", "Nature", "a surprising weather fact"),
+    ("nature-geology", "Nature", "a surprising rock or Earth fact"),
+    ("history-ancient-life", "History", "a kid-friendly fact about ancient daily life"),
+    ("history-everyday-life", "History", "how an everyday activity changed over time"),
+    ("history-firsts", "History", "a surprising historical first"),
+    ("history-exploration", "History", "a surprising exploration or map fact"),
+    ("history-food", "History", "a surprising food-history fact"),
+    ("inventions-transport", "Inventions", "a surprising transportation invention fact"),
+    ("inventions-communication", "Inventions", "a surprising communication invention fact"),
+    ("inventions-household", "Inventions", "a surprising household invention fact"),
+    ("inventions-medicine", "Inventions", "a kid-friendly medical invention fact"),
+    ("inventions-tools", "Inventions", "a surprising tool invention fact"),
+    ("language-origins", "Language", "the origin of an unexpected everyday word"),
+    ("language-unusual", "Language", "an unusual but useful word"),
+    ("language-world", "Language", "a surprising fact about a world language"),
+    ("language-palindrome", "Language", "a playful palindrome or word pattern"),
+    ("language-idiom", "Language", "the surprising origin of a kid-safe idiom"),
+    ("riddle-logic", "Riddle", "a short logic riddle with its answer"),
+    ("riddle-wordplay", "Riddle", "a short wordplay riddle with its answer"),
+    ("riddle-observation", "Riddle", "a short observation riddle with its answer"),
+    ("riddle-number", "Riddle", "a short number riddle with its answer"),
+    ("kindness-empathy", "Kindness", "a tiny, specific empathy challenge"),
+    ("kindness-gratitude", "Kindness", "a tiny, specific gratitude challenge"),
+    ("kindness-teamwork", "Kindness", "a tiny, specific teamwork challenge"),
+    ("kindness-courage", "Kindness", "a tiny, specific courage challenge"),
+    ("kindness-helping", "Kindness", "a tiny, specific helping challenge"),
+    ("arts-music", "Arts", "a surprising music fact"),
+    ("arts-painting", "Arts", "a surprising visual-art fact"),
+    ("arts-dance", "Arts", "a surprising dance fact"),
+    ("arts-storytelling", "Arts", "a surprising storytelling fact"),
+    ("arts-theater", "Arts", "a surprising theater fact"),
+    ("math-patterns", "Math", "a delightful pattern fact"),
+    ("math-shapes", "Math", "a surprising shape fact"),
+    ("math-probability", "Math", "a kid-friendly probability surprise"),
+    ("math-big-numbers", "Math", "a delightful big-number comparison"),
+    ("math-puzzle", "Math", "a very short math puzzle with its answer"),
+]
 
 
 def _load_json_state(key: str, default):
@@ -85,15 +140,26 @@ def _history_records(history: list) -> list[dict]:
         if isinstance(item, dict):
             content = str(item.get("content", "")).strip()
             saved_date = str(item.get("date", "")).strip() or None
+            topic = str(item.get("topic", "")).strip() or None
+            category = str(item.get("category", "")).strip() or None
         else:
             content = str(item).strip()
             saved_date = None
+            topic = None
+            category = None
         if content:
-            records.append({"date": saved_date, "content": content})
+            records.append(
+                {
+                    "date": saved_date,
+                    "content": content,
+                    "topic": topic,
+                    "category": category,
+                }
+            )
     return records
 
 
-def _recent_sparkles(history: list, today_key: str) -> list[str]:
+def _recent_history(history: list, today_key: str) -> list[dict]:
     records = _history_records(history)
     try:
         today = date.fromisoformat(today_key)
@@ -101,13 +167,13 @@ def _recent_sparkles(history: list, today_key: str) -> list[str]:
         today = date.today()
     cutoff = today - timedelta(days=HISTORY_WINDOW_DAYS)
 
-    recent = []
+    recent_records = []
     legacy_count = 0
     for record in records:
         saved_date = record["date"]
         if not saved_date:
             if legacy_count < HISTORY_WINDOW_DAYS:
-                recent.append(record["content"])
+                recent_records.append(record)
             legacy_count += 1
             continue
         try:
@@ -115,18 +181,58 @@ def _recent_sparkles(history: list, today_key: str) -> list[str]:
         except ValueError:
             continue
         if cutoff <= record_date <= today:
-            recent.append(record["content"])
-    return recent
+            recent_records.append(record)
+    return recent_records
 
 
-def _build_prompt(today_key: str, recent: list[str]) -> str:
+def _select_topic(today_key: str, recent_records: list[dict]) -> tuple[str, str, str] | None:
+    used_topics = {record["topic"] for record in recent_records if record.get("topic")}
+    category_counts = {}
+    for record in recent_records:
+        category = record.get("category")
+        if category:
+            category_counts[category] = category_counts.get(category, 0) + 1
+
+    available = [topic for topic in SPARKLE_TOPICS if topic[0] not in used_topics]
+    if not available:
+        return None
+
+    seed = f"{today_key}|{len(recent_records)}"
+    return min(
+        available,
+        key=lambda topic: (
+            category_counts.get(topic[1], 0),
+            sha256(f"{seed}|{topic[0]}".encode("utf-8")).hexdigest(),
+        ),
+    )
+
+
+def _is_too_similar(candidate: str, recent: list[str]) -> bool:
+    normalized = _normalize_sparkle(candidate)
+    candidate_tokens = set(normalized.split())
+    for prior in recent:
+        prior_normalized = _normalize_sparkle(prior)
+        if normalized == prior_normalized:
+            return True
+        if SequenceMatcher(None, normalized, prior_normalized).ratio() >= 0.82:
+            return True
+        prior_tokens = set(prior_normalized.split())
+        union = candidate_tokens | prior_tokens
+        if union and len(candidate_tokens & prior_tokens) / len(union) >= 0.72:
+            return True
+    return False
+
+
+def _build_prompt(today_key: str, recent: list[str], topic: tuple[str, str, str]) -> str:
+    _, category, topic_prompt = topic
     return f"""
 You are creating a unique "Daily Sparkle" for kids.
-- Topic: A fun fact, a short joke, or an inspiring mini-quote.
+- Category: {category}.
+- Topic: {topic_prompt}.
 - Constraints: Under {MAX_WORDS} words. NO title. NO "Daily Sparkle" label.
 - Context: Today is {_display_date(today_key)}.
 - ANTI-REPEAT: Do not repeat or closely paraphrase any idea used in the last {HISTORY_WINDOW_DAYS} days: {json.dumps(recent, ensure_ascii=False)}.
-- GOAL: Generate something brand new and delightful.
+- GOAL: Generate something accurate, brand new, specific, and delightful. Return only the Sparkle statement.
 """.strip()
 
 
@@ -183,18 +289,21 @@ def get_or_create_daily_sparkle(force_refresh: bool = False, today_key: str | No
     if not isinstance(history, list):
         history = []
 
-    recent = _recent_sparkles(history, today)
-    recent_fingerprints = {_normalize_sparkle(item) for item in recent}
+    recent_records = _recent_history(history, today)
+    recent = [record["content"] for record in recent_records]
+    topic = _select_topic(today, recent_records)
 
     try:
+        if topic is None:
+            raise RuntimeError("No unused Sparkle topics remain in the 30-day window")
+
         content = ""
         for _ in range(MAX_GENERATION_ATTEMPTS):
-            prompt = _build_prompt(today, recent)
+            prompt = _build_prompt(today, recent, topic)
             candidate = _clean_sparkle(_call_gemini(prompt))
             if not candidate:
                 continue
-            fingerprint = _normalize_sparkle(candidate)
-            if fingerprint in recent_fingerprints:
+            if _is_too_similar(candidate, recent):
                 recent.append(candidate)
                 continue
             content = candidate
@@ -207,8 +316,15 @@ def get_or_create_daily_sparkle(force_refresh: bool = False, today_key: str | No
             record for record in _history_records(history)
             if _normalize_sparkle(record["content"]) != content_fingerprint
         ]
-        next_history = [{"date": today, "content": content}, *prior_records][:MAX_HISTORY_ITEMS]
-        today_record = {"date": today, "content": content}
+        topic_id, category, _ = topic
+        next_record = {
+            "date": today,
+            "content": content,
+            "topic": topic_id,
+            "category": category,
+        }
+        next_history = [next_record, *prior_records][:MAX_HISTORY_ITEMS]
+        today_record = next_record
         _save_json_state(SPARKLE_TODAY_KEY, today_record)
         _save_json_state(SPARKLE_HISTORY_KEY, next_history)
 
@@ -225,6 +341,8 @@ def get_or_create_daily_sparkle(force_refresh: bool = False, today_key: str | No
             "status": "generated",
             "content": content,
             "date": today,
+            "topic": topic_id,
+            "category": category,
         }
 
     except Exception as exc:

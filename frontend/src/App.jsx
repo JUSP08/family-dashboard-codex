@@ -658,6 +658,7 @@ const DashboardView = ({
   const [sparkleContent, setSparkleContent] = useState("");
   const [isSparkleLoading, setIsSparkleLoading] = useState(false);
   const [sparkleError, setSparkleError] = useState("");
+  const [canRefreshSparkle, setCanRefreshSparkle] = useState(false);
 
   const fetchSparkle = async (forceRefresh = false) => {
     setIsSparkleLoading(true);
@@ -676,7 +677,13 @@ const DashboardView = ({
     }
   };
 
-  useEffect(() => { fetchSparkle(false); }, []);
+  useEffect(() => {
+    fetchSparkle(false);
+    fetch("/api/admin/status")
+      .then((response) => response.json())
+      .then((data) => setCanRefreshSparkle(Boolean(data.is_admin)))
+      .catch(() => setCanRefreshSparkle(false));
+  }, []);
   const regenerateSparkle = () => fetchSparkle(true);
 
   const todayKey = currentTime.toLocaleDateString("en-CA");
@@ -931,7 +938,11 @@ const DashboardView = ({
               <div className="p-1.5 bg-yellow-500/20 rounded-lg text-yellow-300 text-sm">🔔</div>
               <h2 className="font-bold text-slate-200 text-sm tracking-wide uppercase">Sparkle</h2>
             </div>
-            <button onClick={regenerateSparkle} disabled={isSparkleLoading} className="text-xs p-1.5 rounded-full bg-slate-700/50 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-slate-300 transition-colors">✨</button>
+            {canRefreshSparkle && (
+              <button onClick={regenerateSparkle} disabled={isSparkleLoading} aria-label="Generate another Sparkle" title="Generate another Sparkle" className="h-8 w-8 rounded-full bg-slate-700/50 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-slate-300 transition-colors inline-flex items-center justify-center">
+                <RefreshCw className={`h-4 w-4 ${isSparkleLoading ? "animate-spin" : ""}`} />
+              </button>
+            )}
           </div>
           <p className={`relative z-10 text-base font-light italic leading-snug line-clamp-4 ${sparkleError ? "text-amber-100" : "text-slate-100"}`}>
             {isSparkleLoading ? "Summoning magic..." : `"${sparkleContent}"`}

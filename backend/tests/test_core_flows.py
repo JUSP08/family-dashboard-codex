@@ -197,8 +197,11 @@ class CoreFlowTests(unittest.TestCase):
 
     @patch("services.sparkle_service._call_gemini")
     def test_sparkle_retries_duplicates_from_the_last_30_days(self, call_gemini):
-        recent = "Octopuses have three hearts."
-        call_gemini.side_effect = [recent, "Honey never spoils when stored properly."]
+        recent = "Octopuses have three hearts and blue blood."
+        call_gemini.side_effect = [
+            "Octopuses have blue blood and three hearts.",
+            "Honey never spoils when stored properly.",
+        ]
         with get_connection() as conn:
             conn.execute(
                 "INSERT INTO app_state (key, json_value, updated_at) VALUES (?, ?, ?)",
@@ -220,7 +223,38 @@ class CoreFlowTests(unittest.TestCase):
                     "SELECT json_value FROM app_state WHERE key = 'dailySparkleHistory'"
                 ).fetchone()["json_value"]
             )
-        self.assertEqual(saved[0], {"date": "2026-09-27", "content": result["content"]})
+        self.assertEqual(saved[0]["date"], "2026-09-27")
+        self.assertEqual(saved[0]["content"], result["content"])
+        self.assertTrue(saved[0]["topic"])
+        self.assertTrue(saved[0]["category"])
+
+    @patch("services.sparkle_service._call_gemini")
+    def test_sparkle_does_not_reuse_a_recent_topic(self, call_gemini):
+        call_gemini.return_value = "A fresh and specific Sparkle."
+        with get_connection() as conn:
+            conn.execute(
+                "INSERT INTO app_state (key, json_value, updated_at) VALUES (?, ?, ?)",
+                (
+                    "dailySparkleHistory",
+                    json.dumps(
+                        [
+                            {
+                                "date": "2026-09-28",
+                                "content": "Yesterday's statement.",
+                                "topic": "space-planets",
+                                "category": "Space",
+                            }
+                        ]
+                    ),
+                    "2026-09-28T12:00:00Z",
+                ),
+            )
+
+        result = get_or_create_daily_sparkle(force_refresh=True, today_key="2026-09-29")
+
+        self.assertTrue(result["success"])
+        self.assertNotEqual(result["topic"], "space-planets")
+        self.assertNotEqual(result["category"], "Space")
 
 
 if __name__ == "__main__":
