@@ -5,6 +5,25 @@ outside Git in `backend/data/family_dashboard.db` and `backend/.env`.
 
 ## Routine update
 
+### One-click from Windows
+
+Double-click `DeployToUbuntu.bat` in the project folder. The launcher connects
+to `sire@192.168.50.242`, pulls the latest `main` branch, runs the guarded
+backup/build/restart process, and waits for the dashboard health check. Enter
+the Ubuntu password in the terminal window if SSH requests it.
+
+To use a different host, user, or remote folder, run the PowerShell wrapper
+directly:
+
+```powershell
+.\ops\deploy-dashboard-ssh.ps1 `
+  -UbuntuHost "192.168.50.242" `
+  -SshUser "sire" `
+  -RemotePath "~/family-dashboard-codex"
+```
+
+### Directly on Ubuntu
+
 Connect to the Ubuntu computer and run:
 
 ```bash

@@ -117,6 +117,9 @@ cd ~/family-dashboard-codex
 ./ops/update-dashboard.sh
 ```
 
+From Windows, double-click `DeployToUbuntu.bat` to perform the same guarded
+update, build, restart, and health check over SSH.
+
 See [`docs/UBUNTU_DEPLOY.md`](docs/UBUNTU_DEPLOY.md) for the full update,
 verification, one-time history migration, and rollback instructions.
 
