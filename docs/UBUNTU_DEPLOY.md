@@ -43,6 +43,9 @@ The script:
 6. Updates Python and Node dependencies and builds the frontend.
 7. Starts the backend and waits for a successful health check.
 
+The project pins a Playwright release with Ubuntu 26.04 support so the
+Qustodio token-refresh browser can be installed during deployment.
+
 After it succeeds, open `http://192.168.50.242:8099/` and use `Ctrl+F5` if the
 browser still shows an older bundle.
 
