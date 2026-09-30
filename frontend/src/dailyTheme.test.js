@@ -5,6 +5,7 @@ import { getDailyTheme } from './dailyTheme.js';
 test('themes stay consistent throughout each local date and dim at night', () => {
   const names = new Set();
   const fonts = new Set();
+  const bodyFonts = new Set();
   const backgrounds = new Set();
   for (let month = 0; month < 12; month++) {
     for (let day = 1; day <= 31; day++) {
@@ -16,12 +17,14 @@ test('themes stay consistent throughout each local date and dim at night', () =>
       assert.match(theme.style['--theme-accent'], /^#[0-9a-f]{6}$/);
       names.add(theme.name);
       fonts.add(theme.style['--theme-heading-font']);
+      bodyFonts.add(theme.style['--theme-body-font']);
       backgrounds.add(theme.style.backgroundImage);
     }
   }
   assert.equal(names.size, 365);
   assert.equal(backgrounds.size, 365);
   assert.equal(fonts.size, 3);
+  assert.equal(bodyFonts.size, 3);
 });
 
 test('occasion themes take precedence over seasonal palettes', () => {

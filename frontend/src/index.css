@@ -26,8 +26,11 @@ body {
 /* Decoration varies; readable content and semantic status colors stay stable. */
 .family-shell {
   height: 100dvh;
-  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-family: var(--theme-body-font, "Segoe UI"), system-ui, -apple-system, sans-serif;
   line-height: 1.5;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
 }
 
 .family-shell :is(h1, h2, h3) {

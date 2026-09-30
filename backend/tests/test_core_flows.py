@@ -31,6 +31,7 @@ from services.state_service import (  # noqa: E402
     get_full_state,
     save_full_state,
 )
+from services.theme_service import ensure_daily_theme, get_daily_theme  # noqa: E402
 
 
 class CoreFlowTests(unittest.TestCase):
@@ -55,6 +56,12 @@ class CoreFlowTests(unittest.TestCase):
             ):
                 conn.execute(f"DELETE FROM {table}")
             conn.execute("UPDATE state_meta SET revision = 0 WHERE id = 1")
+
+        themes_dir = Path(os.environ["SQLITE_PATH"]).parent / "themes"
+        if themes_dir.exists():
+            for path in themes_dir.iterdir():
+                if path.is_file():
+                    path.unlink()
 
     def test_partial_state_save_preserves_other_keys_and_detects_conflicts(self):
         first = save_full_state(
@@ -328,6 +335,31 @@ class CoreFlowTests(unittest.TestCase):
             )
         self.assertEqual(saved["week"], "2026-W40")
         self.assertEqual(len(saved["items"]), 100)
+
+    @patch("services.theme_service._request_theme_image")
+    def test_daily_theme_generates_once_and_is_served(self, request_theme_image):
+        request_theme_image.return_value = (b"test-jpeg-bytes", "image/jpeg")
+
+        first = ensure_daily_theme("2026-09-30")
+        second = ensure_daily_theme("2026-09-30")
+
+        self.assertTrue(first["ready"])
+        self.assertEqual(first, second)
+        self.assertEqual(request_theme_image.call_count, 1)
+        self.assertEqual(get_daily_theme("2026-09-30")["themeId"], first["themeId"])
+
+        client = self.app.test_client()
+        metadata_response = client.get("/api/theme/today?date=2026-09-30")
+        image_response = client.get("/api/theme/image/2026-09-30")
+        self.assertEqual(metadata_response.status_code, 200)
+        self.assertEqual(image_response.status_code, 200)
+        self.assertEqual(image_response.data, b"test-jpeg-bytes")
+        image_response.close()
+
+    def test_daily_theme_endpoint_uses_fallback_when_artwork_is_missing(self):
+        response = self.app.test_client().get("/api/theme/today?date=2026-09-30")
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.get_json()["ready"])
 
 
 if __name__ == "__main__":

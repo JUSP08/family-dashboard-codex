@@ -109,11 +109,20 @@ generates up to 100 varied, schema-validated Sparkles at the start of each ISO
 week. Any child can press the Sparkle refresh button to consume the next item;
 the Gemini key remains private on the backend.
 
+The same server-side Gemini key also creates one original 16:9 dashboard
+background per local date. Theme concepts rotate through sports, dance,
+creator, creature-adventure, toy, maker, arcade, music, and meme-inspired
+directions without requesting branded characters or logos. Generated artwork
+is cached under `backend/data/themes`; the deterministic gradient theme remains
+available whenever generation is delayed or unavailable.
+
 ## Data, backups, and deployment
 
-Runtime data is stored only in `backend/data/family_dashboard.db`. Database and
-environment files are excluded from Git. Before updating, stop the dashboard
-and copy the database plus `backend/.env` to encrypted storage.
+Persistent family data is stored in `backend/data/family_dashboard.db`.
+Database and environment files are excluded from Git. Generated theme images
+are also excluded, but are a disposable cache and regenerate automatically.
+Before updating, stop the dashboard and copy the database plus `backend/.env`
+to encrypted storage.
 
 On Ubuntu, routine updates are handled by the guarded deployment script:
 

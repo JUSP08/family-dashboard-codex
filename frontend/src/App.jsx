@@ -232,13 +232,25 @@ const THEMES = {
 };
 
 
-const buildTheme = (phase, date) => {
+const buildTheme = (phase, date, generatedTheme = null) => {
   const base = THEMES[phase] || THEMES.day;
   const dailyTheme = getDailyTheme(date, phase);
+  const hasGeneratedArtwork = generatedTheme?.imageUrl && generatedTheme?.date === dailyTheme.key;
+  const backgroundStyle = hasGeneratedArtwork
+    ? {
+        ...dailyTheme.style,
+        '--theme-accent': generatedTheme.accent || dailyTheme.style['--theme-accent'],
+        '--theme-heading-font': generatedTheme.headingFont || dailyTheme.style['--theme-heading-font'],
+        '--theme-body-font': generatedTheme.bodyFont || dailyTheme.style['--theme-body-font'],
+        backgroundImage: `url("${generatedTheme.imageUrl}"), ${dailyTheme.style.backgroundImage}`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }
+    : dailyTheme.style;
   return {
     ...base,
-    seasonalName: dailyTheme.name,
-    backgroundStyle: dailyTheme.style,
+    seasonalName: hasGeneratedArtwork ? `${generatedTheme.name} · ${dailyTheme.name.split(' · ').at(-1)}` : dailyTheme.name,
+    backgroundStyle,
   };
 };
 
@@ -3660,6 +3672,7 @@ const BalancesView = ({ theme, childrenData, wallet, setWallet, dailyRewards = {
 function FamilyDashboard() {
   const [view, setView] = useState("dashboard");
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [generatedTheme, setGeneratedTheme] = useState(null);
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [calendarErrors, setCalendarErrors] = useState([]);
 
@@ -3897,7 +3910,23 @@ function FamilyDashboard() {
   const todayKey = currentTime.toLocaleDateString("en-CA"); // Returns "YYYY-MM-DD" in local time
   useEffect(() => { const t = setInterval(() => setCurrentTime(new Date()), 1000); return () => clearInterval(t); }, []);
   useEffect(() => { const t = setInterval(() => setCalendarRefreshTick(tick => tick + 1), 300000); return () => clearInterval(t); }, []);
-  const theme = useMemo(() => buildTheme(themePhase, currentTime), [themePhase, currentTime]);
+  useEffect(() => {
+    let active = true;
+    const loadGeneratedTheme = async () => {
+      try {
+        const response = await fetch(`/api/theme/today?date=${encodeURIComponent(todayKey)}`, { cache: "no-store" });
+        if (!response.ok) return;
+        const result = await response.json();
+        if (active && result?.ready && result?.date === todayKey) setGeneratedTheme(result);
+      } catch {
+        // The local gradient theme remains active when artwork is unavailable.
+      }
+    };
+    loadGeneratedTheme();
+    const timer = setInterval(loadGeneratedTheme, 5 * 60 * 1000);
+    return () => { active = false; clearInterval(timer); };
+  }, [todayKey]);
+  const theme = useMemo(() => buildTheme(themePhase, currentTime, generatedTheme), [themePhase, currentTime, generatedTheme]);
   const dailyCoachTasks = useMemo(
     () => getDailyCoachTasksForDate({
       masterTasks,
@@ -4277,7 +4306,7 @@ function FamilyDashboard() {
                 <span className="relative flex h-2 w-2">
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                 </span>
-                <p className="theme-caption text-[11px] font-bold text-slate-300" title="Theme changes daily with the local date and season">{theme.seasonalName}</p>
+                <p className="theme-caption text-[11px] font-bold text-slate-300" title="Artwork, colors, and type change daily while readability stays consistent">{theme.seasonalName}</p>
               </div>
             </div>
           </div>

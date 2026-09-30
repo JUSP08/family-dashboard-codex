@@ -52,6 +52,14 @@ ISO week, so child button presses are fast and do not expose the Gemini API
 key. `GEMINI_POOL_TIMEOUT_SECONDS` controls the batch request timeout and
 defaults to 90 seconds.
 
+After restart, a separate worker creates at most one original dashboard
+background per local date using the existing `GEMINI_API_KEY`. The default
+image model is `gemini-3.1-flash-image`; optional overrides are
+`GEMINI_IMAGE_MODEL`, `GEMINI_THEME_TIMEOUT_SECONDS`, and
+`GEMINI_THEME_IMAGE_SIZE`. Images in `backend/data/themes` are a regenerable
+cache and do not need to be restored with the database. If generation fails,
+the dashboard keeps its built-in daily gradient and retries later.
+
 After it succeeds, open `http://192.168.50.242:8099/` and use `Ctrl+F5` if the
 browser still shows an older bundle.
 

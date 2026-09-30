@@ -54,6 +54,12 @@ const headingFonts = [
   'Verdana, "Segoe UI", sans-serif',
 ];
 
+const bodyFonts = [
+  '"Segoe UI", system-ui, sans-serif',
+  '"Trebuchet MS", "Segoe UI", sans-serif',
+  'Verdana, "Segoe UI", sans-serif',
+];
+
 function hashDate(key) {
   let seed = 2166136261;
   for (const character of key) {
@@ -83,7 +89,11 @@ function occasion(date) {
 }
 
 export function getDailyTheme(date = new Date(), phase = 'day') {
-  const key = [date.getFullYear(), date.getMonth() + 1, date.getDate()].join('-');
+  const key = [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-');
   const seed = hashDate(key);
   const ordinal = dayOfYear(date);
   const month = date.getMonth();
@@ -107,6 +117,7 @@ export function getDailyTheme(date = new Date(), phase = 'day') {
       '--theme-accent': accent,
       '--theme-secondary': secondary,
       '--theme-heading-font': headingFonts[(seed >>> 12) % headingFonts.length],
+      '--theme-body-font': bodyFonts[(seed >>> 15) % bodyFonts.length],
       backgroundColor: canvas[3],
       backgroundImage: [
         `radial-gradient(ellipse at ${x}% ${y}%, ${accent}${accentAlpha}, transparent ${42 + seed % 20}%)`,

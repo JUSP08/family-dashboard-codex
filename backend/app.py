@@ -34,6 +34,7 @@ from services.state_service import (
     has_protected_state_changes,
     save_full_state,
 )
+from services.theme_service import get_daily_theme, get_theme_image_path
 
 
 def _load_session_secret() -> str:
@@ -88,6 +89,23 @@ def create_app() -> Flask:
     @app.get("/api/state")
     def api_get_state():
         return jsonify(get_full_state())
+
+    @app.get("/api/theme/today")
+    def api_daily_theme():
+        date_key = str(request.args.get("date", "")).strip() or None
+        theme = get_daily_theme(date_key)
+        if theme:
+            return jsonify(theme)
+        return jsonify({"success": True, "ready": False, "date": date_key})
+
+    @app.get("/api/theme/image/<date_key>")
+    def api_daily_theme_image(date_key: str):
+        image_path = get_theme_image_path(date_key)
+        if not image_path:
+            return jsonify({"success": False, "error": "Theme image not found"}), 404
+        response = send_from_directory(image_path.parent, image_path.name)
+        response.headers["Cache-Control"] = "public, max-age=3600"
+        return response
 
     @app.get("/api/calendar/events")
     def api_calendar_events():

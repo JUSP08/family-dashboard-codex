@@ -3,6 +3,7 @@
 **/data/*.db-*
 **/backend/data/*.db
 **/backend/data/*.db-*
+**/backend/data/themes/
 **/.tmp/
 **/__pycache__/
 **/*.pyc

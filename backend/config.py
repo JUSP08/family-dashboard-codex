@@ -55,6 +55,9 @@ class Settings:
     gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
     gemini_timeout_seconds: int = int(os.getenv("GEMINI_TIMEOUT_SECONDS", "20"))
     gemini_pool_timeout_seconds: int = int(os.getenv("GEMINI_POOL_TIMEOUT_SECONDS", "90"))
+    gemini_image_model: str = os.getenv("GEMINI_IMAGE_MODEL", "gemini-3.1-flash-image")
+    gemini_theme_timeout_seconds: int = int(os.getenv("GEMINI_THEME_TIMEOUT_SECONDS", "180"))
+    gemini_theme_image_size: str = os.getenv("GEMINI_THEME_IMAGE_SIZE", "2K")
 
     google_api_key: str = os.getenv("GOOGLE_API_KEY", os.getenv("VITE_GOOGLE_API_KEY", ""))
     google_timeout_seconds: int = int(os.getenv("GOOGLE_TIMEOUT_SECONDS", "20"))
