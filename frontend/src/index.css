@@ -46,6 +46,18 @@ body {
 .family-shell .tracking-widest { letter-spacing: 0.06em; }
 .family-shell .font-mono { font-variant-numeric: tabular-nums; }
 .family-shell .theme-caption { color: var(--theme-accent); }
+.theme-schedule { display: flex; gap: 0.75rem; margin-top: 0.25rem; }
+.theme-day { display: flex; align-items: center; gap: 0.4rem; min-width: 0; }
+.theme-day p { margin: 0; font-size: 0.75rem; font-weight: 700; overflow-wrap: anywhere; }
+.theme-day-label { display: block; color: #cbd5e1; font-size: 0.625rem; }
+.theme-next { border-left: 1px solid #ffffff30; padding-left: 0.75rem; }
+.theme-thumbnail { width: 40px; height: 30px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
+@media (max-width: 600px) {
+  .theme-thumbnail { display: none; }
+  .theme-schedule { gap: 0.4rem; }
+  .theme-next { padding-left: 0.4rem; }
+  .theme-day p { font-size: 0.625rem; }
+}
 .family-shell .dashboard-header { background: rgb(8 17 31 / 0.65); }
 .family-shell main { scroll-padding-block: 1rem 7rem; }
 .family-shell main > div > header {

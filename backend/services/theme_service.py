@@ -4,7 +4,7 @@ import base64
 import json
 import re
 import threading
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -119,6 +119,23 @@ THEME_CONCEPTS = (
     },
 )
 
+THEME_CONCEPTS += tuple(
+    {"id": identifier, "name": name, "scene": scene,
+     "heading": heading, "body": '"Segoe UI", Arial, sans-serif', "accent": accent}
+    for identifier, name, scene, heading, accent in (
+        ("smiley-faces", "Smile Parade", "cheerful smiley-face stickers, playful doodles and colorful paper cutouts", '"Arial Rounded MT Bold", "Trebuchet MS", sans-serif', "#fde047"),
+        ("rainbows", "Rainbow Trails", "sweeping vivid rainbows over airy clouds with colorful prismatic ribbons", '"Trebuchet MS", sans-serif', "#86efac"),
+        ("hearts", "Heart Garden", "floating handmade hearts and heart-shaped flowers in a joyful layered paper garden", 'Georgia, serif', "#fda4af"),
+        ("space", "Space Explorers", "an imaginative spacecraft expedition past colorful planets, rings and tiny friendly rovers", '"Arial Black", sans-serif', "#67e8f9"),
+        ("galaxies", "Galaxy Voyage", "vast spiral galaxies with luminous dust lanes and richly colored nebulae", 'Georgia, serif', "#f0abfc"),
+        ("constellations", "Constellation Atlas", "a crisp star-filled sky with delicate constellation connections and celestial compass motifs without lettering", '"Palatino Linotype", Georgia, serif', "#fde68a"),
+        ("sea", "Undersea Wonders", "a vibrant underwater coral reef with sea turtles, tropical fish and sunbeams through clear water", '"Trebuchet MS", sans-serif', "#5eead4"),
+        ("abyss", "Deep Sea Glow", "a wondrous deep ocean abyss with glowing jellyfish, bioluminescent creatures and distant underwater ridges, peaceful rather than frightening", 'Georgia, serif', "#22d3ee"),
+        ("beach", "Beach Day", "a bright shoreline with turquoise surf, seashells, sandcastles and colorful beach umbrellas", '"Arial Rounded MT Bold", "Trebuchet MS", sans-serif', "#fcd34d"),
+        ("snow-day", "Snow Day", "a playful snowy neighborhood with snow forts, sleds, frosted trees and cozy glowing windows", 'Rockwell, Georgia, serif', "#bae6fd"),
+    )
+)
+
 
 def _today_key() -> str:
     return datetime.now(ZoneInfo(settings.dashboard_timezone)).date().isoformat()
@@ -223,10 +240,11 @@ def _extension_for_mime(mime_type: str) -> str:
     )
 
 
-def _load_metadata() -> dict | None:
+def _load_metadata(date_key: str) -> dict | None:
     with get_connection() as conn:
         row = conn.execute(
-            "SELECT json_value FROM app_state WHERE key = ?", (THEME_STATE_KEY,)
+            "SELECT json_value FROM app_state WHERE key IN (?, ?) ORDER BY key DESC LIMIT 1",
+            (f"{THEME_STATE_KEY}:{date_key}", THEME_STATE_KEY),
         ).fetchone()
     if not row:
         return None
@@ -256,7 +274,7 @@ def get_daily_theme(date_key: str | None = None) -> dict | None:
     requested_date = date_key or _today_key()
     if not THEME_DATE_PATTERN.fullmatch(requested_date):
         return None
-    metadata = _load_metadata()
+    metadata = _load_metadata(requested_date)
     if not metadata or metadata.get("date") != requested_date:
         return None
     file_name = metadata.get("fileName")
@@ -272,7 +290,7 @@ def get_daily_theme(date_key: str | None = None) -> dict | None:
 def get_theme_image_path(date_key: str) -> Path | None:
     if not THEME_DATE_PATTERN.fullmatch(date_key):
         return None
-    metadata = _load_metadata()
+    metadata = _load_metadata(date_key)
     if not metadata or metadata.get("date") != date_key:
         return None
     file_name = metadata.get("fileName")
@@ -332,7 +350,7 @@ def ensure_daily_theme(date_key: str | None = None, force: bool = False) -> dict
                     json_value=excluded.json_value,
                     updated_at=excluded.updated_at
                 """,
-                (THEME_STATE_KEY, json.dumps(metadata), metadata["generatedAt"]),
+                (f"{THEME_STATE_KEY}:{requested_date}", json.dumps(metadata), metadata["generatedAt"]),
             )
 
         _remove_old_images(file_name)
@@ -344,3 +362,18 @@ def ensure_daily_theme(date_key: str | None = None, force: bool = False) -> dict
             entity_id=requested_date,
         )
         return _public_metadata(metadata)
+
+
+def get_theme_preview(date_key: str | None = None) -> dict:
+    requested_date = date_key or _today_key()
+    concept = _concept_for_date(requested_date)
+    return get_daily_theme(requested_date) or {
+        "success": True, "ready": False, "date": requested_date,
+        "themeId": concept["id"], "name": concept["name"], "accent": concept["accent"],
+    }
+
+
+def ensure_upcoming_themes() -> None:
+    today = date.fromisoformat(_today_key())
+    for day in (today, today + timedelta(days=1)):
+        ensure_daily_theme(day.isoformat())

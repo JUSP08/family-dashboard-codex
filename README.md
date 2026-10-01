@@ -112,7 +112,10 @@ the Gemini key remains private on the backend.
 The same server-side Gemini key also creates one original 16:9 dashboard
 background per local date. Theme concepts rotate through sports, dance,
 creator, creature-adventure, toy, maker, arcade, music, and meme-inspired
-directions without requesting branded characters or logos. Generated artwork
+directions, plus smiley faces, rainbows, hearts, space, galaxies, constellations,
+sea, abyss, beach, and snow day, without requesting branded characters or logos.
+The worker prepares today and tomorrow independently. The header shows tomorrow's
+theme to the right of today's, with artwork thumbnails when ready. Generated artwork
 is cached under `backend/data/themes`; the deterministic gradient theme remains
 available whenever generation is delayed or unavailable.
 

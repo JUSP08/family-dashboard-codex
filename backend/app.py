@@ -34,7 +34,7 @@ from services.state_service import (
     has_protected_state_changes,
     save_full_state,
 )
-from services.theme_service import get_daily_theme, get_theme_image_path
+from services.theme_service import get_theme_preview, get_theme_image_path
 
 
 def _load_session_secret() -> str:
@@ -93,10 +93,10 @@ def create_app() -> Flask:
     @app.get("/api/theme/today")
     def api_daily_theme():
         date_key = str(request.args.get("date", "")).strip() or None
-        theme = get_daily_theme(date_key)
-        if theme:
-            return jsonify(theme)
-        return jsonify({"success": True, "ready": False, "date": date_key})
+        try:
+            return jsonify(get_theme_preview(date_key))
+        except ValueError:
+            return jsonify({"success": False, "error": "Invalid theme date"}), 400
 
     @app.get("/api/theme/image/<date_key>")
     def api_daily_theme_image(date_key: str):

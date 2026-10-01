@@ -53,7 +53,9 @@ key. `GEMINI_POOL_TIMEOUT_SECONDS` controls the batch request timeout and
 defaults to 90 seconds.
 
 After restart, a separate worker creates at most one original dashboard
-background per local date using the existing `GEMINI_API_KEY`. The default
+background per local date using the existing `GEMINI_API_KEY`, preparing both
+today and tomorrow. The header previews tomorrow's theme beside today's;
+its name is available before the artwork finishes. The default
 image model is `gemini-3.1-flash-image`; optional overrides are
 `GEMINI_IMAGE_MODEL`, `GEMINI_THEME_TIMEOUT_SECONDS`, and
 `GEMINI_THEME_IMAGE_SIZE`. Images in `backend/data/themes` are a regenerable

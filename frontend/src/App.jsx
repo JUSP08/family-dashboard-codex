@@ -3673,6 +3673,7 @@ function FamilyDashboard() {
   const [view, setView] = useState("dashboard");
   const [currentTime, setCurrentTime] = useState(new Date());
   const [generatedTheme, setGeneratedTheme] = useState(null);
+  const [tomorrowTheme, setTomorrowTheme] = useState(null);
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [calendarErrors, setCalendarErrors] = useState([]);
 
@@ -3912,12 +3913,19 @@ function FamilyDashboard() {
   useEffect(() => { const t = setInterval(() => setCalendarRefreshTick(tick => tick + 1), 300000); return () => clearInterval(t); }, []);
   useEffect(() => {
     let active = true;
+    setGeneratedTheme(null);
+    setTomorrowTheme(null);
+    const tomorrow = new Date(`${todayKey}T12:00:00`);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowKey = getDailyTheme(tomorrow).key;
     const loadGeneratedTheme = async () => {
       try {
-        const response = await fetch(`/api/theme/today?date=${encodeURIComponent(todayKey)}`, { cache: "no-store" });
-        if (!response.ok) return;
-        const result = await response.json();
-        if (active && result?.ready && result?.date === todayKey) setGeneratedTheme(result);
+        await Promise.all([ [todayKey, setGeneratedTheme], [tomorrowKey, setTomorrowTheme] ].map(async ([key, update]) => {
+          const response = await fetch(`/api/theme/today?date=${encodeURIComponent(key)}`, { cache: "no-store" });
+          if (!response.ok) return;
+          const result = await response.json();
+          if (active && result?.date === key) update(result);
+        }));
       } catch {
         // The local gradient theme remains active when artwork is unavailable.
       }
@@ -4302,11 +4310,15 @@ function FamilyDashboard() {
               <h1 className="text-2xl font-black tracking-tight text-white drop-shadow-sm">
                 Lindstrom HQ
               </h1>
-              <div className="flex items-center gap-2 mt-0.5">
-                <span className="relative flex h-2 w-2">
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-                <p className="theme-caption text-[11px] font-bold text-slate-300" title="Artwork, colors, and type change daily while readability stays consistent">{theme.seasonalName}</p>
+              <div className="theme-schedule">
+                <div className="theme-day">
+                  {generatedTheme?.imageUrl && <img src={generatedTheme.imageUrl} alt="" className="theme-thumbnail" />}
+                  <div><span className="theme-day-label">Today</span><p className="theme-caption">{generatedTheme?.name || theme.seasonalName}</p></div>
+                </div>
+                <div className="theme-day theme-next">
+                  {tomorrowTheme?.imageUrl && <img src={tomorrowTheme.imageUrl} alt="" className="theme-thumbnail" />}
+                  <div><span className="theme-day-label">Tomorrow</span><p style={{ color: tomorrowTheme?.accent }}>{tomorrowTheme?.name || 'Coming soon'}</p></div>
+                </div>
               </div>
             </div>
           </div>

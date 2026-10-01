@@ -11,7 +11,7 @@ from db import get_connection, log_event
 from services.qustodio_service import refresh_qustodio_token_if_due, retry_qustodio_queue_once
 from services.reward_service import process_daily_rewards
 from services.sparkle_service import refresh_sparkle_pool_if_due
-from services.theme_service import ensure_daily_theme
+from services.theme_service import ensure_upcoming_themes
 
 
 _WORKER_STARTED = False
@@ -85,7 +85,7 @@ def _sparkle_pool_loop() -> None:
 def _daily_theme_loop() -> None:
     while True:
         try:
-            ensure_daily_theme()
+            ensure_upcoming_themes()
         except Exception as exc:
             log_event(
                 event_type="daily_theme_worker_error",

@@ -347,6 +347,12 @@ class CoreFlowTests(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertEqual(request_theme_image.call_count, 1)
         self.assertEqual(get_daily_theme("2026-09-30")["themeId"], first["themeId"])
+        tomorrow = ensure_daily_theme("2026-10-01")
+        self.assertNotEqual(tomorrow["themeId"], first["themeId"])
+        self.assertEqual(get_daily_theme("2026-09-30"), first)
+        self.assertEqual(get_daily_theme("2026-10-01"), tomorrow)
+        self.assertEqual(ensure_daily_theme("2026-09-30"), first)
+        self.assertEqual(request_theme_image.call_count, 2)
 
         client = self.app.test_client()
         metadata_response = client.get("/api/theme/today?date=2026-09-30")
@@ -360,6 +366,8 @@ class CoreFlowTests(unittest.TestCase):
         response = self.app.test_client().get("/api/theme/today?date=2026-09-30")
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.get_json()["ready"])
+        self.assertTrue(response.get_json()["name"])
+        self.assertEqual(self.app.test_client().get("/api/theme/today?date=invalid").status_code, 400)
 
 
 if __name__ == "__main__":
