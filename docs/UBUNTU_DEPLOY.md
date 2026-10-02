@@ -12,6 +12,12 @@ to `sire@192.168.50.242`, pulls the latest `main` branch, runs the guarded
 backup/build/restart process, and waits for the dashboard health check. Enter
 the Ubuntu password in the terminal window if SSH requests it.
 
+Keep the launcher in the complete project folder beside `ops`, which must
+contain `deploy-dashboard-ssh.ps1`. For a Desktop button, create a shortcut to
+the original `DeployToUbuntu.bat`; copying only the batch file will not work.
+The launcher uses the full script path and reports the expected location if
+the script is missing.
+
 To use a different host, user, or remote folder, run the PowerShell wrapper
 directly:
 
