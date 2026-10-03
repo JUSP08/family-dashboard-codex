@@ -81,7 +81,13 @@ body {
   .theme-day p { font-size: 0.625rem; }
 }
 .family-shell .dashboard-header { background: rgb(8 17 31 / 0.65); }
-.family-shell main { scroll-padding-block: 1rem 7rem; }
+.family-shell main { scroll-padding-block: 1rem; }
+.dashboard-footer {
+  display: flex;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0.5rem 0.5rem max(1.25rem, env(safe-area-inset-bottom));
+}
 .family-shell main > div > header {
   background-color: rgb(8 17 31 / 0.85);
   border-color: var(--theme-accent);
@@ -106,13 +112,13 @@ body {
   .family-shell input, .family-shell select, .family-shell textarea { font-size: 1rem; }
   .family-shell .primary-nav {
     width: calc(100% - 1rem); max-width: 30rem;
-    bottom: max(0.5rem, env(safe-area-inset-bottom));
     gap: 0.125rem; padding: 0.4rem; border-radius: 1.25rem;
   }
   .family-shell .primary-nav > button {
     flex: 1 1 0; min-width: 0; padding-inline: 0.15rem;
   }
   .family-shell .primary-nav > div { flex-shrink: 0; margin-inline: 0; }
+  .dashboard-footer { padding-bottom: max(0.5rem, env(safe-area-inset-bottom)); }
 }
 
 .family-shell button,

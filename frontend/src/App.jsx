@@ -4391,7 +4391,7 @@ function FamilyDashboard() {
         </header>
 
         {/* Main Content Area */}
-        <main data-view={view} className="reading-view flex-1 overflow-y-auto px-6 pb-28 custom-scrollbar">
+        <main data-view={view} className="reading-view flex-1 min-h-0 overflow-y-auto px-6 pb-6 custom-scrollbar">
 
           {/* 1. DASHBOARD */}
           {view === "dashboard" && (
@@ -4526,8 +4526,9 @@ function FamilyDashboard() {
 
         </main>
 
-        {/* Floating Nav */}
-        <nav aria-label="Primary dashboard" className="primary-nav fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-950/90 backdrop-blur-2xl text-white rounded-[1.75rem] px-2.5 py-2 flex items-center gap-1 z-50 border border-white/15 shadow-[0_12px_36px_rgba(0,0,0,0.55)]">
+        {/* Reserve layout space for navigation rather than covering page content. */}
+        <footer className="dashboard-footer">
+        <nav aria-label="Primary dashboard" className="primary-nav relative bg-slate-950/90 backdrop-blur-2xl text-white rounded-[1.75rem] px-2.5 py-2 flex items-center gap-1 z-20 border border-white/15 shadow-[0_12px_36px_rgba(0,0,0,0.55)]">
           <NavButton view={view} target="dashboard" icon={<Clock className="w-5 h-5" />} label="Home" setView={setView} color="bg-blue-600" />
           <NavButton view={view} target="coach" icon={<Coffee className="w-5 h-5" />} label="Coach" setView={setView} color="bg-amber-500" />
           <NavButton view={view} target="gigs" icon={<Banknote className="w-5 h-5" />} label="Gigs" setView={setView} color="bg-emerald-600" />
@@ -4537,6 +4538,7 @@ function FamilyDashboard() {
           <div className="w-px h-8 bg-white/10 mx-0.5" />
           <NavButton view={view} target="suggestions" icon={<MessageSquare className="w-5 h-5" />} label="Suggest" setView={setView} color="bg-cyan-600" />
         </nav>
+        </footer>
       </div>
     </div>
   );
