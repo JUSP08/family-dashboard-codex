@@ -981,15 +981,15 @@ const DashboardView = ({
         </div>
 
         {/* 3. DAILY GOALS */}
-        <div className={`${theme.cardBg} rounded-[2rem] p-4 flex-1 flex flex-col min-h-0 overflow-hidden`}>
+        <div className={`home-leaderboard ${theme.cardBg} rounded-[2rem] p-4 flex-1 shrink-0 flex flex-col min-h-[14rem] overflow-hidden`}>
           <div className="flex items-center gap-2 mb-3 shrink-0">
             <div className="p-1.5 bg-emerald-500/20 rounded-lg text-emerald-400 text-sm">🏆</div>
             <h2 className="font-bold text-slate-200 text-sm">Daily goals</h2>
           </div>
 
-          <div className="flex-1 flex flex-col gap-2 min-h-0 overflow-y-auto custom-scrollbar">
+          <div role="region" aria-label="Daily goals leaderboard" tabIndex={0} className="flex-1 flex flex-col gap-2 min-h-0 overflow-y-auto custom-scrollbar">
             {sortedProgress.map(({ child, pct }) => (
-              <div key={child.id} className="flex items-center gap-3 bg-slate-800/40 rounded-xl px-3 py-2 border border-white/5 hover:bg-slate-800/60 transition-all">
+              <div key={child.id} className="shrink-0 flex items-center gap-3 bg-slate-800/40 rounded-xl px-3 py-2 border border-white/5 hover:bg-slate-800/60 transition-all">
                 <ChildAvatar child={child} className="w-8 h-8 shrink-0" textSize="text-xs" />
                 <div className="flex-1 min-w-0 flex flex-col justify-center">
                   <div className="flex justify-between items-center text-xs mb-1">
@@ -3504,16 +3504,16 @@ const BalancesView = ({ theme, childrenData, wallet, setWallet, dailyRewards = {
   const amountNumber = Number(redeemAmount) || 0;
 
   return (
-    <div className="h-full w-full p-6 flex flex-col items-center">
+    <div className="min-h-full w-full p-6 flex flex-col items-center">
 
       {/* PAGE HEADER */}
-      <div className="reading-surface w-full text-center mb-8 py-4 px-3">
+      <div className="reading-surface shrink-0 w-full text-center mb-8 py-4 px-3">
         <h1 className="text-3xl font-bold text-white mb-2">Money and time</h1>
         <p className="text-slate-300 text-sm">Choose your picture.</p>
       </div>
 
       {/* AVATAR GRID (Centered and Larger) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full max-w-4xl">
+      <div className="shrink-0 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full max-w-4xl">
         {kids.map(kid => {
           const balance = wallet[kid.id] || { money: 0, time: 0 };
           const yesterdayReward = getYesterdayRewardForChild(kid.id);
@@ -3570,8 +3570,8 @@ const BalancesView = ({ theme, childrenData, wallet, setWallet, dailyRewards = {
 
       {/* REDEMPTION POPUP */}
       {redeemingChild && (
-        <div className="absolute inset-0 z-50 bg-slate-900/90 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setRedeemingChildId(null)}>
-          <div className="bg-slate-800 border border-white/10 rounded-3xl p-6 shadow-2xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[60] bg-slate-900/90 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setRedeemingChildId(null)}>
+          <div className="max-h-full overflow-y-auto custom-scrollbar bg-slate-800 border border-white/10 rounded-3xl p-6 shadow-2xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <ChildAvatar child={redeemingChild} className="w-12 h-12" textSize="text-lg" />

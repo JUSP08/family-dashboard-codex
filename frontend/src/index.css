@@ -211,6 +211,7 @@ body {
   .home-layout { height: auto; min-height: 100%; flex-direction: column; overflow: visible; }
   .home-layout > div:first-of-type { min-height: 500px; }
   .home-sidebar { width: 100%; overflow: visible; }
+  .home-leaderboard { flex: 0 0 auto; max-height: 24rem; }
   .agenda-days { min-height: 360px; }
   .agenda-events { max-height: 500px; }
 }
