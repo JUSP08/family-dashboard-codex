@@ -2,6 +2,28 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: Lexend;
+  src: url('/fonts/Lexend.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Atkinson Hyperlegible';
+  src: url('/fonts/AtkinsonHyperlegible-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Atkinson Hyperlegible';
+  src: url('/fonts/AtkinsonHyperlegible-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 html {
   color-scheme: dark;
   background: #020617;
@@ -130,5 +152,82 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Wall-screen reading sizes are fixed; compact calendars retain their own scale. */
+.family-shell { letter-spacing: 0; }
+.family-shell [class*="tracking-"] { letter-spacing: 0; }
+.family-shell .dashboard-header { background: #101821f5; position: relative; z-index: 30; gap: 1rem; }
+.family-shell .reading-surface { background: #121c29f7; border: 1px solid #ffffff20; }
+.reading-view:not([data-view="settings"]) { font-size: 22px; }
+.reading-view:not([data-view="settings"]) :is(.text-xs, .text-sm, .text-\[10px\], .text-\[11px\]) { font-size: 18px; line-height: 1.5; letter-spacing: 0; }
+.reading-view:not([data-view="settings"]) :is(.text-slate-400, .text-slate-500, .text-slate-600) { color: #cbd5e1; }
+.reading-view:not([data-view="settings"]) :is(h1, h2, h3) { font-size: 28px; font-weight: 600; letter-spacing: 0; }
+.reading-view:not([data-view="settings"]) .uppercase { text-transform: none; letter-spacing: 0; }
+.reading-view[data-view="gigs"] :is(section, article, details),
+.reading-view[data-view="balances"] button[class*="bg-slate-"] { background-color: #121c29f7; }
+.reading-view .sparkle-text { font-size: 24px; line-height: 1.55; font-weight: 500; font-style: normal; }
+.family-shell .primary-nav button { padding: 0.6rem 1rem; }
+.family-shell .primary-nav button span { font-size: 20px; letter-spacing: 0; }
+.family-shell .theme-day p { font-size: 16px; }
+.family-shell .theme-day-label { font-size: 14px; }
+.read-aloud-control { display: inline-flex; align-items: center; gap: 0.3rem; }
+.read-aloud-control [role="status"] { font-size: 14px; }
+.read-aloud-button { width: 48px; height: 48px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; color: #e2e8f0; background: #243447; border: 1px solid #ffffff30; border-radius: 8px; }
+.read-aloud-button:hover { background: #354d65; }
+.reading-font-menu { position: absolute; top: calc(100% + 8px); right: 0; min-width: 230px; padding: 1rem; background: #121c29; border: 1px solid #ffffff30; border-radius: 8px; box-shadow: 0 8px 24px #0008; }
+.reading-font-menu label { display: block; font-size: 18px; margin-bottom: 0.5rem; }
+.reading-font-menu select { width: 100%; font-size: 18px; padding: 0.6rem; background: #243447; color: white; border-radius: 4px; }
+.calendar-toolbar { flex-wrap: wrap; gap: 0.75rem; }
+.agenda-days { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; flex: 1; min-height: 0; }
+.agenda-day { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.agenda-day > header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 1rem; border-bottom: 1px solid #ffffff20; gap: 0.5rem; }
+.agenda-day > header h2 { margin: 0; }
+.agenda-day > header p { font-size: 18px; color: #cbd5e1; }
+.agenda-day > header button { min-width: 44px; min-height: 44px; display: flex; justify-content: center; align-items: center; border-radius: 8px; background: #243447; }
+.agenda-events { overflow-y: auto; padding-block: 0.75rem; min-height: 0; }
+.agenda-event { display: flex; width: 100%; text-align: left; gap: 0.75rem; padding: 1rem; margin-bottom: 0.75rem; border-left-width: 4px; border-radius: 8px; background: #223044; }
+.agenda-event:hover { background: #30435c; }
+.agenda-event > span:last-child { min-width: 0; }
+.agenda-event-icon { font-size: 30px; flex-shrink: 0; }
+.agenda-time, .agenda-source, .agenda-title { display: block; overflow-wrap: anywhere; }
+.agenda-time { font-size: 18px; color: #d6e4f4; }
+.agenda-title { font-size: 24px; font-weight: 600; line-height: 1.4; margin-block: 0.3rem; }
+.agenda-source { font-size: 16px; color: #cbd5e1; }
+.agenda-empty { font-size: 22px; color: #cbd5e1; }
+.coach-rows { overflow-y: auto; }
+.coach-row { flex: 0 0 auto; min-height: 152px; }
+.coach-row > .relative > div:first-child .text-xl { font-size: 28px; }
+.coach-task { display: inline-flex; align-items: center; gap: 0.4rem; max-width: 100%; }
+.coach-task-button { font-size: 24px; min-height: 52px; flex-wrap: wrap; text-align: left; }
+.coach-task-button .text-base { font-size: 28px; }
+.coach-row .read-aloud-button { width: 44px; height: 44px; }
+.coach-header { flex-wrap: wrap; gap: 0.75rem; }
+.coach-profile-picker { display: flex; align-items: center; gap: 0.5rem; font-size: 18px; }
+.coach-profile-picker select { font-size: 20px; padding: 0.5rem; border: 1px solid #ffffff30; border-radius: 4px; color: white; background: #243447; }
+.coach-deadline img { width: 44px; }
+.task-done-label { font-size: 18px; }
+@media (max-width: 1000px) {
+  .home-layout { height: auto; min-height: 100%; flex-direction: column; overflow: visible; }
+  .home-layout > div:first-of-type { min-height: 500px; }
+  .home-sidebar { width: 100%; overflow: visible; }
+  .agenda-days { min-height: 360px; }
+  .agenda-events { max-height: 500px; }
+}
+@media (max-width: 600px) {
+  .family-shell .dashboard-header { flex-wrap: wrap; gap: 0.5rem; }
+  .family-shell .dashboard-header > div:first-child { flex: 1 1 calc(100% - 60px); }
+  .family-shell .dashboard-header .text-right { max-width: 100%; width: 100%; display: flex; justify-content: space-between; gap: 0.5rem; align-items: center; }
+  .family-shell .theme-day p { font-size: 14px; }
+  .family-shell .primary-nav button { padding: 0.4rem 0.2rem; }
+  .family-shell .primary-nav button span { font-size: 14px; }
+  .agenda-days { grid-template-columns: minmax(0, 1fr); }
+  .home-layout > div:first-of-type { min-height: auto; }
+  .home-layout .reading-surface { padding: 1rem; }
+  .coach-row { padding-inline: 0.75rem; }
+  .coach-row .pl-\[4rem\] { padding-left: 0; }
+  .coach-task-button { font-size: 22px; }
+  .reading-font-menu { right: 0; }
+  .reading-view[data-view="balances"] > div { padding-inline: 0; }
 }
 

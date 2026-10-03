@@ -49,14 +49,14 @@ const phaseStrength = {
 };
 
 const headingFonts = [
-  '"Segoe UI", system-ui, sans-serif',
-  '"Trebuchet MS", "Segoe UI", sans-serif',
+  'Lexend, Verdana, sans-serif',
+  '"Atkinson Hyperlegible", Verdana, sans-serif',
   'Verdana, "Segoe UI", sans-serif',
 ];
 
 const bodyFonts = [
-  '"Segoe UI", system-ui, sans-serif',
-  '"Trebuchet MS", "Segoe UI", sans-serif',
+  'Lexend, Verdana, sans-serif',
+  '"Atkinson Hyperlegible", Verdana, sans-serif',
   'Verdana, "Segoe UI", sans-serif',
 ];
 

@@ -44,7 +44,8 @@ import {
   Save,
   MessageSquare,
   WandSparkles,
-  Lightbulb
+  Lightbulb,
+  Type
 } from "lucide-react";
 import "./index.css";
 import {
@@ -55,6 +56,7 @@ import {
 import "./App.css";
 import SmartHomeView from "./SmartHomeView";
 import { getDailyTheme } from "./dailyTheme";
+import ReadAloudControl from "./ReadAloudControl";
 import {
   MAX_TIME_BALANCE_MINUTES,
   applyWalletUpdate,
@@ -240,8 +242,6 @@ const buildTheme = (phase, date, generatedTheme = null) => {
     ? {
         ...dailyTheme.style,
         '--theme-accent': generatedTheme.accent || dailyTheme.style['--theme-accent'],
-        '--theme-heading-font': generatedTheme.headingFont || dailyTheme.style['--theme-heading-font'],
-        '--theme-body-font': generatedTheme.bodyFont || dailyTheme.style['--theme-body-font'],
         backgroundImage: `url("${generatedTheme.imageUrl}"), ${dailyTheme.style.backgroundImage}`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
@@ -249,6 +249,8 @@ const buildTheme = (phase, date, generatedTheme = null) => {
     : dailyTheme.style;
   return {
     ...base,
+    cardBg: 'reading-surface',
+    calendarBg: 'reading-surface',
     seasonalName: hasGeneratedArtwork ? `${generatedTheme.name} · ${dailyTheme.name.split(' · ').at(-1)}` : dailyTheme.name,
     backgroundStyle,
   };
@@ -702,7 +704,7 @@ const DashboardView = ({
   let winnerId = null; const fullFinishers = childProgress.filter((p) => p.pct === 100 && p.completionTime); if (fullFinishers.length > 0) { const firstFinisher = fullFinishers.reduce((best, curr) => { if (!best) return curr; return curr.completionTime < best.completionTime ? curr : best; }, null); winnerId = firstFinisher.child.id; }
 
   return (
-    <div className="h-full flex gap-6 overflow-hidden pb-4 relative">
+    <div className="home-layout h-full flex gap-6 overflow-hidden pb-4 relative">
 
       {/* --- ADD EVENT POPUP --- */}
       {isAddingEvent && (
@@ -838,18 +840,19 @@ const DashboardView = ({
       {/* LEFT COLUMN: CALENDAR */}
       <div className="flex-1 flex flex-col min-w-0 min-h-0">
         <div className={`${theme.calendarBg} rounded-[2rem] p-6 flex-1 flex flex-col overflow-hidden`}>
-          <div className="flex items-center justify-between mb-5 shrink-0">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-3"><div className="p-2 bg-blue-500/20 rounded-xl text-xl leading-none">📅</div><h3 className="font-semibold text-slate-100 text-lg tracking-wide">{calendarView === "week" ? "Week" : "Month"}</h3></div>
+          <div className="calendar-toolbar flex items-center justify-between mb-5 shrink-0">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-3"><div className="p-2 bg-blue-500/20 rounded-xl text-xl leading-none">📅</div><h3 className="font-semibold text-slate-100 text-lg tracking-wide">{calendarView === "agenda" ? "Our days" : calendarView === "week" ? "Week" : "Month"}</h3></div>
               <div className="flex items-center gap-2 text-sm text-slate-400">
                 <button onClick={() => onNavigateCalendar("prev")} className="p-1.5 rounded-full hover:bg-white/10 text-white"><ChevronLeft className="w-5 h-5" /></button>
-                <span className="font-medium text-white/90 min-w-[100px] text-center">{calendarView === "week" ? calendarDate.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }) : calendarDate.toLocaleDateString([], { month: "long", year: "numeric" })}</span>
+                <span className="font-medium text-white/90 min-w-[100px] text-center">{calendarView !== "month" ? calendarDate.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }) : calendarDate.toLocaleDateString([], { month: "long", year: "numeric" })}</span>
                 <button onClick={() => onNavigateCalendar("next")} className="p-1.5 rounded-full hover:bg-white/10 text-white"><ChevronRight className="w-5 h-5" /></button>
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <div className="hidden xl:flex gap-2 text-[10px] font-bold tracking-wider uppercase">{calendarSources.map((s) => (<span key={s.id} className={`px-2 py-1 rounded-md border ${s.color} text-slate-300 bg-slate-900/50`}>{s.label}</span>))}</div>
+              {calendarView !== "agenda" && <div className="hidden xl:flex gap-2 text-[10px] font-bold tracking-wider uppercase">{calendarSources.map((s) => (<span key={s.id} className={`px-2 py-1 rounded-md border ${s.color} text-slate-300 bg-slate-900/50`}>{s.label}</span>))}</div>}
               <div className="inline-flex rounded-full bg-black/40 p-1 border border-white/10">
+                <button onClick={() => setCalendarView("agenda")} className={`px-3 py-1 text-xs rounded-full transition-all ${calendarView === "agenda" ? "bg-blue-600 text-white shadow-lg" : "text-slate-400 hover:text-white"}`}>Agenda</button>
                 <button onClick={() => setCalendarView("week")} className={`px-3 py-1 text-xs rounded-full transition-all ${calendarView === "week" ? "bg-blue-600 text-white shadow-lg" : "text-slate-400 hover:text-white"}`}>Week</button>
                 <button onClick={() => setCalendarView("month")} className={`px-3 py-1 text-xs rounded-full transition-all ${calendarView === "month" ? "bg-blue-600 text-white shadow-lg" : "text-slate-400 hover:text-white"}`}>Month</button>
               </div>
@@ -857,7 +860,29 @@ const DashboardView = ({
           </div>
           {calendarErrors.length > 0 && (<div className="bg-rose-900/40 border border-rose-500/50 text-rose-200 p-3 text-xs flex items-center gap-2 rounded-xl mb-3 backdrop-blur-md shrink-0"><AlertTriangle className="w-4 h-4" />Error: {calendarErrors.map((e) => e.id).join(", ")}</div>)}
 
-          {calendarView === "week" ? (
+          {calendarView === "agenda" ? (
+            <div className="agenda-days">
+              {[0, 1].map(offset => {
+                const day = new Date(calendarDate);
+                day.setDate(day.getDate() + offset);
+                const tomorrow = new Date(currentTime);
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                const label = day.toDateString() === currentTime.toDateString() ? 'Today' : day.toDateString() === tomorrow.toDateString() ? 'Tomorrow' : day.toLocaleDateString('en-US', { weekday: 'long' });
+                const events = calendarEvents.filter(event => event.rawDate.toDateString() === day.toDateString()).sort((a, b) => a.rawDate - b.rawDate);
+                return <section key={offset} className="agenda-day">
+                  <header><div><h2>{label}</h2><p>{day.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p></div>
+                    <button type="button" onClick={() => openAddModal(day)} aria-label={`Add event on ${day.toDateString()}`} title="Add event"><Plus size={24} /></button>
+                  </header>
+                  <div className="agenda-events">
+                    {events.length ? events.map((event, index) => <button type="button" key={`${event.id}-${index}`} onClick={() => setSelectedEvent(event)} className={`agenda-event ${event.colorClass}`}>
+                      <span className="agenda-event-icon" aria-hidden="true">{getEventEmoji(event.sourceIcon, event.title, event.calendarLabel)}</span>
+                      <span><span className="agenda-time">{event.time}</span><span className="agenda-title">{event.title}</span><span className="agenda-source">{event.calendarLabel}</span></span>
+                    </button>) : <p className="agenda-empty">{calendarErrors.length ? 'Calendar unavailable' : 'No events planned'}</p>}
+                  </div>
+                </section>;
+              })}
+            </div>
+          ) : calendarView === "week" ? (
             <div className="flex-1 grid grid-cols-7 border-t border-white/5 min-h-[260px] overflow-hidden">
               {weekDays.map((date, i) => {
                 const isToday = date.toDateString() === currentTime.toDateString(); const dayOfWeek = date.getDay(); const isWeekend = dayOfWeek === 0 || dayOfWeek === 6; const bgClass = isToday ? "bg-blue-500/10" : isWeekend ? "bg-white/[0.03]" : "bg-transparent"; const evts = calendarEvents.filter((e) => e.rawDate.toDateString() === date.toDateString()).sort((a, b) => a.rawDate - b.rawDate);
@@ -904,7 +929,7 @@ const DashboardView = ({
       </div>
 
       {/* RIGHT COLUMN: SIDEBAR (narrower to give the schedule more room) */}
-      <div className="w-[24%] flex flex-col gap-5 shrink-0 min-h-0 overflow-y-auto custom-scrollbar">
+      <div className="home-sidebar w-[28%] flex flex-col gap-5 shrink-0 min-h-0 overflow-y-auto custom-scrollbar">
 
         {/* 1. WEATHER */}
         <div className={`${theme.cardBg} rounded-[2rem] p-5 relative overflow-hidden group shrink-0`}>
@@ -943,13 +968,14 @@ const DashboardView = ({
           <div className="flex items-center justify-between relative z-10">
             <div className="flex items-center gap-2">
               <div className="p-1.5 bg-yellow-500/20 rounded-lg text-yellow-300 text-sm">🔔</div>
-              <h2 className="font-bold text-slate-200 text-sm tracking-wide uppercase">Sparkle</h2>
+              <h2 className="font-bold text-slate-200 text-sm">Sparkle</h2>
             </div>
             <button onClick={regenerateSparkle} disabled={isSparkleLoading} aria-label="Show another Sparkle" title="Show another Sparkle" className="h-8 w-8 rounded-full bg-slate-700/50 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-slate-300 transition-colors inline-flex items-center justify-center">
               <RefreshCw className={`h-4 w-4 ${isSparkleLoading ? "animate-spin" : ""}`} />
             </button>
           </div>
-          <p className={`relative z-10 text-base font-light italic leading-snug line-clamp-4 ${sparkleError ? "text-amber-100" : "text-slate-100"}`}>
+          <ReadAloudControl text={isSparkleLoading ? '' : sparkleContent} label="Read Sparkle aloud" />
+          <p className={`sparkle-text relative z-10 ${sparkleError ? "text-amber-100" : "text-slate-100"}`}>
             {isSparkleLoading ? "Summoning magic..." : `"${sparkleContent}"`}
           </p>
         </div>
@@ -958,7 +984,7 @@ const DashboardView = ({
         <div className={`${theme.cardBg} rounded-[2rem] p-4 flex-1 flex flex-col min-h-0 overflow-hidden`}>
           <div className="flex items-center gap-2 mb-3 shrink-0">
             <div className="p-1.5 bg-emerald-500/20 rounded-lg text-emerald-400 text-sm">🏆</div>
-            <h2 className="font-bold text-slate-200 text-sm tracking-wide uppercase">Daily Goals</h2>
+            <h2 className="font-bold text-slate-200 text-sm">Daily goals</h2>
           </div>
 
           <div className="flex-1 flex flex-col gap-2 min-h-0 overflow-y-auto custom-scrollbar">
@@ -1160,6 +1186,7 @@ const CoachView = ({
 }) => {
   const initialPhase = getPhaseFromHour(currentTime.getHours());
   const [phase, setPhase] = useState(initialPhase);
+  const [coachChildId, setCoachChildId] = useState('all');
 
   // Header Phase Icons
   const iconForPhase = phase === "morning" ? <span className="text-xl">☕</span> : phase === "afternoon" ? <span className="text-xl">☀️</span> : <span className="text-xl">🌙</span>;
@@ -1224,7 +1251,7 @@ const CoachView = ({
     <div className="h-full w-full mx-auto flex flex-col">
 
       {/* Header */}
-      <header className="flex items-center justify-between mb-3 shrink-0 px-2">
+      <header className="coach-header flex items-center justify-between mb-3 shrink-0 px-2">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg">
             {iconForPhase}
@@ -1241,6 +1268,12 @@ const CoachView = ({
         </div>
 
         {/* Phase Toggle */}
+        <label className="coach-profile-picker">Whose tasks?
+          <select value={coachChildId} onChange={event => setCoachChildId(event.target.value)}>
+            <option value="all">Everyone</option>
+            {orderedKids.map(child => <option key={child.id} value={child.id}>{child.name}</option>)}
+          </select>
+        </label>
         <div className="inline-flex rounded-full bg-slate-900/80 p-1 border border-white/10 backdrop-blur-md">
           {[{ id: "morning", label: "AM" }, { id: "afternoon", label: "PM" }, { id: "evening", label: "Night" }].map((mode) => (
             <button
@@ -1255,7 +1288,7 @@ const CoachView = ({
       </header>
 
       {/* TIMELINE CONTAINER */}
-      <div className="relative flex-1 flex flex-col bg-slate-900/40 rounded-[2rem] border border-white/5 backdrop-blur-md overflow-hidden">
+      <div className="coach-timeline reading-surface relative flex-1 flex flex-col rounded-[2rem] border border-white/5 overflow-hidden">
 
         {/* 1. MASTER RULER WRAPPER 
             ✅ We apply px-4 here. This establishes the "0%" line at exactly 16px from the left. 
@@ -1281,8 +1314,8 @@ const CoachView = ({
             This means the progress bars inside them also start at 16px.
             Everything is now aligned.
         */}
-        <div className="flex-1 flex flex-col gap-3 pt-2 relative z-10 min-h-0 px-2 pb-4">
-          {orderedKids.map((child) => {
+        <div className="coach-rows flex-1 flex flex-col gap-3 pt-2 relative z-10 min-h-0 px-2 pb-4">
+          {orderedKids.filter(child => coachChildId === 'all' || coachChildId === child.id).map((child) => {
             const childTasks = tasksForPhase.filter((t) => t.assignees.includes("all") || t.assignees.includes(child.id));
             const { completed, total } = getProgress(child.id, phase);
             const pct = total === 0 ? 0 : Math.round((completed / total) * 100);
@@ -1291,7 +1324,7 @@ const CoachView = ({
             return (
               <div
                 key={child.id}
-                className="relative flex-1 flex flex-col justify-center bg-slate-800/60 rounded-xl px-4 py-3 border border-white/5 group min-h-0"
+                className="coach-row relative flex flex-col bg-slate-800 rounded-xl px-4 py-3 border border-white/5 group"
               >
                 {/* DEADLINE MARKER (Bus/Bed) */}
                 {markerLeft !== null && markerLeft >= 0 && markerLeft <= 100 && deadlineImage && (
@@ -1300,7 +1333,7 @@ const CoachView = ({
                     style={{ left: `${markerLeft}%` }}
                   >
                     <div className="absolute top-0 bottom-0 w-0 border-l-4 border-dashed border-slate-600/30 -translate-x-1/2" />
-                    <div className="absolute top-[-1.5rem] -translate-x-1/2 flex flex-col items-center w-max">
+                    <div className="coach-deadline absolute top-0 -translate-x-1/2 flex flex-col items-center w-max">
                       <span className="mb-0.5 text-xs font-bold text-white bg-slate-900/90 border border-slate-600 px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap">
                         {formatToAmPm(COACH_DEADLINES[phase][child.id])}
                       </span>
@@ -1337,17 +1370,21 @@ const CoachView = ({
                             ? "bg-amber-950/30 border-amber-400/20 text-amber-100 hover:bg-amber-900/40"
                             : "bg-slate-900/40 border-white/5 text-slate-300 hover:bg-slate-700 hover:text-slate-100";
                         return (
+                          <div key={task.id} className="coach-task">
                           <button
-                            key={task.id}
+                            aria-pressed={done}
                             onClick={() => toggleTask(child.id, task.id)}
-                            className={`min-h-9 px-3.5 py-2 rounded-xl border text-[13px] font-semibold flex items-center gap-2 transition-all ${done ? "bg-emerald-500/10 border-emerald-500/50 text-emerald-300" : challengeClass}`}
+                            className={`coach-task-button px-3.5 py-2 rounded-xl border font-semibold flex items-center gap-2 transition-all ${done ? "bg-emerald-500/10 border-emerald-500/50 text-emerald-300" : challengeClass}`}
                           >
                             <span className="text-base leading-none">{task.icon}</span>
                             <span className="leading-tight">{task.label}</span>
+                            {done && <><Check size={24} /><span className="task-done-label">Done</span></>}
                             {task.minutes && (
-                              <span className="text-[10px] font-mono text-slate-500 whitespace-nowrap">{task.minutes}m</span>
+                              <span className="text-[10px] text-slate-300 whitespace-nowrap">{task.minutes} minutes</span>
                             )}
                           </button>
+                          <ReadAloudControl text={task.label} label={`Read ${task.label} aloud`} />
+                          </div>
                         );
                       })
                     )}
@@ -1533,7 +1570,7 @@ const GigsView = ({ theme, gigs, setGigs, childrenData = [], wallet, setWallet, 
   const getRewardLabel = (gig) => {
     const amount = Number(gig.compensationAmount) || 0;
     if (gig.compensationType === "money") return `$${amount}`;
-    return `${amount}m screen time`;
+    return `${amount} minutes screen time`;
   };
 
   return (
@@ -1574,7 +1611,7 @@ const GigsView = ({ theme, gigs, setGigs, childrenData = [], wallet, setWallet, 
             <p className="text-sm text-slate-300"><span className="font-black text-white">Hi, {selectedChild.name}.</span> What would you like to do?</p>
             <div className="flex gap-2 text-xs font-bold">
               <span className="rounded-full bg-emerald-500/10 border border-emerald-400/20 px-3 py-1.5 text-emerald-200">${Number(childWallet.money || 0).toFixed(2)}</span>
-              <span className="rounded-full bg-violet-500/10 border border-violet-400/20 px-3 py-1.5 text-violet-200">{Number(childWallet.time || 0)}m time</span>
+              <span className="rounded-full bg-violet-500/10 border border-violet-400/20 px-3 py-1.5 text-violet-200">{Number(childWallet.time || 0)} minutes</span>
             </div>
           </div>
         )}
@@ -3470,13 +3507,13 @@ const BalancesView = ({ theme, childrenData, wallet, setWallet, dailyRewards = {
     <div className="h-full w-full p-6 flex flex-col items-center">
 
       {/* PAGE HEADER */}
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-white mb-2">Wallet & Redemption</h1>
-        <p className="text-slate-400 uppercase tracking-widest text-sm">Select your profile to spend your earnings</p>
+      <div className="reading-surface w-full text-center mb-8 py-4 px-3">
+        <h1 className="text-3xl font-bold text-white mb-2">Money and time</h1>
+        <p className="text-slate-300 text-sm">Choose your picture.</p>
       </div>
 
       {/* AVATAR GRID (Centered and Larger) */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-6 w-full max-w-4xl">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full max-w-4xl">
         {kids.map(kid => {
           const balance = wallet[kid.id] || { money: 0, time: 0 };
           const yesterdayReward = getYesterdayRewardForChild(kid.id);
@@ -3496,7 +3533,7 @@ const BalancesView = ({ theme, childrenData, wallet, setWallet, dailyRewards = {
                     ${balance.money.toFixed(2)}
                   </div>
                   <div className="px-3 py-1 bg-purple-500/10 rounded-lg border border-purple-500/20 text-purple-400 font-bold font-mono text-lg min-w-[7.5rem]">
-                    {balance.time}m
+                    {balance.time} minutes
                   </div>
                 </div>
 
@@ -3512,7 +3549,7 @@ const BalancesView = ({ theme, childrenData, wallet, setWallet, dailyRewards = {
 
                   {yesterdayReward ? (
                     <div className="mt-1 flex items-baseline justify-center gap-2">
-                      <span className="text-base font-black text-white">+{yesterdayReward.minutes}m</span>
+                      <span className="text-base font-black text-white">+{yesterdayReward.minutes} minutes</span>
                       {yesterdayReward.pct !== null && (
                         <span className="text-[10px] font-bold text-cyan-300">
                           {yesterdayReward.pct}% complete
@@ -3541,7 +3578,7 @@ const BalancesView = ({ theme, childrenData, wallet, setWallet, dailyRewards = {
                 <div>
                   <h3 className="text-xl font-bold text-white">{redeemingChild.name}</h3>
                   <div className="flex gap-3 text-xs font-mono mt-1">
-                    <span className="text-purple-400">{(wallet && wallet[redeemingChildId]?.time) || 0}m Screen Time</span>
+                    <span className="text-purple-400">{(wallet && wallet[redeemingChildId]?.time) || 0} minutes screen time</span>
                     <span className="text-emerald-400">${((wallet && wallet[redeemingChildId]?.money) || 0).toFixed(2)} Cash</span>
                   </div>
                 </div>
@@ -3670,6 +3707,10 @@ const BalancesView = ({ theme, childrenData, wallet, setWallet, dailyRewards = {
 -------------------------------------------------- */
 
 function FamilyDashboard() {
+  const [fontPreference, setFontPreference] = useState(() => {
+    try { return localStorage.getItem('familyReadingFont') || 'daily'; } catch { return 'daily'; }
+  });
+  const [showReadingOptions, setShowReadingOptions] = useState(false);
   const [view, setView] = useState("dashboard");
   const [currentTime, setCurrentTime] = useState(new Date());
   const [generatedTheme, setGeneratedTheme] = useState(null);
@@ -3894,7 +3935,7 @@ function FamilyDashboard() {
     };
   }, []);
 
-  const [calendarView, setCalendarView] = useState("week");
+  const [calendarView, setCalendarView] = useState("agenda");
   const [calendarRefreshTick, setCalendarRefreshTick] = useState(0);
   const [weather, setWeather] = useState(null);
   const [selectedSchool, setSelectedSchool] = useState("2607"); // Default to JES
@@ -3910,6 +3951,7 @@ function FamilyDashboard() {
   // NEW (Correct - uses Local Device Time):
   const todayKey = currentTime.toLocaleDateString("en-CA"); // Returns "YYYY-MM-DD" in local time
   useEffect(() => { const t = setInterval(() => setCurrentTime(new Date()), 1000); return () => clearInterval(t); }, []);
+  useEffect(() => { setCalendarDate(new Date(`${todayKey}T12:00:00`)); }, [todayKey]);
   useEffect(() => { const t = setInterval(() => setCalendarRefreshTick(tick => tick + 1), 300000); return () => clearInterval(t); }, []);
   useEffect(() => {
     let active = true;
@@ -4277,7 +4319,7 @@ function FamilyDashboard() {
   }, [calendarMonthKey, calendarRefreshTick, calendarSources, calendarFilters, customEvents, hiddenEventIds]);
 
   return (
-    <div className={`family-shell relative w-screen h-screen overflow-hidden font-sans transition-all duration-1000 ease-in-out ${theme.appBg}`} style={theme.backgroundStyle}>
+    <div className={`family-shell relative w-screen h-screen overflow-hidden font-sans transition-all duration-1000 ease-in-out ${theme.appBg}`} style={{ ...theme.backgroundStyle, ...(fontPreference !== 'daily' ? { '--theme-body-font': fontPreference, '--theme-heading-font': fontPreference } : {}) }}>
       <div className={`pointer-events-none absolute inset-0 transition-colors duration-1000 ${theme.overlayClass}`} />
       <div className="relative z-10 h-full w-full flex flex-col">
         {/* UPDATED HEADER: DYNAMIC PIZZAZZ */}
@@ -4323,6 +4365,21 @@ function FamilyDashboard() {
             </div>
           </div>
 
+          <div className="reading-options relative">
+            <button type="button" aria-label="Reading font" title="Reading font" aria-expanded={showReadingOptions} onClick={() => setShowReadingOptions(value => !value)} className="read-aloud-button"><Type size={24} /></button>
+            {showReadingOptions && <div className="reading-font-menu">
+              <label htmlFor="reading-font">Reading font</label>
+              <select id="reading-font" value={fontPreference} onChange={event => {
+                setFontPreference(event.target.value);
+                try { localStorage.setItem('familyReadingFont', event.target.value); } catch { /* Preference is still usable without storage. */ }
+              }}>
+                <option value="daily">Daily rotation</option>
+                <option value="Lexend, Verdana, sans-serif">Lexend</option>
+                <option value={'"Atkinson Hyperlegible", Verdana, sans-serif'}>Atkinson</option>
+                <option value="Verdana, sans-serif">Verdana</option>
+              </select>
+            </div>}
+          </div>
           <div className="text-right">
             <div className="text-5xl font-light text-white tracking-tighter drop-shadow-lg leading-none">
               {currentTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }).replace(/(AM|PM)/, '')}<span className="text-base font-bold text-slate-300 ml-1">{currentTime.toLocaleTimeString([], { hour12: true }).slice(-2)}</span>
@@ -4334,7 +4391,7 @@ function FamilyDashboard() {
         </header>
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto px-6 pb-28 custom-scrollbar">
+        <main data-view={view} className="reading-view flex-1 overflow-y-auto px-6 pb-28 custom-scrollbar">
 
           {/* 1. DASHBOARD */}
           {view === "dashboard" && (
@@ -4352,7 +4409,8 @@ function FamilyDashboard() {
               onNavigateCalendar={(d) => {
                 setCalendarDate((prev) => {
                   const n = new Date(prev);
-                  if (calendarView === "week") n.setDate(n.getDate() + (d === "next" ? 7 : -7));
+                  if (calendarView === "agenda") n.setDate(n.getDate() + (d === "next" ? 2 : -2));
+                  else if (calendarView === "week") n.setDate(n.getDate() + (d === "next" ? 7 : -7));
                   else n.setMonth(n.getMonth() + (d === "next" ? 1 : -1));
                   return n;
                 });

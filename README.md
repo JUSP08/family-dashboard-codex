@@ -119,6 +119,15 @@ theme to the right of today's, with artwork thumbnails when ready. Generated art
 is cached under `backend/data/themes`; the deterministic gradient theme remains
 available whenever generation is delayed or unavailable.
 
+Child-facing screens use larger wall-screen text, high-contrast reading
+surfaces, and locally bundled Lexend and Atkinson Hyperlegible fonts alongside
+Verdana. The header's Reading font control can keep a preferred font instead
+of rotating; this preference is saved in that browser. Home opens a two-day
+agenda with Week and Month still available. Coach supports an individual-child
+filter and roomier scrollable task rows. Speaker buttons read tasks and Sparkle
+using the browser's available speech voices; voice availability depends on the
+device. Font license files are included under `frontend/public/fonts`.
+
 ## Data, backups, and deployment
 
 Persistent family data is stored in `backend/data/family_dashboard.db`.
