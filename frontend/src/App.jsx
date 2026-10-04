@@ -431,6 +431,7 @@ const NavButton = ({ view, target, icon, label, setView, color }) => {
   return (
     <button
       onClick={() => setView(target)}
+      title={label}
       aria-current={active ? "page" : undefined}
       className="flex min-w-[64px] flex-col items-center justify-center px-1.5 group focus-visible:outline-none"
     >
@@ -4321,7 +4322,7 @@ function FamilyDashboard() {
   return (
     <div className={`family-shell relative w-screen h-screen overflow-hidden font-sans transition-all duration-1000 ease-in-out ${theme.appBg}`} style={{ ...theme.backgroundStyle, ...(fontPreference !== 'daily' ? { '--theme-body-font': fontPreference, '--theme-heading-font': fontPreference } : {}) }}>
       <div className={`pointer-events-none absolute inset-0 transition-colors duration-1000 ${theme.overlayClass}`} />
-      <div className="relative z-10 h-full w-full flex flex-col">
+      <div className="dashboard-layout relative z-10 h-full w-full">
         {/* UPDATED HEADER: DYNAMIC PIZZAZZ */}
         <header className="dashboard-header flex justify-between items-center px-6 pt-4 pb-3 shrink-0">
           <div className="flex items-center gap-5">
@@ -4526,19 +4527,19 @@ function FamilyDashboard() {
 
         </main>
 
-        {/* Reserve layout space for navigation rather than covering page content. */}
-        <footer className="dashboard-footer">
-        <nav aria-label="Primary dashboard" className="primary-nav relative bg-slate-950/90 backdrop-blur-2xl text-white rounded-[1.75rem] px-2.5 py-2 flex items-center gap-1 z-20 border border-white/15 shadow-[0_12px_36px_rgba(0,0,0,0.55)]">
+        {/* Navigation has its own column so it never covers page content. */}
+        <aside className="dashboard-taskbar">
+        <nav aria-label="Primary dashboard" className="primary-nav relative text-white flex flex-col items-center gap-1 z-20">
           <NavButton view={view} target="dashboard" icon={<Clock className="w-5 h-5" />} label="Home" setView={setView} color="bg-blue-600" />
           <NavButton view={view} target="coach" icon={<Coffee className="w-5 h-5" />} label="Coach" setView={setView} color="bg-amber-500" />
           <NavButton view={view} target="gigs" icon={<Banknote className="w-5 h-5" />} label="Gigs" setView={setView} color="bg-emerald-600" />
           <NavButton view={view} target="balances" icon={<CreditCard className="w-5 h-5" />} label="Balances" setView={setView} color="bg-purple-600" />
-          <div className="w-px h-8 bg-white/10 mx-0.5" />
+          <div className="nav-divider" aria-hidden="true" />
           <NavButton view={view} target="schoolmenu" icon={<BookOpen className="w-5 h-5" />} label="Lunch" setView={setView} color="bg-indigo-600" />
-          <div className="w-px h-8 bg-white/10 mx-0.5" />
+          <div className="nav-divider" aria-hidden="true" />
           <NavButton view={view} target="suggestions" icon={<MessageSquare className="w-5 h-5" />} label="Suggest" setView={setView} color="bg-cyan-600" />
         </nav>
-        </footer>
+        </aside>
       </div>
     </div>
   );
