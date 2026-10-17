@@ -57,6 +57,7 @@ import "./App.css";
 import SmartHomeView from "./SmartHomeView";
 import { getDailyTheme } from "./dailyTheme";
 import ReadAloudControl from "./ReadAloudControl";
+import { shouldDisplaySchoolEvent } from "./schoolSportsFilter";
 import {
   MAX_TIME_BALANCE_MINUTES,
   applyWalletUpdate,
@@ -4249,7 +4250,7 @@ function FamilyDashboard() {
             const data = await res.json();
             if (!res.ok) { errs.push({ id: src.label }); continue; }
             if (data.items) {
-              merged.push(...data.items.map((i) => {
+              merged.push(...data.items.filter(i => shouldDisplaySchoolEvent(i, src.id)).map((i) => {
                 let color = src.color;
                 let isChild = false;
                 if (src.id === "kidlindstrom@gmail.com") {
