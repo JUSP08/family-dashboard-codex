@@ -1,5 +1,6 @@
 
 
+import { parseCalendarDate, calendarEventDates, eventOccursOnDate } from "./calendarDates";
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   Sun,
@@ -870,7 +871,7 @@ const DashboardView = ({
                 const tomorrow = new Date(currentTime);
                 tomorrow.setDate(tomorrow.getDate() + 1);
                 const label = day.toDateString() === currentTime.toDateString() ? 'Today' : day.toDateString() === tomorrow.toDateString() ? 'Tomorrow' : day.toLocaleDateString('en-US', { weekday: 'long' });
-                const events = calendarEvents.filter(event => event.rawDate.toDateString() === day.toDateString()).sort((a, b) => a.rawDate - b.rawDate);
+                const events = calendarEvents.filter(event => eventOccursOnDate(event, day)).sort((a, b) => a.rawDate - b.rawDate);
                 return <section key={offset} className="agenda-day">
                   <header><div><h2>{label}</h2><p>{day.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p></div>
                     <button type="button" onClick={() => openAddModal(day)} aria-label={`Add event on ${day.toDateString()}`} title="Add event"><Plus size={24} /></button>
@@ -887,7 +888,7 @@ const DashboardView = ({
           ) : calendarView === "week" ? (
             <div className="flex-1 grid grid-cols-7 border-t border-white/5 min-h-[260px] overflow-hidden">
               {weekDays.map((date, i) => {
-                const isToday = date.toDateString() === currentTime.toDateString(); const dayOfWeek = date.getDay(); const isWeekend = dayOfWeek === 0 || dayOfWeek === 6; const bgClass = isToday ? "bg-blue-500/10" : isWeekend ? "bg-white/[0.03]" : "bg-transparent"; const evts = calendarEvents.filter((e) => e.rawDate.toDateString() === date.toDateString()).sort((a, b) => a.rawDate - b.rawDate);
+                const isToday = date.toDateString() === currentTime.toDateString(); const dayOfWeek = date.getDay(); const isWeekend = dayOfWeek === 0 || dayOfWeek === 6; const bgClass = isToday ? "bg-blue-500/10" : isWeekend ? "bg-white/[0.03]" : "bg-transparent"; const evts = calendarEvents.filter((e) => eventOccursOnDate(e, date)).sort((a, b) => a.rawDate - b.rawDate);
                 return (
                   <div key={i} onClick={() => openAddModal(date)} className={`flex flex-col h-full border-r border-white/5 last:border-r-0 ${bgClass} cursor-pointer hover:bg-white/5 transition-colors`}>
                     <div className={`p-3 text-center border-b border-white/5 ${isToday ? "text-blue-400" : "text-slate-400"}`}><div className="text-[10px] uppercase font-bold tracking-widest opacity-70">{date.toLocaleDateString("en-US", { weekday: "short" })}</div><div className="text-xl font-light mt-1 text-slate-200">{date.getDate()}</div></div>
@@ -908,7 +909,7 @@ const DashboardView = ({
               <div className="grid grid-cols-7 border-b border-white/10 pb-2 mb-2 text-[10px] uppercase font-bold text-slate-500 text-center tracking-widest">{["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (<div key={d}>{d}</div>))}</div>
               <div className="grid grid-cols-7 flex-1 auto-rows-[minmax(80px,_1fr)] gap-[1px] bg-white/5 border border-white/5 rounded-xl overflow-hidden">
                 {monthCells.map((date, idx) => {
-                  if (!date) return <div key={idx} className="bg-slate-900/80" />; const isToday = date.toDateString() === currentTime.toDateString(); const dayOfWeek = date.getDay(); const isWeekend = dayOfWeek === 0 || dayOfWeek === 6; let bgClass = "bg-slate-900/40 hover:bg-slate-800/60 transition-colors"; if (isWeekend) bgClass = "bg-slate-900/60"; if (isToday) bgClass = "bg-blue-900/20"; const evts = calendarEvents.filter((e) => e.rawDate.toDateString() === date.toDateString()).sort((a, b) => a.rawDate - b.rawDate);
+                  if (!date) return <div key={idx} className="bg-slate-900/80" />; const isToday = date.toDateString() === currentTime.toDateString(); const dayOfWeek = date.getDay(); const isWeekend = dayOfWeek === 0 || dayOfWeek === 6; let bgClass = "bg-slate-900/40 hover:bg-slate-800/60 transition-colors"; if (isWeekend) bgClass = "bg-slate-900/60"; if (isToday) bgClass = "bg-blue-900/20"; const evts = calendarEvents.filter((e) => eventOccursOnDate(e, date)).sort((a, b) => a.rawDate - b.rawDate);
                   return (
                     <div key={idx} onClick={() => openAddModal(date)} className={`p-1.5 align-top cursor-pointer ${bgClass}`}>
                       <div className="flex justify-between items-center mb-1"><span className={`text-xs font-medium ${isToday ? "text-blue-400" : "text-slate-400"}`}>{date.getDate()}</span></div>
@@ -4272,7 +4273,7 @@ function FamilyDashboard() {
                 return {
                   id: i.id, title: i.summary || "Busy",
                   time: timeStr, colorClass: color,
-                  rawDate: new Date(i.start.dateTime || i.start.date),
+                  ...calendarEventDates(i),
                   calendarLabel: src.label, sourceIcon: src.icon || null,
                   isChildEvent: isChild, isCustom: false
                 };
@@ -4289,7 +4290,7 @@ function FamilyDashboard() {
       };
 
       customEvents.forEach(evt => {
-        const d = new Date(evt.date);
+        const d = /^\d{4}-\d{2}-\d{2}$/.test(evt.date) ? parseCalendarDate(evt.date) : new Date(evt.date);
         let timeStr = "All Day";
         if (evt.startTime) {
           const s = formatLocalTime(evt.startTime);
