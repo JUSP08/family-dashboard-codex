@@ -80,6 +80,32 @@ Redemptions use unique transaction IDs. Qustodio retries retain that ID, stop
 after five attempts or 48 hours, and then require manual review. Daily rewards
 are calculated once by the backend and catch up after downtime.
 
+### Read-only Qustodio check (Ubuntu)
+
+From the Ubuntu SSH session, run:
+
+```bash
+cd ~/family-dashboard-codex
+backend/.venv/bin/python backend/scripts/check_qustodio.py --check-api
+```
+
+This prints configuration presence, token-name conflicts, an unverified JWT
+expiry hint when available, and the HTTP status from one usage GET. It never
+prints tokens/passwords, refreshes credentials, grants time, or retries queued
+redemptions. HTTP 200 confirms access to that profile's usage; 401 means
+authentication was rejected (possibly expired/revoked); 403 does not prove expiry.
+Without `--check-api`, the check is offline only.
+
+Both `QUSTODIO_TOKEN` and legacy `TOKEN` are supported. If both are present in
+`backend/.env`, `QUSTODIO_TOKEN` wins. Settings' **Refresh Token** uses the configured
+Qustodio email/password and Playwright, and saves the result under both names.
+The scheduled refresh interval is 30 days, not the token's expiry claim.
+After refreshing on a running server, its background worker may retry pending
+time grants. Review outstanding redemptions before refreshing.
+
+Do not use `test_qustodio_exact.py` or `verify_qustodio_effect.py` as health
+checks: these older scripts actually attempt to add five minutes of screen time.
+
 ## Build and run
 
 Build the frontend:
