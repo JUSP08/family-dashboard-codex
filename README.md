@@ -95,6 +95,9 @@ prints tokens/passwords, refreshes credentials, grants time, or retries queued
 redemptions. HTTP 200 confirms access to that profile's usage; 401 means
 authentication was rejected (possibly expired/revoked); 403 does not prove expiry.
 Without `--check-api`, the check is offline only.
+The profile is selected from saved `childrenData[].qustodioUid` in the database
+(opened read-only), falling back to `QUSTODIO_PROFILES_JSON` if needed. An empty
+environment profile map alone does not mean dashboard profile mappings are missing.
 
 Both `QUSTODIO_TOKEN` and legacy `TOKEN` are supported. If both are present in
 `backend/.env`, `QUSTODIO_TOKEN` wins. Settings' **Refresh Token** uses the configured

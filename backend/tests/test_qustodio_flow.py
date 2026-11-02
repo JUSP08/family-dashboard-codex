@@ -3,12 +3,14 @@ import base64
 import datetime as dt
 import json
 import io
+import sqlite3
+import tempfile
 import unittest
 from contextlib import redirect_stdout
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from scripts.check_qustodio import main as check_main, token_expiry
+from scripts.check_qustodio import database_profile_uids, main as check_main, token_expiry
 from services.qustodio_exact import QustodioController
 from services import qustodio_service as service
 
@@ -80,6 +82,7 @@ class TokenFlowTests(unittest.TestCase):
         for status, expected_code in ((200, 0), (401, 1), (403, 1)):
             with self.subTest(status=status), \
                     patch('scripts.check_qustodio.QustodioController', return_value=controller), \
+                    patch('scripts.check_qustodio.database_profile_uids', return_value=([], 'test')), \
                     patch('scripts.check_qustodio.requests.get', return_value=SimpleNamespace(status_code=status)) as get, \
                     patch('scripts.check_qustodio.requests.post') as post, \
                     patch.object(QustodioController, 'refresh_token') as refresh, \
@@ -91,6 +94,39 @@ class TokenFlowTests(unittest.TestCase):
                 refresh.assert_not_called()
                 for secret in ('secret-test-token', 'private-account', 'private-profile', 'private-email', 'secret-password'):
                     self.assertNotIn(secret, output.getvalue())
+
+    def test_database_profiles_read_without_modifying_database(self):
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'test.db'
+            conn = sqlite3.connect(path)
+            conn.execute('CREATE TABLE app_state (key TEXT, json_value TEXT)')
+            conn.execute('INSERT INTO app_state VALUES (?, ?)', ('childrenData', json.dumps([
+                {'qustodioUid': 'saved-profile'}, {'qustodioUid': 'saved-profile'},
+                {'qustodioUid': ''}, {}, {'qustodioUid': None},
+            ])))
+            conn.commit()
+            conn.close()
+            before = path.read_bytes()
+            self.assertEqual(database_profile_uids(path)[0], ['saved-profile'])
+            self.assertEqual(path.read_bytes(), before)
+            missing = Path(directory) / 'missing.db'
+            self.assertEqual(database_profile_uids(missing)[0], [])
+            self.assertFalse(missing.exists())
+
+    def test_diagnostic_uses_database_profile_without_environment_mapping(self):
+        controller = SimpleNamespace(
+            token='test-token', account_uid='test-account', kids={},
+            base_url='https://api.qustodio.com/v2', _load_env_values=lambda: {},
+            _load_credentials=lambda: ('email', 'password'),
+            get_auth_header=lambda: {'Authorization': 'Bearer test-token'},
+        )
+        with patch('scripts.check_qustodio.QustodioController', return_value=controller), \
+                patch('scripts.check_qustodio.database_profile_uids', return_value=(['saved-profile'], 'ok')), \
+                patch('scripts.check_qustodio.requests.get', return_value=SimpleNamespace(status_code=200)) as get, \
+                redirect_stdout(io.StringIO()):
+            self.assertEqual(check_main(['--check-api']), 0)
+            self.assertIn('/profiles/saved-profile/', get.call_args.args[0])
 
 
 if __name__ == '__main__':

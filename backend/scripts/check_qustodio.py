@@ -5,7 +5,9 @@ import argparse
 import base64
 import datetime as dt
 import json
+import sqlite3
 import sys
+from contextlib import closing
 from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
@@ -36,6 +38,29 @@ def token_expiry(token, now=None):
         return 'unknown (unreadable token claims)'
 
 
+def database_profile_uids(database_path):
+    """Use the same child mapping as redemptions, without creating/writing a DB."""
+    path = Path(database_path).resolve()
+    if not path.is_file():
+        return [], 'database missing'
+    try:
+        with closing(sqlite3.connect(f'{path.as_uri()}?mode=ro', uri=True, timeout=5)) as conn:
+            row = conn.execute(
+                'SELECT json_value FROM app_state WHERE key = ?', ('childrenData',)
+            ).fetchone()
+        children = json.loads(row[0]) if row else []
+        if not isinstance(children, list):
+            return [], 'childrenData is not a list'
+        uids = list(dict.fromkeys(
+            child['qustodioUid'].strip() for child in children
+            if isinstance(child, dict) and isinstance(child.get('qustodioUid'), str)
+            and child['qustodioUid'].strip()
+        ))
+        return uids, 'read-only check complete'
+    except (sqlite3.Error, ValueError, OSError):
+        return [], 'database unavailable or invalid (details withheld)'
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--check-api', action='store_true',
@@ -52,14 +77,19 @@ def main(argv=None):
     print(f'Token expiry: {token_expiry(token) if token else "missing"}')
     print(f'Refresh credentials present: {bool(email and password)}')
     print(f'Account configured: {bool(controller.account_uid)}')
-    print(f'Configured profile count: {len(controller.kids)}')
+    database_uids, database_status = database_profile_uids(settings.sqlite_path)
+    print(f'Environment profile count: {len(controller.kids)}')
+    print(f'Database profile count: {len(database_uids)} ({database_status})')
+    # Redemptions prefer the child's saved qustodioUid over the environment map.
+    uids = database_uids or list(controller.kids.values())
+    print(f'API profile source: {"database" if database_uids else "environment" if uids else "none"}')
     if not args.check_api:
         print('API not checked. Add --check-api for a read-only authentication check.')
         return 0
-    if not token or not controller.account_uid or not controller.kids:
+    if not token or not controller.account_uid or not uids:
         print('API check skipped: token, account, and at least one profile mapping required.')
         return 2
-    uid = next(iter(controller.kids.values()))
+    uid = uids[0]
     url = f'{controller.base_url}/accounts/{controller.account_uid}/profiles/{uid}/summary_hourly'
     try:
         response = requests.get(url, params={'date': dt.date.today().isoformat()},
