@@ -1,9 +1,10 @@
 import datetime
 import json
+from urllib.parse import urlparse
 
 import requests
 from dotenv import dotenv_values, set_key
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
 from config import BACKEND_ROOT, settings
 
@@ -60,7 +61,7 @@ class QustodioController:
             return None
 
         with sync_playwright() as p:
-            print(f"Launching browser for {email}...")
+            print("Launching Qustodio login browser...")
             browser = p.chromium.launch(headless=launch_headless)
             scraped_token = {"value": None}
             context = browser.new_context(
@@ -73,42 +74,63 @@ class QustodioController:
             page = context.new_page()
 
             def capture_bearer_from_request(request):
+                parsed = urlparse(request.url)
+                if parsed.scheme != "https" or parsed.hostname != "api.qustodio.com":
+                    return
                 auth_header = request.headers.get("authorization", "")
                 if auth_header.lower().startswith("bearer "):
                     scraped_token["value"] = auth_header.split(" ", 1)[1].strip()
 
             page.on("request", capture_bearer_from_request)
 
+            stage = "loading_login_page"
             try:
                 page.goto("https://family.qustodio.com/login")
 
                 if "login" in page.url:
+                    stage = "filling_login_form"
                     page.wait_for_selector("#form_email", timeout=10000)
                     page.fill("#form_email", email)
                     page.fill("#form_password", password)
 
                 print("Monitoring network for the access token response...")
 
-                with page.expect_response(
-                    lambda response: "oauth2/access_token" in response.url,
-                    timeout=30000,
-                ) as response_info:
-                    page.click('button[type="submit"]')
+                token = None
+                stage = "waiting_for_login_response"
+                try:
+                    with page.expect_response(
+                        lambda response: (
+                            urlparse(response.url).scheme == "https"
+                            and urlparse(response.url).hostname == "api.qustodio.com"
+                            and "oauth2/access_token" in urlparse(response.url).path
+                        ),
+                        timeout=30000,
+                    ) as response_info:
+                        page.click('button[type="submit"]')
 
-                token_data = response_info.value.json()
-                token = token_data.get("access_token") or scraped_token["value"]
+                    try:
+                        token_data = response_info.value.json()
+                        token = token_data.get("access_token") if isinstance(token_data, dict) else None
+                    except ValueError:
+                        print("Login response was not JSON; checking captured API bearer.")
+                except PlaywrightTimeoutError:
+                    # A portal change can remove the expected OAuth response while
+                    # authenticated API requests still carry the new bearer token.
+                    print("Login response timeout; checking captured API bearer.")
+                token = token or scraped_token["value"]
 
                 if not token:
-                    print("Token refresh failed: no bearer token found in the signin sequence.")
+                    print("Token refresh failed: no token from OAuth response or Qustodio API requests. Login may require manual attention.")
                     return None
 
+                stage = "saving_token"
+                self._update_env(token)
                 self.token = token
-                self._update_env(self.token)
                 print("SUCCESS: Token refreshed.")
                 return self.token
 
             except Exception as exc:
-                print(f"Token refresh failed: {exc}")
+                print(f"Token refresh failed at {stage}: {type(exc).__name__} (details withheld).")
                 return None
             finally:
                 browser.close()

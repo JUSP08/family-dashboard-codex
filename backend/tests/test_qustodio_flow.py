@@ -8,7 +8,8 @@ import tempfile
 import unittest
 from contextlib import redirect_stdout
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 from scripts.check_qustodio import database_profile_uids, main as check_main, token_expiry
 from services.qustodio_exact import QustodioController
@@ -16,6 +17,56 @@ from services import qustodio_service as service
 
 
 class TokenFlowTests(unittest.TestCase):
+    def test_refresh_response_and_bearer_fallback_paths(self):
+        cases = (
+            ('oauth', False, 'https://api.qustodio.com/v2/example', None, {'access_token': 'oauth-test'}, 'oauth-test'),
+            ('timeout_with_bearer', True, 'https://api.qustodio.com/v2/example', 'bearer-test', {}, 'bearer-test'),
+            ('timeout_without_bearer', True, 'https://api.qustodio.com/v2/example', None, {}, None),
+            ('untrusted_bearer', True, 'https://api.qustodio.com.attacker.invalid/example', 'wrong-test', {}, None),
+            ('insecure_bearer', True, 'http://api.qustodio.com/v2/example', 'wrong-test', {}, None),
+            ('empty_oauth_with_bearer', False, 'https://api.qustodio.com/v2/example', 'bearer-test', {}, 'bearer-test'),
+            ('invalid_json_with_bearer', False, 'https://api.qustodio.com/v2/example', 'bearer-test', ValueError('private-data'), 'bearer-test'),
+        )
+        for name, timeout, request_url, bearer, body, expected in cases:
+            with self.subTest(name=name):
+                controller = self.controller({'TOKEN': 'old-test'})
+                runtime = MagicMock()
+                page = runtime.chromium.launch.return_value.new_context.return_value.new_page.return_value
+                page.url = 'https://family.qustodio.com/login'
+                callbacks = {}
+                page.on.side_effect = lambda event, callback: callbacks.update({event: callback})
+                def submit(_selector):
+                    if bearer:
+                        callbacks['request'](SimpleNamespace(url=request_url, headers={'authorization': f'Bearer {bearer}'}))
+                page.click.side_effect = submit
+                response = page.expect_response.return_value.__enter__.return_value.value
+                if isinstance(body, Exception):
+                    response.json.side_effect = body
+                else:
+                    response.json.return_value = body
+                if timeout:
+                    page.expect_response.return_value.__exit__.side_effect = PlaywrightTimeoutError('test timeout')
+                manager = MagicMock()
+                manager.__enter__.return_value = runtime
+                with patch.object(controller, '_load_credentials', return_value=('private-email', 'private-password')), \
+                        patch('services.qustodio_exact.sync_playwright', return_value=manager), \
+                        patch.object(controller, '_update_env') as save, \
+                        patch('services.qustodio_exact.requests.post') as grant, \
+                        redirect_stdout(io.StringIO()) as output:
+                    self.assertEqual(controller.refresh_token(), expected)
+                    if expected:
+                        save.assert_called_once_with(expected)
+                    else:
+                        save.assert_not_called()
+                        self.assertEqual(controller.token, 'old-test')
+                    grant.assert_not_called()
+                    runtime.chromium.launch.return_value.close.assert_called_once()
+                    for secret in ('private-email', 'private-password', 'private-data', 'oauth-test', 'bearer-test', 'wrong-test'):
+                        self.assertNotIn(secret, output.getvalue())
+                matcher = page.expect_response.call_args.args[0]
+                self.assertTrue(matcher(SimpleNamespace(url='https://api.qustodio.com/v2/oauth2/access_token')))
+                self.assertFalse(matcher(SimpleNamespace(url='https://attacker.invalid/oauth2/access_token')))
+
     def controller(self, values):
         with patch.object(QustodioController, '_load_env_values', return_value=values):
             return QustodioController()
