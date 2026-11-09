@@ -150,12 +150,20 @@ available whenever generation is delayed or unavailable.
 
 Child-facing screens use larger wall-screen text, high-contrast reading
 surfaces, and locally bundled Lexend and Atkinson Hyperlegible fonts alongside
-Verdana. The header's Reading font control can keep a preferred font instead
-of rotating; this preference is saved in that browser. Home opens a two-day
+Verdana. Readable fonts rotate with the daily theme; the font selector and
+per-browser overrides have been removed. Home leaves open background space
+around readable, translucent sections and opens a two-day
 agenda with Week and Month still available. Coach supports an individual-child
 filter and roomier scrollable task rows. Speaker buttons read tasks and Sparkle
 using the browser's available speech voices; voice availability depends on the
 device. Font license files are included under `frontend/public/fonts`.
+
+Calendar display copies are collapsed across sources when their normalized
+titles, dates and times match. Common school-closure wording is normalized,
+and multi-day closures still appear once on every applicable date. Different
+times or conflicting locations remain distinct. Event details retain source
+calendar labels; removing a combined entry hides all its feed copies from the
+dashboard without changing the source calendars.
 
 ## Data, backups, and deployment
 

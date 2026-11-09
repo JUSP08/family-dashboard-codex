@@ -1,6 +1,7 @@
 
 
 import { parseCalendarDate, calendarEventDates, eventOccursOnDate } from "./calendarDates";
+import { deduplicateCalendarEvents } from "./calendarDisplay";
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   Sun,
@@ -46,7 +47,6 @@ import {
   MessageSquare,
   WandSparkles,
   Lightbulb,
-  Type
 } from "lucide-react";
 import "./index.css";
 import {
@@ -251,6 +251,7 @@ const buildTheme = (phase, date, generatedTheme = null) => {
     : dailyTheme.style;
   return {
     ...base,
+    overlayClass: 'bg-black/10',
     cardBg: 'reading-surface',
     calendarBg: 'reading-surface',
     seasonalName: hasGeneratedArtwork ? `${generatedTheme.name} · ${dailyTheme.name.split(' · ').at(-1)}` : dailyTheme.name,
@@ -592,7 +593,7 @@ const getEventEmoji = (sourceIcon, title = "", label = "") => {
 const DashboardView = ({
   theme, currentTime, calendarEvents, calendarErrors, getProgress, calendarView, setCalendarView,
   weather, calendarDate, onNavigateCalendar, masterTasks, completedTasks, calendarSources,
-  childrenData, addCustomEvent, updateCustomEvent, deleteCustomEvent, hideExternalEvent
+  childrenData, addCustomEvent, updateCustomEvent, removeCalendarEvent
 }) => {
 
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -645,11 +646,7 @@ const DashboardView = ({
   };
 
   const handleDelete = () => {
-    if (selectedEvent.isCustom) {
-      deleteCustomEvent(selectedEvent.id);
-    } else {
-      hideExternalEvent(selectedEvent.id);
-    }
+    removeCalendarEvent(selectedEvent);
     setSelectedEvent(null);
   };
 
@@ -813,7 +810,7 @@ const DashboardView = ({
               <>
                 <div className="flex gap-4 mb-6">
                   <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-4xl bg-slate-700/50 shadow-inner`}>{getEventEmoji(selectedEvent.sourceIcon, selectedEvent.title, selectedEvent.calendarLabel)}</div>
-                  <div className="flex-1 min-w-0 flex flex-col justify-center"><h3 className="text-xl font-bold text-white leading-tight mb-1">{selectedEvent.title}</h3><div className={`inline-flex px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-white/10 text-slate-300 border-l-2 ${selectedEvent.colorClass.replace('bg-', 'border-')}`}>{selectedEvent.calendarLabel}</div></div>
+                  <div className="flex-1 min-w-0 flex flex-col justify-center"><h3 className="text-xl font-bold text-white leading-tight mb-1">{selectedEvent.title}</h3><div className={`inline-flex px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-white/10 text-slate-300 border-l-2 ${selectedEvent.colorClass.replace('bg-', 'border-')}`}>{(selectedEvent.calendarLabels || [selectedEvent.calendarLabel]).join(' / ')}</div></div>
                 </div>
                 <div className="space-y-3 bg-slate-900/50 rounded-2xl p-4 border border-white/5">
                   <div className="flex items-center gap-3 text-slate-300"><Clock className="w-5 h-5 text-indigo-400" /><span className="text-lg font-mono font-medium">{selectedEvent.time}</span></div>
@@ -842,7 +839,7 @@ const DashboardView = ({
 
       {/* LEFT COLUMN: CALENDAR */}
       <div className="flex-1 flex flex-col min-w-0 min-h-0">
-        <div className={`${theme.calendarBg} rounded-[2rem] p-6 flex-1 flex flex-col overflow-hidden`}>
+        <div className={`home-calendar ${theme.calendarBg} rounded-[2rem] p-6 flex-1 min-w-0 flex flex-col overflow-hidden`}>
           <div className="calendar-toolbar flex items-center justify-between mb-5 shrink-0">
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex items-center gap-3"><div className="p-2 bg-blue-500/20 rounded-xl text-xl leading-none">📅</div><h3 className="font-semibold text-slate-100 text-lg tracking-wide">{calendarView === "agenda" ? "Our days" : calendarView === "week" ? "Week" : "Month"}</h3></div>
@@ -3710,10 +3707,6 @@ const BalancesView = ({ theme, childrenData, wallet, setWallet, dailyRewards = {
 -------------------------------------------------- */
 
 function FamilyDashboard() {
-  const [fontPreference, setFontPreference] = useState(() => {
-    try { return localStorage.getItem('familyReadingFont') || 'daily'; } catch { return 'daily'; }
-  });
-  const [showReadingOptions, setShowReadingOptions] = useState(false);
   const [view, setView] = useState("dashboard");
   const [currentTime, setCurrentTime] = useState(new Date());
   const [generatedTheme, setGeneratedTheme] = useState(null);
@@ -4228,8 +4221,13 @@ function FamilyDashboard() {
 
   const addCustomEvent = (payload) => { const newEvent = { ...payload, id: `local-${Date.now()}` }; setCustomEvents(prev => [...prev, newEvent]); };
   const updateCustomEvent = (updated) => { setCustomEvents(prev => prev.map(evt => evt.id === updated.id ? { ...evt, ...updated } : evt)); };
-  const deleteCustomEvent = (id) => { if (window.confirm("Delete this event?")) { setCustomEvents(prev => prev.filter(evt => evt.id !== id)); } };
-  const hideExternalEvent = (id) => { if (window.confirm("Remove this event from the dashboard? (It will remain on your Google Calendar)")) { setHiddenEventIds(prev => [...prev, id]); } };
+  const removeCalendarEvent = (event) => {
+    if (!window.confirm("Remove this event from the dashboard? Source calendars will not be changed.")) return;
+    const customIds = event.customEventIds || (event.isCustom ? [event.id] : []);
+    const sourceIds = event.sourceEventIds || (event.isCustom ? [] : [event.id]);
+    setCustomEvents(prev => prev.filter(item => !customIds.includes(item.id)));
+    setHiddenEventIds(prev => [...new Set([...prev, ...sourceIds])]);
+  };
 
   const calendarMonthKey = calendarDate.getFullYear() + "-" + calendarDate.getMonth();
 
@@ -4273,6 +4271,8 @@ function FamilyDashboard() {
                 return {
                   id: i.id, title: i.summary || "Busy",
                   time: timeStr, colorClass: color,
+                  startInstant: i.start.dateTime || null, endInstant: i.end?.dateTime || null,
+                  location: i.location || '',
                   ...calendarEventDates(i),
                   calendarLabel: src.label, sourceIcon: src.icon || null,
                   isChildEvent: isChild, isCustom: false
@@ -4302,6 +4302,7 @@ function FamilyDashboard() {
 
         merged.push({
           id: evt.id, title: evt.title, time: timeStr, rawDate: d,
+          location: evt.location || '',
           colorClass: evt.type === 'work' ? 'border-sky-500' : evt.type === 'school' ? 'border-indigo-500' : 'border-emerald-500',
           calendarLabel: evt.type || "Family",
           sourceIcon: evt.icon || null,
@@ -4315,14 +4316,14 @@ function FamilyDashboard() {
         const titleLower = evt.title.toLowerCase();
         return !calendarFilters.some(filterStr => titleLower.includes(filterStr.toLowerCase()));
       });
-      setCalendarEvents(filteredEvents);
+      setCalendarEvents(deduplicateCalendarEvents(filteredEvents));
       setCalendarErrors(errs);
     };
     fetchAllCalendars();
   }, [calendarMonthKey, calendarRefreshTick, calendarSources, calendarFilters, customEvents, hiddenEventIds]);
 
   return (
-    <div className={`family-shell relative w-screen h-screen overflow-hidden font-sans transition-all duration-1000 ease-in-out ${theme.appBg}`} style={{ ...theme.backgroundStyle, ...(fontPreference !== 'daily' ? { '--theme-body-font': fontPreference, '--theme-heading-font': fontPreference } : {}) }}>
+    <div className={`family-shell relative w-screen h-screen overflow-hidden font-sans transition-all duration-1000 ease-in-out ${theme.appBg}`} style={theme.backgroundStyle}>
       <div className={`pointer-events-none absolute inset-0 transition-colors duration-1000 ${theme.overlayClass}`} />
       <div className="dashboard-layout relative z-10 h-full w-full">
         {/* UPDATED HEADER: DYNAMIC PIZZAZZ */}
@@ -4368,21 +4369,6 @@ function FamilyDashboard() {
             </div>
           </div>
 
-          <div className="reading-options relative">
-            <button type="button" aria-label="Reading font" title="Reading font" aria-expanded={showReadingOptions} onClick={() => setShowReadingOptions(value => !value)} className="read-aloud-button"><Type size={24} /></button>
-            {showReadingOptions && <div className="reading-font-menu">
-              <label htmlFor="reading-font">Reading font</label>
-              <select id="reading-font" value={fontPreference} onChange={event => {
-                setFontPreference(event.target.value);
-                try { localStorage.setItem('familyReadingFont', event.target.value); } catch { /* Preference is still usable without storage. */ }
-              }}>
-                <option value="daily">Daily rotation</option>
-                <option value="Lexend, Verdana, sans-serif">Lexend</option>
-                <option value={'"Atkinson Hyperlegible", Verdana, sans-serif'}>Atkinson</option>
-                <option value="Verdana, sans-serif">Verdana</option>
-              </select>
-            </div>}
-          </div>
           <div className="text-right">
             <div className="text-5xl font-light text-white tracking-tighter drop-shadow-lg leading-none">
               {currentTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }).replace(/(AM|PM)/, '')}<span className="text-base font-bold text-slate-300 ml-1">{currentTime.toLocaleTimeString([], { hour12: true }).slice(-2)}</span>
@@ -4425,8 +4411,7 @@ function FamilyDashboard() {
               childrenData={childrenData}
               addCustomEvent={addCustomEvent}
               updateCustomEvent={updateCustomEvent}
-              deleteCustomEvent={deleteCustomEvent}
-              hideExternalEvent={hideExternalEvent}
+              removeCalendarEvent={removeCalendarEvent}
             />
           )}
 
