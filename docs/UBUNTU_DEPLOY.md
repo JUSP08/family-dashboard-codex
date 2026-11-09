@@ -113,7 +113,36 @@ QUSTODIO_PROFILES_JSON
 
 Never paste these values into chat, commit them, or include them in screenshots.
 
-## Backups and rollback
+## Automatic browser refresh and fullscreen
+
+Each production build has a unique version. Open dashboard screens check it
+every 15 seconds and reload when a newer build is available. Deployment through
+`DeployToUbuntu.bat` uses this automatically; no browser-control SSH command is
+needed. After installing this feature for the first time, manually reload each
+existing screen once. Future deployments refresh those screens automatically.
+
+Refresh waits while a dialog, form, or Settings view is open, an input is focused,
+or a dashboard write is in progress. It also waits at least five seconds after
+interaction or a write completes. A failed shared-data save blocks automatic refresh
+until that save succeeds on retry (or you intentionally reload). Server outages
+leave the current screen alone. Close editors and leave Settings when finished.
+
+For the Ubuntu wall display, run this once **in a terminal on the Ubuntu desktop**
+(a remote desktop session also works, but not an ordinary SSH shell):
+
+```bash
+cd ~/family-dashboard-codex
+bash ops/open-dashboard-kiosk.sh
+```
+
+This opens a supported installed browser in fullscreen kiosk mode. Chromium/Chrome
+uses a separate dashboard profile; Firefox uses its kiosk option. Close the kiosk
+with Alt+F4. Alternatively, open the dashboard normally and press F11. Browser-level
+fullscreen/kiosk mode remains independent of page reloads. The deployment script
+does not close other browser windows, change router settings, or alter desktop login.
+This launcher does not install a browser or configure startup after reboot.
+
+## Restoring a backup
 
 Every routine update prints its backup directory. To restore data, stop the
 dashboard and copy that directory's `family_dashboard.db` and `.env` back into

@@ -51,3 +51,5 @@ if ($LASTEXITCODE -ne 0) {
 
 $dashboardUrl = "http://${UbuntuHost}:8099/"
 Write-Host "Dashboard is available at $dashboardUrl" -ForegroundColor Green
+Write-Host "Updated dashboard screens refresh automatically when editors are closed." -ForegroundColor Green
+Write-Host "First install of auto-refresh: reload each screen once. Use F11 or the Ubuntu kiosk launcher for fullscreen."

@@ -708,7 +708,7 @@ const DashboardView = ({
 
       {/* --- ADD EVENT POPUP --- */}
       {isAddingEvent && (
-        <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={() => setIsAddingEvent(false)}>
+        <div role="dialog" aria-label="Add calendar event" aria-modal="true" className="absolute inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={() => setIsAddingEvent(false)}>
           <div className="bg-slate-800 border border-white/10 rounded-3xl p-6 w-full max-w-sm shadow-2xl relative" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-xl font-bold text-white mb-4">Add Event</h3>
             <p className="text-xs text-slate-400 mb-4">{newEventDate?.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</p>
@@ -758,7 +758,7 @@ const DashboardView = ({
 
       {/* --- EVENT DETAILS / EDIT POPUP --- */}
       {selectedEvent && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={() => { setSelectedEvent(null); setIsEditing(false); }}>
+        <div role="dialog" aria-label="Calendar event" aria-modal="true" className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={() => { setSelectedEvent(null); setIsEditing(false); }}>
           <div className="bg-slate-800 border border-white/10 rounded-3xl p-6 w-full max-w-sm shadow-2xl relative" onClick={(e) => e.stopPropagation()}>
             <button onClick={() => { setSelectedEvent(null); setIsEditing(false); }} className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors bg-white/5 rounded-full p-1"><X className="w-5 h-5" /></button>
 
@@ -1800,7 +1800,7 @@ const GigsView = ({ theme, gigs, setGigs, childrenData = [], wallet, setWallet, 
 
       {/* PIN PAD */}
       {showPinPad && (
-        <div className="fixed inset-0 z-50 bg-slate-900/90 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-in fade-in duration-200">
+        <div role="dialog" aria-label="Gig" aria-modal="true" className="fixed inset-0 z-50 bg-slate-900/90 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-slate-800 border border-white/10 rounded-3xl p-6 shadow-2xl w-full max-w-xs flex flex-col gap-4">
             <div className="text-center"><div className="flex items-center justify-center gap-2 text-slate-200"><Lock className="w-4 h-4" /><span className="text-xs font-bold uppercase tracking-widest">Parent check</span></div><p className="text-xs text-slate-500 mt-2">Enter the parent PIN after checking the finished gig.</p></div>
             <div className={`h-12 bg-slate-900 rounded-xl flex items-center justify-center gap-2 text-2xl font-mono text-white tracking-[0.5em] border border-white/5 ${pinError ? 'border-rose-500 animate-pulse text-rose-500' : ''}`}>{"•".repeat(pinInput.length)}{pinInput.length < 4 && <span className="opacity-20 animate-pulse">|</span>}</div>
@@ -2618,7 +2618,7 @@ const SettingsView = ({
 
       {/* ADMIN PIN MODAL */}
       {showAdminPin && (
-        <div className="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setShowAdminPin(false)}>
+        <div role="dialog" aria-label="Admin PIN" aria-modal="true" className="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setShowAdminPin(false)}>
           <div className="bg-slate-800 border border-white/10 rounded-3xl p-6 shadow-2xl w-full max-w-xs flex flex-col gap-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-center gap-2 mb-2 text-slate-300"><Lock className="w-4 h-4" /><span className="text-xs font-bold uppercase tracking-widest">Admin Access</span></div>
             <div className={`h-12 bg-slate-900 rounded-xl flex items-center justify-center gap-2 text-2xl font-mono text-white tracking-[0.5em] border border-white/5 ${adminPinError ? 'border-rose-500 animate-pulse text-rose-500' : ''}`}>
@@ -3570,7 +3570,7 @@ const BalancesView = ({ theme, childrenData, wallet, setWallet, dailyRewards = {
 
       {/* REDEMPTION POPUP */}
       {redeemingChild && (
-        <div className="fixed inset-0 z-[60] bg-slate-900/90 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setRedeemingChildId(null)}>
+        <div role="dialog" aria-label="Redeem reward" aria-modal="true" className="fixed inset-0 z-[60] bg-slate-900/90 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setRedeemingChildId(null)}>
           <div className="max-h-full overflow-y-auto custom-scrollbar bg-slate-800 border border-white/10 rounded-3xl p-6 shadow-2xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
