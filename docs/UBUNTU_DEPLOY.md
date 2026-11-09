@@ -116,7 +116,7 @@ Never paste these values into chat, commit them, or include them in screenshots.
 ## Automatic browser refresh and fullscreen
 
 Each production build has a unique version. Open dashboard screens check it
-every 15 seconds and reload when a newer build is available. Deployment through
+every hour and reload when a newer build is available. Deployment through
 `DeployToUbuntu.bat` uses this automatically; no browser-control SSH command is
 needed. After installing this feature for the first time, manually reload each
 existing screen once. Future deployments refresh those screens automatically.

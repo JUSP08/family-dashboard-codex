@@ -66,7 +66,7 @@ export function installDeploymentRefresh(win, doc, buildId) {
     reload: () => win.location.reload(),
   });
   for (const event of ['pointerdown', 'keydown', 'input']) doc.addEventListener(event, touch, true);
-  const timer = win.setInterval(check, 15000);
+  const timer = win.setInterval(check, 60 * 60 * 1000);
   win.addEventListener('online', check);
   return () => {
     win.clearInterval(timer);

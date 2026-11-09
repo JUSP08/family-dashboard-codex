@@ -58,7 +58,10 @@ test('tracks pending/failed writes, resumes after successful retry, preserves fe
     : new Promise(resolve => { resolveWrite = resolve; });
   const win = {
     fetch: originalFetch, location: { href: 'http://localhost/', origin: 'http://localhost', reload: () => reloads++ },
-    setInterval: callback => { check = callback; return 1; }, clearInterval() {}, addEventListener() {}, removeEventListener() {},
+    setInterval: (callback, interval) => {
+      assert.equal(interval, 60 * 60 * 1000);
+      check = callback; return 1;
+    }, clearInterval() {}, addEventListener() {}, removeEventListener() {},
   };
   const doc = { querySelector: () => null, activeElement: null, addEventListener() {}, removeEventListener() {} };
   const cleanup = installDeploymentRefresh(win, doc, 'old');
