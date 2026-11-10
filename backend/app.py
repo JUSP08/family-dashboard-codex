@@ -11,6 +11,7 @@ from config import FRONTEND_DIST, PROJECT_ROOT, settings
 from db import init_db, log_event
 from services.health_service import build_status
 from services.bus_alert_service import get_bus_status, start_bus_monitor
+from services.morning_briefing_service import get_briefing, start_morning_briefing
 from services.home_assistant_service import (
     HomeAssistantError,
     broadcast_google_message,
@@ -69,6 +70,17 @@ def create_app() -> Flask:
     @app.get("/api/bus-alerts")
     def bus_alerts():
         response = jsonify(get_bus_status())
+        response.headers['Cache-Control'] = 'no-store'
+        return response
+
+    @app.get("/api/morning-briefing")
+    def morning_briefing():
+        try:
+            response = jsonify(get_briefing(request.args.get('date')))
+        except ValueError:
+            return jsonify({'error':'Choose a valid date within the next seven days.'}), 400
+        except Exception:
+            return jsonify({'error':'Morning briefing is unavailable. No announcement was sent.'}), 503
         response.headers['Cache-Control'] = 'no-store'
         return response
 
@@ -375,6 +387,7 @@ if __name__ == "__main__":
     init_db()
     start_background_workers()
     start_bus_monitor()
+    start_morning_briefing()
 
     app = create_app()
 
