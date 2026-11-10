@@ -205,69 +205,18 @@ class CoreFlowTests(unittest.TestCase):
         self.assertEqual(rows[0]["related_redemption_id"], "redemption-1")
         self.assertIsNotNone(rows[0]["expires_at"])
 
-    @patch("services.sparkle_service._call_gemini")
-    def test_sparkle_retries_duplicates_from_the_last_30_days(self, call_gemini):
-        recent = "Octopuses have three hearts and blue blood."
-        call_gemini.side_effect = [
-            "Octopuses have blue blood and three hearts.",
-            "Honey never spoils when stored properly.",
-        ]
-        with get_connection() as conn:
-            conn.execute(
-                "INSERT INTO app_state (key, json_value, updated_at) VALUES (?, ?, ?)",
-                (
-                    "dailySparkleHistory",
-                    json.dumps([{"date": "2026-09-20", "content": recent}]),
-                    "2026-09-20T12:00:00Z",
-                ),
-            )
-
+    def test_local_sparkle_records_history(self):
         result = get_or_create_daily_sparkle(force_refresh=True, today_key="2026-09-27")
-
-        self.assertTrue(result["success"])
-        self.assertEqual(result["content"], "Honey never spoils when stored properly.")
-        self.assertEqual(call_gemini.call_count, 2)
+        self.assertTrue(result['success'])
+        self.assertEqual(result['source'],'local')
         with get_connection() as conn:
-            saved = json.loads(
-                conn.execute(
-                    "SELECT json_value FROM app_state WHERE key = 'dailySparkleHistory'"
-                ).fetchone()["json_value"]
-            )
-        self.assertEqual(saved[0]["date"], "2026-09-27")
-        self.assertEqual(saved[0]["content"], result["content"])
-        self.assertTrue(saved[0]["topic"])
-        self.assertTrue(saved[0]["category"])
-
-    @patch("services.sparkle_service._call_gemini")
-    def test_sparkle_does_not_reuse_a_recent_topic(self, call_gemini):
-        call_gemini.return_value = "A fresh and specific Sparkle."
-        with get_connection() as conn:
-            conn.execute(
-                "INSERT INTO app_state (key, json_value, updated_at) VALUES (?, ?, ?)",
-                (
-                    "dailySparkleHistory",
-                    json.dumps(
-                        [
-                            {
-                                "date": "2026-09-28",
-                                "content": "Yesterday's statement.",
-                                "topic": "space-planets",
-                                "category": "Space",
-                            }
-                        ]
-                    ),
-                    "2026-09-28T12:00:00Z",
-                ),
-            )
-
-        result = get_or_create_daily_sparkle(force_refresh=True, today_key="2026-09-29")
-
-        self.assertTrue(result["success"])
-        self.assertNotEqual(result["topic"], "space-planets")
-        self.assertNotEqual(result["category"], "Space")
+            saved=json.loads(conn.execute("SELECT json_value FROM app_state WHERE key='dailySparkleHistory'").fetchone()['json_value'])
+        self.assertEqual(saved[0]['content'],result['content'])
+        self.assertEqual(saved[0]['date'],'2026-09-27')
 
     def test_kids_can_advance_through_the_sparkle_pool_without_admin(self):
         pool = {
+            "source": "local",
             "week": "2026-W40",
             "generatedAt": "2026-09-29T12:00:00Z",
             "items": [
@@ -297,44 +246,21 @@ class CoreFlowTests(unittest.TestCase):
         self.assertEqual(second.get_json()["content"], "Second fresh Sparkle.")
         self.assertEqual(second.get_json()["remaining"], 0)
 
-    @patch("services.sparkle_service._call_gemini")
-    def test_empty_kid_sparkle_pool_does_not_trigger_paid_generation(self, call_gemini):
-        client = self.app.test_client()
+    @patch("requests.sessions.Session.request", side_effect=AssertionError("Sparkle must stay offline"))
+    def test_empty_kid_sparkle_pool_refills_without_network(self, network):
+        response=self.app.test_client().post('/api/sparkle',json={'nextSparkle':True,'todayKey':'2026-09-29'})
+        self.assertEqual(response.status_code,200)
+        self.assertEqual(response.get_json()['source'],'local')
+        network.assert_not_called()
 
-        response = client.post(
-            "/api/sparkle",
-            json={"nextSparkle": True, "todayKey": "2026-09-29"},
-        )
-
-        self.assertEqual(response.status_code, 503)
-        self.assertEqual(response.get_json()["status"], "empty")
-        call_gemini.assert_not_called()
-
-    @patch("services.sparkle_service._is_too_similar", return_value=False)
-    @patch("services.sparkle_service._call_gemini_pool")
-    def test_weekly_sparkle_refill_stores_100_items(self, call_gemini_pool, _similar):
-        call_gemini_pool.return_value = [
-            {
-                "content": f"Sparkle {index}: token{index:03d} meets idea{index:03d} today.",
-                "category": ("Science", "Space", "Nature", "History")[index % 4],
-                "topic": f"topic-{index:03d}",
-            }
-            for index in range(100)
-        ]
-
-        result = refresh_sparkle_pool_if_due(today_key="2026-09-29", force=True)
-
-        self.assertTrue(result["success"])
-        self.assertEqual(result["count"], 100)
-        self.assertEqual(call_gemini_pool.call_count, 1)
+    def test_local_sparkle_refill_stores_collection(self):
+        from services.sparkle_collection import SPARKLES
+        result=refresh_sparkle_pool_if_due(today_key='2026-09-29',force=True)
+        self.assertEqual(result['count'],len(SPARKLES))
         with get_connection() as conn:
-            saved = json.loads(
-                conn.execute(
-                    "SELECT json_value FROM app_state WHERE key = 'weeklySparklePool'"
-                ).fetchone()["json_value"]
-            )
-        self.assertEqual(saved["week"], "2026-W40")
-        self.assertEqual(len(saved["items"]), 100)
+            saved=json.loads(conn.execute("SELECT json_value FROM app_state WHERE key='weeklySparklePool'").fetchone()['json_value'])
+        self.assertEqual(saved['source'],'local')
+        self.assertEqual(len(saved['items']),len(SPARKLES))
 
     @patch("services.theme_service._request_theme_image")
     def test_daily_theme_generates_once_and_is_served(self, request_theme_image):
