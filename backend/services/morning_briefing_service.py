@@ -18,6 +18,7 @@ from services.state_service import get_full_state
 from services.calendar_service import fetch_calendar_events
 from services.bus_alert_service import get_bus_status
 from services.home_assistant_service import _request
+from services.school_email_service import get_school_email, start_school_email_worker
 
 LOCAL = ZoneInfo('America/New_York')
 ENABLED = os.getenv('MORNING_BRIEFING_ENABLED', 'false').lower() == 'true'
@@ -124,6 +125,12 @@ def generate(day):
     if len(agenda)>5:pieces.append(f'{len(agenda)-5} more events are on the dashboard.')
     pieces.append('School reminders: '+' '.join(spoken_event(e) for e in reminders[:3]) if reminders else
                   'No school reminders were found in the calendars checked. This does not confirm that school is open.')
+    school_email = get_school_email(day)
+    if school_email.get('warning'):
+        pieces.append(school_email['warning'])
+    if school_email['items']:
+        pieces.append('From school and team emails: '+' '.join(i['text'] for i in school_email['items'][:3]))
+        if len(school_email['items'])>3: pieces.append('More email reminders are on the dashboard.')
     if len(reminders)>3:pieces.append(f'{len(reminders)-3} more school reminders are on the dashboard.')
     pieces.append(bus_text)
     speech='\n\n'.join(pieces)
@@ -135,7 +142,8 @@ def generate(day):
     return {'date':day.isoformat(),'generated_at':time.time(),'weather':weather,'agenda':agenda,
             'school_reminders':reminders,'calendar_sources':sources,'warnings':warnings,
             'bus':{'checked_at':bus['checked_at'],'connected':bus['connected'],'warnings':bus['warnings'],'summary':bus_text},
-            'speech':speech,'schedule':SCHEDULE,'school_note':'School reminders come from calendar titles; school email is not scanned.',
+            'speech':speech,'schedule':SCHEDULE,'school_email':school_email,
+            'school_note':'Calendar reminders and AI summaries of school, ParentSquare and sportsYou emails. Check source emails for details; attachments and private student reports are excluded.',
             'estimated_seconds':round(len(speech.split())/2.4)}
 
 
@@ -198,6 +206,7 @@ def deliver_due(now=None):
 
 def start_morning_briefing():
     global _started
+    start_school_email_worker()
     if _started or not ENABLED:return
     _started=True
     def loop():

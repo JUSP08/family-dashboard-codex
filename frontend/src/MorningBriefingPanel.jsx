@@ -49,6 +49,11 @@ export default function MorningBriefingPanel() {
           <article><h3>Bus-alert health</h3><p>{data.bus.summary}</p><small>This is not a bus-arrival announcement.</small></article>
           <article><h3>Family calendar</h3><Events events={data.agenda} empty={data.warnings.length?'Calendar information may be incomplete.':'No other events found in the calendars checked.'}/></article>
           <article><h3>School reminders</h3><Events events={data.school_reminders} empty="No reminders found in calendar titles. This does not confirm that school is open."/></article>
+          <article><h3>From school and team emails</h3>
+            {data.school_email?.checked_at && <small>Inbox checked {new Date(data.school_email.checked_at*1000).toLocaleString('en-US',{timeZone:'America/New_York'})} Eastern</small>}
+            {data.school_email?.warning && <p className="morning-warning" role="alert">{data.school_email.warning}</p>}
+            {data.school_email?.items?.length ? <ul>{data.school_email.items.map((item,index)=><li key={index}><div><strong>{item.text}</strong><small>{item.date} · {item.source}</small><a href={item.url} target="_blank" rel="noreferrer">Source email: {item.source_subject}</a></div></li>)}</ul> : <p>No current email reminders available.</p>}
+          </article>
         </div>
         <details className="morning-script"><summary>Exact spoken preview · about {data.estimated_seconds} seconds</summary><p>{data.speech}</p></details>
         <p className="morning-note">No audio plays from this preview. {!data.schedule.enabled && 'Playback remains disabled until you approve it in chat. '}Bus alerts take priority; a briefing will skip a busy speaker group instead of interrupting it.</p>
