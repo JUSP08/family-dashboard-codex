@@ -35,5 +35,9 @@ class SchoolEmailTests(unittest.TestCase):
         client.store.assert_not_called()
     def test_links_and_addresses_removed(self):
         self.assertEqual(s.clean_text('Visit https://private/link?token=secret or person@example.com'),'Visit [link] or [email]')
+    def test_external_processing_requires_approval(self):
+        with patch.dict(s.os.environ,{'SCHOOL_EMAIL_OPENROUTER_APPROVED':'false'}),patch.object(s,'read_mail') as reader,patch.object(s.requests,'post') as post:
+            with self.assertRaises(RuntimeError):s.refresh(date(2026,11,10))
+            reader.assert_not_called();post.assert_not_called()
 
 if __name__=='__main__':unittest.main()
