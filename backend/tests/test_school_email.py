@@ -35,9 +35,20 @@ class SchoolEmailTests(unittest.TestCase):
         client.store.assert_not_called()
     def test_links_and_addresses_removed(self):
         self.assertEqual(s.clean_text('Visit https://private/link?token=secret or person@example.com'),'Visit [link] or [email]')
-    def test_external_processing_requires_approval(self):
-        with patch.dict(s.os.environ,{'SCHOOL_EMAIL_OPENROUTER_APPROVED':'false'}),patch.object(s,'read_mail') as reader,patch.object(s.requests,'post') as post:
-            with self.assertRaises(RuntimeError):s.refresh(date(2026,11,10))
-            reader.assert_not_called();post.assert_not_called()
+    def test_local_dates_and_optional_participation(self):
+        message={'id':'abc','source':'parentsquare.com','sent':'2026-11-09T18:00:00-05:00','subject':'School digest','text':'Ski Club Registration: November 13 Deadline\nBring costume by Monday\nPractice November 10-13\nMeeting January 25 at 6 PM'}
+        result=s.extract_local([message],date(2026,11,10))
+        self.assertEqual(len(result),1)
+        self.assertEqual(result[0]['date'],'2026-11-13')
+        self.assertIn('If this applies',result[0]['text'])
+    def test_refresh_uses_local_extraction_only(self):
+        with patch.object(s,'read_mail',return_value=([],False)):
+            result=s.refresh(date(2026,11,10))
+        self.assertEqual(result['processing'],'server-only')
+        self.assertFalse(hasattr(s,'requests'))
+    def test_events_not_announced_before_their_day(self):
+        message={'id':'abc','source':'sportsyou.com','sent':'2026-11-09T18:00:00-05:00','subject':'Team news','text':'Football game November 14 at 11 AM'}
+        self.assertEqual(s.extract_local([message],date(2026,11,10)),[])
+        self.assertEqual(len(s.extract_local([message],date(2026,11,14))),1)
 
 if __name__=='__main__':unittest.main()

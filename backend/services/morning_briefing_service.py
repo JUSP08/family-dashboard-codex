@@ -138,12 +138,13 @@ def generate(day):
         # Keep a bounded announcement without cutting away source-health caveats.
         pieces=[greeting,weather['summary'],'Please check the dashboard for today\'s calendar and school reminders.',bus_text]
         if warnings:pieces.append('Some calendar sources could not be checked.')
+        if school_email.get('warning'):pieces.append(school_email['warning'])
         speech='\n\n'.join(pieces)
     return {'date':day.isoformat(),'generated_at':time.time(),'weather':weather,'agenda':agenda,
             'school_reminders':reminders,'calendar_sources':sources,'warnings':warnings,
             'bus':{'checked_at':bus['checked_at'],'connected':bus['connected'],'warnings':bus['warnings'],'summary':bus_text},
             'speech':speech,'schedule':SCHEDULE,'school_email':school_email,
-            'school_note':'Calendar reminders and AI summaries of school, ParentSquare and sportsYou emails. Check source emails for details; attachments and private student reports are excluded.',
+            'school_note':'Calendar reminders and locally extracted dated notices from school, ParentSquare and sportsYou emails. Check source emails for details. Ambiguous dates, attachments and private student reports are excluded.',
             'estimated_seconds':round(len(speech.split())/2.4)}
 
 
