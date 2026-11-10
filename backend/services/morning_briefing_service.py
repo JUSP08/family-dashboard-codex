@@ -173,7 +173,7 @@ def get_briefing(date_text=None, force=False):
     with _lock:
         with connect() as db:
             row=db.execute('SELECT generated,payload FROM briefings WHERE day=?',(day.isoformat(),)).fetchone()
-        if not force and row and time.time()-row['generated']<300:
+        if not force and row and time.time()-row['generated']<300 and 'sparkle' in json.loads(row['payload']):
             result=json.loads(row['payload']);result['schedule']=SCHEDULE;return with_delivery(result)
         result=generate(day)
         with connect() as db:
