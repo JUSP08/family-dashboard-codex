@@ -56,6 +56,7 @@ import {
 } from "./dailyCoachActivities";
 import "./App.css";
 import SmartHomeView from "./SmartHomeView";
+import BusAlertPanel from "./BusAlertPanel";
 import { getDailyTheme } from "./dailyTheme";
 import ReadAloudControl from "./ReadAloudControl";
 import { shouldDisplaySchoolEvent } from "./schoolSportsFilter";
@@ -4381,6 +4382,7 @@ function FamilyDashboard() {
 
         {/* Main Content Area */}
         <main data-view={view} className="reading-view flex-1 min-h-0 overflow-y-auto px-6 pb-6 custom-scrollbar">
+          <BusAlertPanel />
 
           {/* 1. DASHBOARD */}
           {view === "dashboard" && (

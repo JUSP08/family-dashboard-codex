@@ -10,6 +10,7 @@ from waitress import serve
 from config import FRONTEND_DIST, PROJECT_ROOT, settings
 from db import init_db, log_event
 from services.health_service import build_status
+from services.bus_alert_service import get_bus_status, start_bus_monitor
 from services.home_assistant_service import (
     HomeAssistantError,
     broadcast_google_message,
@@ -64,6 +65,12 @@ def create_app() -> Flask:
     @app.get("/health")
     def health():
         return jsonify({"status": "ok"})
+
+    @app.get("/api/bus-alerts")
+    def bus_alerts():
+        response = jsonify(get_bus_status())
+        response.headers['Cache-Control'] = 'no-store'
+        return response
 
     @app.get("/status")
     def status():
@@ -367,6 +374,7 @@ def create_app() -> Flask:
 if __name__ == "__main__":
     init_db()
     start_background_workers()
+    start_bus_monitor()
 
     app = create_app()
 
