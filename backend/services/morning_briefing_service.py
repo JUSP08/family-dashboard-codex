@@ -19,6 +19,7 @@ from services.calendar_service import fetch_calendar_events
 from services.bus_alert_service import get_bus_status
 from services.home_assistant_service import _request
 from services.school_email_service import get_school_email, start_school_email_worker
+from services.sparkle_service import get_current_sparkle
 
 LOCAL = ZoneInfo('America/New_York')
 ENABLED = os.getenv('MORNING_BRIEFING_ENABLED', 'false').lower() == 'true'
@@ -106,6 +107,19 @@ def spoken_event(event):
     return f"At {label}, {event['title']}."
 
 
+def sparkle_for(day, now=None):
+    if day != (now or datetime.now(LOCAL)).date():
+        return {'available':False,'pending':True,'content':None,
+                'speech':"The day's Sparkle will be selected that morning."}
+    try:
+        result=get_current_sparkle(today_key=day.isoformat())
+        if result.get('success') and result.get('source')=='local' and result.get('content'):
+            return {'available':True,'content':result['content'],
+                    'speech':"Today's Sparkle: "+result['content']}
+    except Exception:pass
+    return {'available':False,'content':None,'speech':"Today's Sparkle is temporarily unavailable."}
+
+
 def generate(day):
     weather=weather_for(day)
     events,warnings,sources=calendar_for(day)
@@ -133,17 +147,20 @@ def generate(day):
         if len(school_email['items'])>3: pieces.append('More email reminders are on the dashboard.')
     if len(reminders)>3:pieces.append(f'{len(reminders)-3} more school reminders are on the dashboard.')
     pieces.append(bus_text)
+    sparkle=sparkle_for(day)
+    pieces.append(sparkle['speech'])
     speech='\n\n'.join(pieces)
     if len(speech)>2800:
         # Keep a bounded announcement without cutting away source-health caveats.
         pieces=[greeting,weather['summary'],'Please check the dashboard for today\'s calendar and school reminders.',bus_text]
         if warnings:pieces.append('Some calendar sources could not be checked.')
         if school_email.get('warning'):pieces.append(school_email['warning'])
+        pieces.append(sparkle['speech'])
         speech='\n\n'.join(pieces)
     return {'date':day.isoformat(),'generated_at':time.time(),'weather':weather,'agenda':agenda,
             'school_reminders':reminders,'calendar_sources':sources,'warnings':warnings,
             'bus':{'checked_at':bus['checked_at'],'connected':bus['connected'],'warnings':bus['warnings'],'summary':bus_text},
-            'speech':speech,'schedule':SCHEDULE,'school_email':school_email,
+            'speech':speech,'schedule':SCHEDULE,'school_email':school_email,'sparkle':sparkle,
             'school_note':'Calendar reminders and locally extracted dated notices from school, ParentSquare and sportsYou emails. Check source emails for details. Ambiguous dates, attachments and private student reports are excluded.',
             'estimated_seconds':round(len(speech.split())/2.4)}
 
