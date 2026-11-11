@@ -153,7 +153,7 @@ def get_school_email(day):
 
 def start_school_email_worker():
     global _started
-    if _started or not (HOME/'credentials.json').exists(): return
+    if _started or os.getenv('SCHOOL_EMAIL_OWNER')=='hermes' or not (HOME/'credentials.json').exists(): return
     _started = True
     def loop():
         while True:

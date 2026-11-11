@@ -21,7 +21,18 @@ def private_save(path,value):
     os.replace(temp,path)
 
 def normalized(text):
-    return re.sub(r'[^a-z0-9]+',' ',re.sub(r'^CANCELED\s*[-:—]?\s*','',text,flags=re.I).lower()).strip()
+    text=re.sub(r'^CANCELED\s*[-:—]?\s*','',text,flags=re.I).lower()
+    text=text.replace('bethel high school','bhs').replace('bethel middle school','bms')
+    return re.sub(r'[^a-z0-9]+',' ',text).strip()
+
+def similar(a,b):
+    a=normalized(a);b=normalized(b)
+    if SequenceMatcher(None,a,b).ratio()>=.82:return True
+    if re.search(r'no school|schools? closed',a) and re.search(r'no school|schools? closed',b):return True
+    # Common calendar prefixes should not duplicate the same named team event.
+    drop={'bethel','girls','boys','hannah','tristan','sloane','emerson','blake','guinevere'}
+    left=set(a.split())-drop;right=set(b.split())-drop
+    return bool(left and right and len(left&right)/len(left|right)>=.8)
 
 def digest(value):return hashlib.sha256(json.dumps(value,sort_keys=True).encode()).hexdigest()
 
@@ -40,8 +51,10 @@ def validate(raw,messages,today):
             for value in (start,end):
                 if value:assert re.fullmatch(r'(?:[01]\d|2[0-3]):[0-5]\d',value)
             assert not end or start and end>start
+            optional=bool(re.search(r'club|preseason|tryout|registration|open gym|interest survey|optional',title,re.I))
+            if optional and not title.lower().startswith('if participating:'):title='If participating: '+title
             accepted.append({'title':title,'date':day.isoformat(),'startTime':start,'endTime':end,
-                'kind':item['kind'],'cancelled':item.get('cancelled') is True,
+                'kind':'reminder' if optional else item['kind'],'cancelled':item.get('cancelled') is True,
                 'source_id':source['id'],'source_received':source['sent'],'evidence':evidence,
                 'source_subject':source['subject'],'source':source['source'],
                 'url':'https://mail.google.com/mail/u/0/#all/'+source['id']})
@@ -49,6 +62,12 @@ def validate(raw,messages,today):
     return accepted,rejected
 
 def interpret(messages,today):
+    fingerprint=digest([today.isoformat(),messages])
+    cache_path=HOME/'hermes-extraction.json'
+    try:
+        cached=json.loads(cache_path.read_text())
+        if cached['fingerprint']==fingerprint:return validate(cached['raw'],messages,today),cached['engine']
+    except (OSError,ValueError,KeyError):pass
     instructions='''You are Hermes, preparing family dashboard updates from school emails.
 Return JSON {"items":[{"kind":"event" or "reminder","title":"short factual title",
 "date":"YYYY-MM-DD","startTime":"HH:MM or empty","endTime":"HH:MM or empty",
@@ -59,7 +78,9 @@ EVENTS: concrete school-wide events, closures, early dismissal, and actual team 
     proc=subprocess.run([str(PYTHON),str(ENGINE)],input=json.dumps(payload),capture_output=True,text=True,timeout=240)
     if proc.returncode:raise RuntimeError('Hermes interpretation failed')
     result=json.loads(proc.stdout)
-    return validate(result['result'],messages,today),{'engine':result['engine'],'model':result['model'],'api_calls':result['api_calls']}
+    engine={'engine':result['engine'],'model':result['model'],'api_calls':result['api_calls']}
+    private_save(cache_path,{'fingerprint':fingerprint,'raw':result['result'],'engine':engine})
+    return validate(result['result'],messages,today),engine
 
 def event_view(event):
     return {k:event.get(k,'') for k in ('title','date','startTime','endTime')}
@@ -69,8 +90,8 @@ def reconcile(existing,items,external=()):
     for item in sorted(items,key=lambda i:i['source_received']):
         if item['kind']!='event':continue
         title=('CANCELED — ' if item['cancelled'] else '')+item['title']
-        same=[e for e in events if e.get('date')==item['date'] and SequenceMatcher(None,normalized(e.get('title','')),normalized(title)).ratio()>=.82]
-        if any(e.get('date')==item['date'] and SequenceMatcher(None,normalized(e.get('title','')),normalized(title)).ratio()>=.75 for e in external):
+        same=[e for e in events if e.get('date')==item['date'] and similar(e.get('title',''),title)]
+        if any(e.get('date')==item['date'] and similar(e.get('title',''),title) for e in external):
             if item['cancelled']:review.append({'reason':'Cancellation overlaps a connected calendar; review source','item':item})
             continue
         if len(same)>1:review.append({'reason':'Multiple matching events','item':item});continue
@@ -129,7 +150,7 @@ def run(apply=False):
         events,changes,review=reconcile(snapshot.get('customEvents',[]),state['items'],external)
         report={'checked_at':time.time(),'mode':'apply' if apply else 'preview','messages_checked':len(messages),
                 'interpreted':len(batch),'backlog':len(changed)-len(batch),'rejected':rejected,'changes':changes,'review':review,**engine}
-        private_save(HOME/'hermes-preview.json',report)
+        private_save(HOME/'hermes-preview.json',{**report,'proposed_items':state['items']})
         if not apply:return report
         if changes:
             backup=HOME/('calendar-backup-'+now.strftime('%Y%m%d-%H%M%S')+'.json')

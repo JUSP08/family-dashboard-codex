@@ -24,5 +24,14 @@ class HermesSchoolTests(unittest.TestCase):
         good={**self.item(),'evidence':message['text']}
         valid,rejected=h.validate({'items':[good,{**good,'source_id':'wrong'},{**good,'startTime':'25:00'}]},[message],date(2026,11,10))
         self.assertEqual(len(valid),1);self.assertEqual(rejected,2)
+    def test_aliases_and_school_closures_deduplicate(self):
+        self.assertTrue(h.similar('Hannah: U15 soccer practice','U15 Bethel Girls soccer practice'))
+        self.assertTrue(h.similar('Veterans Day - No School','Bethel schools closed'))
+        self.assertFalse(h.similar('U15 soccer practice','U10 soccer practice'))
+    def test_optional_preseason_stays_a_reminder(self):
+        message={'id':'abc','text':'Wrestling preseason November 12 at 2:30 PM.','sent':'2026-11-10T12:00:00-05:00','subject':'School digest','source':'parentsquare.com'}
+        good={**self.item(title='BHS Wrestling preseason'),'evidence':message['text']}
+        items,_=h.validate({'items':[good]},[message],date(2026,11,10))
+        self.assertEqual(items[0]['kind'],'reminder');self.assertTrue(items[0]['title'].startswith('If participating:'))
 
 if __name__=='__main__':unittest.main()

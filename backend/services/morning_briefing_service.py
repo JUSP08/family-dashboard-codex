@@ -161,7 +161,7 @@ def generate(day):
             'school_reminders':reminders,'calendar_sources':sources,'warnings':warnings,
             'bus':{'checked_at':bus['checked_at'],'connected':bus['connected'],'warnings':bus['warnings'],'summary':bus_text},
             'speech':speech,'schedule':SCHEDULE,'school_email':school_email,'sparkle':sparkle,
-            'school_note':'Calendar reminders and locally extracted dated notices from school, ParentSquare and sportsYou emails. Check source emails for details. Ambiguous dates, attachments and private student reports are excluded.',
+            'school_note':'Calendar reminders and selected school, ParentSquare and sportsYou notices. Hermes interprets emails through OpenRouter when configured as owner. Check source emails for details; attachments and private student reports are excluded.',
             'estimated_seconds':round(len(speech.split())/2.4)}
 
 
