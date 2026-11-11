@@ -2,6 +2,8 @@
 
 import { parseCalendarDate, calendarEventDates, eventOccursOnDate } from "./calendarDates";
 import { deduplicateCalendarEvents } from "./calendarDisplay";
+import BusAlertPanel from "./BusAlertPanel";
+import MorningBriefingPanel from "./MorningBriefingPanel";
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   Sun,
@@ -4380,6 +4382,10 @@ function FamilyDashboard() {
         </header>
 
         {/* Main Content Area */}
+        <div className="dashboard-notices" aria-label="Family updates">
+          <BusAlertPanel />
+          {view === "dashboard" && <MorningBriefingPanel />}
+        </div>
         <main data-view={view} className="reading-view flex-1 min-h-0 overflow-y-auto px-6 pb-6 custom-scrollbar">
 
           {/* 1. DASHBOARD */}

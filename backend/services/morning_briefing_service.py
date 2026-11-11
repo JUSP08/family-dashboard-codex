@@ -7,6 +7,7 @@ import sqlite3
 import subprocess
 import threading
 import time
+from contextlib import contextmanager
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, time as clock_time
 from pathlib import Path
@@ -30,13 +31,18 @@ _lock = threading.Lock()
 _started = False
 
 
+@contextmanager
 def connect():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     db = sqlite3.connect(DB_PATH, timeout=10)
-    db.row_factory = sqlite3.Row
-    db.execute('CREATE TABLE IF NOT EXISTS briefings (day TEXT PRIMARY KEY, generated REAL, payload TEXT)')
-    db.execute('CREATE TABLE IF NOT EXISTS deliveries (day TEXT PRIMARY KEY, attempted REAL, status TEXT)')
-    return db
+    try:
+        db.row_factory = sqlite3.Row
+        with db:
+            db.execute('CREATE TABLE IF NOT EXISTS briefings (day TEXT PRIMARY KEY, generated REAL, payload TEXT)')
+            db.execute('CREATE TABLE IF NOT EXISTS deliveries (day TEXT PRIMARY KEY, attempted REAL, status TEXT)')
+            yield db
+    finally:
+        db.close()
 
 
 def next_weekday(now=None):

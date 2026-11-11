@@ -1,4 +1,5 @@
 import json
+import sqlite3
 import tempfile
 import unittest
 from datetime import datetime,date
@@ -11,6 +12,11 @@ class BriefingTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.db=patch.object(m,'DB_PATH',Path(self.temp.name)/'briefing.db');self.db.start()
     def tearDown(self):self.db.stop();self.temp.cleanup()
+    def test_database_connection_closes_after_use(self):
+        with m.connect() as connection:
+            connection.execute('SELECT 1')
+        with self.assertRaises(sqlite3.ProgrammingError):
+            connection.execute('SELECT 1')
     def test_disabled_schedule_never_sends(self):
         with patch.object(m,'ENABLED',False),patch.object(m,'_request') as request:
             self.assertEqual(m.deliver_due(datetime(2026,11,10,7,30,tzinfo=m.LOCAL)),'disabled_or_outside_window')

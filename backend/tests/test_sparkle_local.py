@@ -2,6 +2,7 @@ import json
 import sqlite3
 import tempfile
 import unittest
+from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import patch
 from services import sparkle_service as s
@@ -14,8 +15,14 @@ class LocalSparkleTests(unittest.TestCase):
             db.execute('CREATE TABLE app_state (key TEXT PRIMARY KEY,json_value TEXT,updated_at TEXT)')
         self.mock=patch.object(s,'get_connection',self.connect);self.mock.start()
     def tearDown(self):self.mock.stop();self.tmp.cleanup()
+    @contextmanager
     def connect(self):
-        db=sqlite3.connect(self.path);db.row_factory=sqlite3.Row;return db
+        db=sqlite3.connect(self.path);db.row_factory=sqlite3.Row
+        try:
+            with db:
+                yield db
+        finally:
+            db.close()
     def test_no_network_and_collection_quality(self):
         self.assertFalse(hasattr(s,'requests'))
         self.assertEqual(len(SPARKLES),len({text for _,text in SPARKLES}))

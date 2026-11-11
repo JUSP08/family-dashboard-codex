@@ -1,5 +1,5 @@
 """Hermes-owned Gmail scanning and restricted calendar publishing."""
-import fcntl,hashlib,json,os,re,sqlite3,subprocess,time
+import hashlib,json,os,re,sqlite3,subprocess,time
 from datetime import datetime,timedelta
 from difflib import SequenceMatcher
 from pathlib import Path
@@ -174,6 +174,9 @@ def external_events(state,today):
     return events
 
 def run(apply=False):
+    # The scheduler runs on Ubuntu; pure validation remains importable on Windows.
+    import fcntl
+
     HOME.mkdir(mode=0o700,parents=True,exist_ok=True)
     with open(HOME/'hermes.lock','w') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)

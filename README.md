@@ -133,12 +133,12 @@ Run it on Windows PowerShell:
 
 The backend serves the production frontend from `frontend/dist`.
 
-Daily Sparkles are served from a persistent weekly pool. A background worker
-generates up to 100 varied, schema-validated Sparkles at the start of each ISO
-week. Any child can press the Sparkle refresh button to consume the next item;
-the Gemini key remains private on the backend.
+Daily Sparkles use a persistent collection of 60 offline cards, with no paid
+generation or network calls. The refresh button advances to the next card.
+Cards do not repeat within a cycle; after exhaustion, the least recently shown
+cards become available again. This does not enforce a 30-day no-repeat window.
 
-The same server-side Gemini key also creates one original 16:9 dashboard
+The server-side Gemini key creates one original 16:9 dashboard
 background per local date. Theme concepts rotate through sports, dance,
 creator, creature-adventure, toy, maker, arcade, music, and meme-inspired
 directions, plus smiley faces, rainbows, hearts, space, galaxies, constellations,

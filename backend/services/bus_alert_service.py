@@ -6,6 +6,7 @@ import json
 import sqlite3
 import threading
 import time
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -31,13 +32,18 @@ def stamp(value):
         return None
 
 
+@contextmanager
 def connect():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     db = sqlite3.connect(DB_PATH, timeout=10)
-    db.row_factory = sqlite3.Row
-    db.execute('CREATE TABLE IF NOT EXISTS alerts (key TEXT PRIMARY KEY, received REAL, payload TEXT)')
-    db.execute('CREATE TABLE IF NOT EXISTS monitor (id INTEGER PRIMARY KEY, payload TEXT)')
-    return db
+    try:
+        db.row_factory = sqlite3.Row
+        with db:
+            db.execute('CREATE TABLE IF NOT EXISTS alerts (key TEXT PRIMARY KEY, received REAL, payload TEXT)')
+            db.execute('CREATE TABLE IF NOT EXISTS monitor (id INTEGER PRIMARY KEY, payload TEXT)')
+            yield db
+    finally:
+        db.close()
 
 
 def save_alert(alert, trace=False):

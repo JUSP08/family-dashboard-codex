@@ -115,6 +115,21 @@ Never paste these values into chat, commit them, or include them in screenshots.
 
 ## Automatic browser refresh and fullscreen
 
+The school-email branch history is included in main. Existing checkouts on
+`codex/school-email-briefing` can fast-forward to main through the normal launcher;
+do not reset the checkout or add private runtime files to Git. This source merge
+does not install Hermes, copy its private credentials, or enable scheduled speech.
+Those remain controlled by the existing Ubuntu installation and backend `.env`.
+
+Offline backend verification (with dependencies installed):
+
+```bash
+backend/.venv/bin/python backend/scripts/run_tests.py
+```
+
+The runner initializes a temporary database and test-only settings before loading
+services, so test import order cannot pick up the real dashboard database.
+
 Each production build has a unique version. Open dashboard screens check it
 every hour and reload when a newer build is available. Deployment through
 `DeployToUbuntu.bat` uses this automatically; no browser-control SSH command is
