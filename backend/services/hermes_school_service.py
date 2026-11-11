@@ -136,6 +136,14 @@ def same_event(a,b):
     if a.get('date')!=b.get('date'):return False
     if similar(a.get('title',''),b.get('title','')):return True
     left=set(normalized(a.get('title','')).split());right=set(normalized(b.get('title','')).split())
+    ages=lambda tokens:{t for t in tokens if re.fullmatch(r'u\d+',t)}
+    if ages(left) and ages(right) and ages(left)!=ages(right):return False
+    names={'hannah','tristan','sloane','emerson','blake','guinevere'}
+    if left&names and right&names and left&names!=right&names:return False
+    stop={'at','the','and','of','school','high','elementary','bethel'}
+    significant_left=left-stop;significant_right=right-stop
+    if len(significant_left&significant_right)>=3 and (significant_left<=significant_right or significant_right<=significant_left):return True
+    if a.get('startTime') and a.get('startTime')==b.get('startTime') and len(significant_left&significant_right)>=3:return True
     if {'bhs','football'}<=left&right and left&right&{'lift','practice','film'} and a.get('endTime') and a.get('endTime')==b.get('endTime'):
         try:
             minutes=lambda value:int(value.split(':')[0])*60+int(value.split(':')[1])
@@ -150,6 +158,8 @@ def reconcile(existing,items,external=()):
         if older not in events or older.get('hermesOwner')!='school-email' or older.get('hermesSnapshot')!=digest(event_view(older)):continue
         if any(e.get('hermesOwner')!='school-email' and same_event(older,e) for e in events):
             events.remove(older);changes.append({'action':'removed duplicate of manual event',**event_view(older)});continue
+        if any(same_event(older,e) for e in external):
+            events.remove(older);changes.append({'action':'removed duplicate of connected calendar',**event_view(older)});continue
         newer=next((e for e in events if e is not older and e.get('id')!=older.get('id') and e.get('hermesOwner')=='school-email' and e.get('hermesReceived','')>older.get('hermesReceived','') and e.get('hermesSnapshot')==digest(event_view(e)) and same_event(older,e)),None)
         if newer:
             events.remove(older);changes.append({'action':'removed superseded duplicate',**event_view(older)})
@@ -161,7 +171,7 @@ def reconcile(existing,items,external=()):
         if datetime.fromisoformat(item['date']).weekday()>=5 and re.search(r'no school|school.*closed',item['title'],re.I):continue
         title=('CANCELED — ' if item['cancelled'] else '')+item['title']
         same=[e for e in events if same_event(e,{**item,'title':title})]
-        if any(e.get('date')==item['date'] and similar(e.get('title',''),title) for e in external):
+        if any(same_event(e,{**item,'title':title}) for e in external):
             if item['cancelled']:review.append({'reason':'Cancellation overlaps a connected calendar; review source','item':item})
             continue
         if len(same)>1:review.append({'reason':'Multiple matching events','item':item});continue
@@ -191,8 +201,12 @@ def external_events(state,today):
         if status!=200 or data.get('nextPageToken'):raise RuntimeError('Calendar duplicate check incomplete')
         for e in data.get('items',[]):
             start=e.get('start',{});stamp=start.get('date') or start.get('dateTime','')
-            if 'T' in stamp:stamp=datetime.fromisoformat(stamp.replace('Z','+00:00')).astimezone(LOCAL).date().isoformat()
-            events.append({'title':e.get('summary',''),'date':stamp})
+            clock='';end_clock=''
+            if 'T' in stamp:
+                parsed=datetime.fromisoformat(stamp.replace('Z','+00:00')).astimezone(LOCAL)
+                stamp=parsed.date().isoformat();clock=parsed.strftime('%H:%M')
+            if e.get('end',{}).get('dateTime'):end_clock=datetime.fromisoformat(e['end']['dateTime'].replace('Z','+00:00')).astimezone(LOCAL).strftime('%H:%M')
+            events.append({'title':e.get('summary',''),'date':stamp,'startTime':clock,'endTime':end_clock})
     return events
 
 def run(apply=False):

@@ -67,5 +67,10 @@ class HermesSchoolTests(unittest.TestCase):
         owned,_,_=h.reconcile([],[old])
         events,_,_=h.reconcile([manual]+owned,[old])
         self.assertEqual(events,[manual])
+    def test_expanded_rehearsal_title_matches_connected_calendar(self):
+        item=self.item(title='BMS High School Musical Jr. tech week rehearsal')
+        existing=[{'title':'BMS Musical Rehearsal','date':item['date'],'startTime':'15:00','endTime':'18:00'}]
+        self.assertEqual(h.reconcile([],[item],existing)[0],[])
+        self.assertFalse(h.same_event(item,{**existing[0],'title':'Flag Football Session 1'}))
 
 if __name__=='__main__':unittest.main()
