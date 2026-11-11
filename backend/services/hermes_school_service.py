@@ -51,6 +51,7 @@ def validate(raw,messages,today):
             assert not re.search(r'https?://|@|[<>]|\b(password|assistant|ignore instructions)\b',title,re.I)
             day=datetime.strptime(item['date'],'%Y-%m-%d').date()
             assert today<=day<=today+timedelta(days=180)
+            if day.weekday()>=5 and re.search(r'no school|school.*closed',title,re.I):continue
             assert item['kind'] in ('event','reminder')
             start=item.get('startTime') or '';end=item.get('endTime') or ''
             for value in (start,end):
@@ -92,6 +93,9 @@ def event_view(event):
 
 def reconcile(existing,items,external=()):
     events=[dict(e) for e in existing];changes=[];review=[]
+    for e in list(events):
+        if e.get('hermesOwner')=='school-email' and e.get('hermesSnapshot')==digest(event_view(e)) and re.search(r'no school|school.*closed',e.get('title',''),re.I) and datetime.fromisoformat(e['date']).weekday()>=5:
+            events.remove(e);changes.append({'action':'removed redundant weekend closure',**event_view(e)})
     for item in sorted(items,key=lambda i:i['source_received']):
         if item['kind']!='event':continue
         title=('CANCELED — ' if item['cancelled'] else '')+item['title']

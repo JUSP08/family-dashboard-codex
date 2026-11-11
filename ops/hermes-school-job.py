@@ -8,10 +8,11 @@ from datetime import datetime,timedelta
 import time
 try:
     result=run(apply='--preview' not in sys.argv)
+    (HOME/'hermes-error.json').unlink(missing_ok=True)
     print(json.dumps({k:result[k] for k in ('mode','messages_checked','interpreted','backlog','rejected','changes','review')}))
 except Exception as exc:
     # Never reflect raw provider responses or credentials into cron logs.
-    private_save(HOME/'hermes-error.json',{'error':type(exc).__name__})
+    private_save(HOME/'hermes-error.json',{'error':type(exc).__name__,'checked_at':time.time()})
     now=datetime.now(LOCAL);day=now.date()+timedelta(days=1 if now.hour>=12 else 0)
     while day.weekday()>=5:day+=timedelta(days=1)
     mail.save({'date':day.isoformat(),'checked_at':time.time(),'items':[],
