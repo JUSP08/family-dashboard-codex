@@ -23,6 +23,8 @@ def private_save(path,value):
 def normalized(text):
     text=re.sub(r'^(?:CANCELED|TENTATIVE)\s*[-:—]?\s*','',text,flags=re.I).lower()
     text=text.replace('bethel high school','bhs').replace('bethel middle school','bms')
+    text=re.sub(r'\((?:if |attendance)[^)]*\)','',text)
+    text=re.sub(r'\b20\d{2}\b|\b\d{2}/\d{2}\b','',text)
     return re.sub(r'[^a-z0-9]+',' ',text).strip()
 
 def similar(a,b):
@@ -129,8 +131,25 @@ EVENTS: concrete school-wide events, closures, early dismissal, and actual team 
 def event_view(event):
     return {k:event.get(k,'') for k in ('title','date','startTime','endTime')}
 
+def same_event(a,b):
+    if a.get('date')!=b.get('date'):return False
+    if similar(a.get('title',''),b.get('title','')):return True
+    left=set(normalized(a.get('title','')).split());right=set(normalized(b.get('title','')).split())
+    if {'bhs','football'}<=left&right and left&right&{'lift','practice','film'} and a.get('endTime') and a.get('endTime')==b.get('endTime'):
+        try:
+            minutes=lambda value:int(value.split(':')[0])*60+int(value.split(':')[1])
+            return abs(minutes(a['startTime'])-minutes(b['startTime']))<=60
+        except (KeyError,ValueError):pass
+    return False
+
 def reconcile(existing,items,external=()):
     events=[dict(e) for e in existing];changes=[];review=[]
+    # Consolidate only untouched entries owned by this integration, newest notice wins.
+    for older in sorted(list(events),key=lambda e:e.get('hermesReceived','')):
+        if older not in events or older.get('hermesOwner')!='school-email' or older.get('hermesSnapshot')!=digest(event_view(older)):continue
+        newer=next((e for e in events if e is not older and e.get('id')!=older.get('id') and e.get('hermesOwner')=='school-email' and e.get('hermesReceived','')>older.get('hermesReceived','') and e.get('hermesSnapshot')==digest(event_view(e)) and same_event(older,e)),None)
+        if newer:
+            events.remove(older);changes.append({'action':'removed superseded duplicate',**event_view(older)})
     for e in list(events):
         if e.get('hermesOwner')=='school-email' and e.get('hermesSnapshot')==digest(event_view(e)) and re.search(r'no school|school.*closed',e.get('title',''),re.I) and datetime.fromisoformat(e['date']).weekday()>=5:
             events.remove(e);changes.append({'action':'removed redundant weekend closure',**event_view(e)})
@@ -138,7 +157,7 @@ def reconcile(existing,items,external=()):
         if item['kind']!='event':continue
         if datetime.fromisoformat(item['date']).weekday()>=5 and re.search(r'no school|school.*closed',item['title'],re.I):continue
         title=('CANCELED — ' if item['cancelled'] else '')+item['title']
-        same=[e for e in events if e.get('date')==item['date'] and similar(e.get('title',''),title)]
+        same=[e for e in events if same_event(e,{**item,'title':title})]
         if any(e.get('date')==item['date'] and similar(e.get('title',''),title) for e in external):
             if item['cancelled']:review.append({'reason':'Cancellation overlaps a connected calendar; review source','item':item})
             continue

@@ -54,5 +54,12 @@ class HermesSchoolTests(unittest.TestCase):
         result=h.outcomes_for({'items':[]},[message],[])
         item=self.item(title='BHS Wrestling Preseason',date='2026-11-11',source_received='2026-11-09T12:00:00-05:00')
         self.assertEqual(h.suppress_ambiguous_moves([item],result),[])
+    def test_older_football_schedule_cannot_override_new_time(self):
+        newest=self.item(title='Bethel High School Football 2026 lift and practice',date='2026-11-11',startTime='14:00',endTime='18:00',source_received='2026-11-10T18:52:05-05:00')
+        old=self.item(title='Bethel High School Football lift',date='2026-11-11',startTime='14:25',endTime='18:00',source_received='2026-11-08T15:55:57-05:00')
+        events,_,_=h.reconcile([],[newest]);events,changes,_=h.reconcile(events,[old,newest])
+        self.assertEqual(len(events),1);self.assertEqual(events[0]['startTime'],'14:00');self.assertFalse(changes)
+    def test_confirmed_game_matches_older_conditional_game(self):
+        self.assertTrue(h.similar('Bethel High School Froshmore football vs. Bullard Havens Tech','TENTATIVE — Bethel High School Football Froshmore vs Bullard Havens Tech (attendance-dependent)'))
 
 if __name__=='__main__':unittest.main()
