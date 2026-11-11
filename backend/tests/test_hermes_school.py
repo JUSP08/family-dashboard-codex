@@ -54,5 +54,27 @@ class HermesSchoolTests(unittest.TestCase):
         result=h.outcomes_for({'items':[]},[message],[])
         item=self.item(title='BHS Wrestling Preseason',date='2026-11-11',source_received='2026-11-09T12:00:00-05:00')
         self.assertEqual(h.suppress_ambiguous_moves([item],result),[])
+    def test_older_football_schedule_cannot_override_new_time(self):
+        newest=self.item(title='Bethel High School Football 2026 lift and practice',date='2026-11-11',startTime='14:00',endTime='18:00',source_received='2026-11-10T18:52:05-05:00')
+        old=self.item(title='Bethel High School Football lift',date='2026-11-11',startTime='14:25',endTime='18:00',source_received='2026-11-08T15:55:57-05:00')
+        events,_,_=h.reconcile([],[newest]);events,changes,_=h.reconcile(events,[old,newest])
+        self.assertEqual(len(events),1);self.assertEqual(events[0]['startTime'],'14:00');self.assertFalse(changes)
+    def test_confirmed_game_matches_older_conditional_game(self):
+        self.assertTrue(h.similar('Bethel High School Froshmore football vs. Bullard Havens Tech','TENTATIVE — Bethel High School Football Froshmore vs Bullard Havens Tech (attendance-dependent)'))
+    def test_old_soccer_invitation_does_not_duplicate_manual_cancellation(self):
+        manual={'id':'manual','title':'CANCELED — Hannah: U15 soccer practice','date':'2026-11-10','startTime':'18:45','endTime':'20:15'}
+        old=self.item(title='U15 Bethel Girls Practice',date='2026-11-10',startTime='18:30',endTime='20:00')
+        owned,_,_=h.reconcile([],[old])
+        events,_,_=h.reconcile([manual]+owned,[old])
+        self.assertEqual(events,[manual])
+    def test_expanded_rehearsal_title_matches_connected_calendar(self):
+        item=self.item(title='BMS High School Musical Jr. tech week rehearsal')
+        existing=[{'title':'BMS Musical Rehearsal','date':item['date'],'startTime':'15:00','endTime':'18:00'}]
+        self.assertEqual(h.reconcile([],[item],existing)[0],[])
+        self.assertFalse(h.same_event(item,{**existing[0],'title':'Flag Football Session 1'}))
+    def test_truncated_mail_cannot_be_marked_no_action(self):
+        message={'id':'abc','text':'Partial content','sent':'2026-11-10','subject':'Team update','source':'sportsyou.com','review_required':True}
+        result=h.outcomes_for({'dispositions':[{'source_id':'abc','status':'no_action','reason':'Nothing'}]},[message],[])
+        self.assertEqual(result['abc']['status'],'needs_review')
 
 if __name__=='__main__':unittest.main()

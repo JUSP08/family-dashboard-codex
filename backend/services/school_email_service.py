@@ -49,9 +49,15 @@ def read_mail():
                 domain = parseaddr(str(msg.get('From', '')))[1].rsplit('@', 1)[-1].lower()
                 subject = str(msg.get('Subject', ''))
                 if domain not in DOMAINS or PRIVATE.search(subject): continue
-                body = msg.get_body(preferencelist=('plain',))
-                if body is None: continue  # Attachments and login-only content are not read.
-                text = clean_text(body.get_content())
+                body = msg.get_body(preferencelist=('plain','html'))
+                review_required=body is None or len(part[1])>=200000
+                content=body.get_content() if body else '[Email body unavailable; review source email.]'
+                if body and body.get_content_type()=='text/html':
+                    content=re.sub(r'<(script|style)\b[^>]*>.*?</\1>','',content,flags=re.I|re.S)
+                    content=re.sub(r'<(?:br\s*/?|/p|/div|/li)>','\n',content,flags=re.I)
+                    content=re.sub(r'<[^>]*>',' ',content)
+                text = clean_text(content)
+                review_required=review_required or len(text)>14000
                 # Remove private digest sections before extracting reminders.
                 sections = re.split(r'(?m)(?=^\s*\d+\.\s)', text)
                 text = '\n'.join(s for s in sections if not PRIVATE.search(s))
@@ -60,6 +66,7 @@ def read_mail():
                 except (ValueError, TypeError): continue
                 messages.append({'id':format(int(match[1]), 'x'), 'source':domain,
                                  'sent':sent, 'subject':clean_text(subject), 'text':text[:14000]})
+                if review_required:messages[-1]['review_required']=True
     return messages, False
 
 

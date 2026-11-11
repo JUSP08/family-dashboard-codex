@@ -23,6 +23,9 @@ def private_save(path,value):
 def normalized(text):
     text=re.sub(r'^(?:CANCELED|TENTATIVE)\s*[-:—]?\s*','',text,flags=re.I).lower()
     text=text.replace('bethel high school','bhs').replace('bethel middle school','bms')
+    text=re.sub(r'\((?:if |attendance)[^)]*\)','',text)
+    text=re.sub(r'\b20\d{2}\b|\b\d{2}/\d{2}\b','',text)
+    if all(word in text.split() for word in ('u15','bethel','girls')) and 'soccer' not in text:text+=' soccer'
     return re.sub(r'[^a-z0-9]+',' ',text).strip()
 
 def similar(a,b):
@@ -53,10 +56,12 @@ def outcomes_for(raw,messages,items):
         status=d.get('status');reason=str(d.get('reason',''))[:350]
         if status not in ('extracted','past_only','no_action','superseded','needs_review'):
             status='extracted' if extracted else 'needs_review';reason='No explicit outcome returned; check source email.'
-        if status=='extracted' and not extracted:status='needs_review';reason='Proposed details did not pass validation; check source email.'
+        if status=='extracted' and not extracted:status='needs_review';reason='No validated item was linked to this message; check source email.'
         # A renamed event called Moved does not establish its replacement date.
         if re.search(r'^Moved has been updated',message['subject'],re.I):
             status='needs_review';reason='Event renamed Moved: verify the replacement date; do not assume the listed old date is still valid.'
+        if message.get('review_required'):
+            status='needs_review';reason='Email content was unavailable or exceeded the reading limit; inspect the source email.'
         result[key]={'status':status,'reason':reason,'subject':message['subject'],'source':message['source'],
                      'received':message['sent'],'url':'https://mail.google.com/mail/u/0/#all/'+key}
         if re.search(r'^Moved has been updated',message['subject'],re.I):
@@ -129,8 +134,37 @@ EVENTS: concrete school-wide events, closures, early dismissal, and actual team 
 def event_view(event):
     return {k:event.get(k,'') for k in ('title','date','startTime','endTime')}
 
+def same_event(a,b):
+    if a.get('date')!=b.get('date'):return False
+    if similar(a.get('title',''),b.get('title','')):return True
+    left=set(normalized(a.get('title','')).split());right=set(normalized(b.get('title','')).split())
+    ages=lambda tokens:{t for t in tokens if re.fullmatch(r'u\d+',t)}
+    if ages(left) and ages(right) and ages(left)!=ages(right):return False
+    names={'hannah','tristan','sloane','emerson','blake','guinevere'}
+    if left&names and right&names and left&names!=right&names:return False
+    stop={'at','the','and','of','school','high','elementary','bethel'}
+    significant_left=left-stop;significant_right=right-stop
+    if len(significant_left&significant_right)>=3 and (significant_left<=significant_right or significant_right<=significant_left):return True
+    if a.get('startTime') and a.get('startTime')==b.get('startTime') and len(significant_left&significant_right)>=3:return True
+    if {'bhs','football'}<=left&right and left&right&{'lift','practice','film'} and a.get('endTime') and a.get('endTime')==b.get('endTime'):
+        try:
+            minutes=lambda value:int(value.split(':')[0])*60+int(value.split(':')[1])
+            return abs(minutes(a['startTime'])-minutes(b['startTime']))<=60
+        except (KeyError,ValueError):pass
+    return False
+
 def reconcile(existing,items,external=()):
     events=[dict(e) for e in existing];changes=[];review=[]
+    # Consolidate only untouched entries owned by this integration, newest notice wins.
+    for older in sorted(list(events),key=lambda e:e.get('hermesReceived','')):
+        if older not in events or older.get('hermesOwner')!='school-email' or older.get('hermesSnapshot')!=digest(event_view(older)):continue
+        if any(e.get('hermesOwner')!='school-email' and same_event(older,e) for e in events):
+            events.remove(older);changes.append({'action':'removed duplicate of manual event',**event_view(older)});continue
+        if any(same_event(older,e) for e in external):
+            events.remove(older);changes.append({'action':'removed duplicate of connected calendar',**event_view(older)});continue
+        newer=next((e for e in events if e is not older and e.get('id')!=older.get('id') and e.get('hermesOwner')=='school-email' and e.get('hermesReceived','')>older.get('hermesReceived','') and e.get('hermesSnapshot')==digest(event_view(e)) and same_event(older,e)),None)
+        if newer:
+            events.remove(older);changes.append({'action':'removed superseded duplicate',**event_view(older)})
     for e in list(events):
         if e.get('hermesOwner')=='school-email' and e.get('hermesSnapshot')==digest(event_view(e)) and re.search(r'no school|school.*closed',e.get('title',''),re.I) and datetime.fromisoformat(e['date']).weekday()>=5:
             events.remove(e);changes.append({'action':'removed redundant weekend closure',**event_view(e)})
@@ -138,8 +172,8 @@ def reconcile(existing,items,external=()):
         if item['kind']!='event':continue
         if datetime.fromisoformat(item['date']).weekday()>=5 and re.search(r'no school|school.*closed',item['title'],re.I):continue
         title=('CANCELED — ' if item['cancelled'] else '')+item['title']
-        same=[e for e in events if e.get('date')==item['date'] and similar(e.get('title',''),title)]
-        if any(e.get('date')==item['date'] and similar(e.get('title',''),title) for e in external):
+        same=[e for e in events if same_event(e,{**item,'title':title})]
+        if any(same_event(e,{**item,'title':title}) for e in external):
             if item['cancelled']:review.append({'reason':'Cancellation overlaps a connected calendar; review source','item':item})
             continue
         if len(same)>1:review.append({'reason':'Multiple matching events','item':item});continue
@@ -169,8 +203,12 @@ def external_events(state,today):
         if status!=200 or data.get('nextPageToken'):raise RuntimeError('Calendar duplicate check incomplete')
         for e in data.get('items',[]):
             start=e.get('start',{});stamp=start.get('date') or start.get('dateTime','')
-            if 'T' in stamp:stamp=datetime.fromisoformat(stamp.replace('Z','+00:00')).astimezone(LOCAL).date().isoformat()
-            events.append({'title':e.get('summary',''),'date':stamp})
+            clock='';end_clock=''
+            if 'T' in stamp:
+                parsed=datetime.fromisoformat(stamp.replace('Z','+00:00')).astimezone(LOCAL)
+                stamp=parsed.date().isoformat();clock=parsed.strftime('%H:%M')
+            if e.get('end',{}).get('dateTime'):end_clock=datetime.fromisoformat(e['end']['dateTime'].replace('Z','+00:00')).astimezone(LOCAL).strftime('%H:%M')
+            events.append({'title':e.get('summary',''),'date':stamp,'startTime':clock,'endTime':end_clock})
     return events
 
 def run(apply=False):
@@ -224,6 +262,10 @@ def run(apply=False):
             key=(normalized(item['title']),item['date'])
             if key in seen:continue
             seen.add(key);reminders.append({**item,'text':item['title']+' — '+item['date']+'.'})
+        for outcome in state.get('outcomes',{}).values():
+            if outcome['status']=='needs_review' and outcome['source']=='sportsyou.com' and (day-datetime.fromisoformat(outcome['received']).date()).days<=7:
+                reminders.append({'date':day.isoformat(),'source':'sportsyou.com','source_subject':outcome['subject'],
+                    'url':outcome['url'],'text':'Sports update needs review: '+outcome['subject']+'. Check the source email.'})
         warnings=[]
         if truncated or report['backlog']:warnings.append('School email scan is partial; more notices may be pending.')
         if review:warnings.append('Some school calendar changes need review in Hermes.')
