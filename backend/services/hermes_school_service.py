@@ -27,6 +27,11 @@ def normalized(text):
 
 def similar(a,b):
     a=normalized(a);b=normalized(b)
+    ages_a=set(re.findall(r'\bu\d+\b',a));ages_b=set(re.findall(r'\bu\d+\b',b))
+    if ages_a and ages_b and ages_a!=ages_b:return False
+    names={'hannah','tristan','sloane','emerson','blake','guinevere'}
+    names_a=set(a.split())&names;names_b=set(b.split())&names
+    if names_a and names_b and names_a!=names_b:return False
     if SequenceMatcher(None,a,b).ratio()>=.82:return True
     if re.search(r'no school|schools? closed',a) and re.search(r'no school|schools? closed',b):return True
     # Common calendar prefixes should not duplicate the same named team event.
