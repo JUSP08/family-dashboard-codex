@@ -25,6 +25,7 @@ def normalized(text):
     text=text.replace('bethel high school','bhs').replace('bethel middle school','bms')
     text=re.sub(r'\((?:if |attendance)[^)]*\)','',text)
     text=re.sub(r'\b20\d{2}\b|\b\d{2}/\d{2}\b','',text)
+    if all(word in text.split() for word in ('u15','bethel','girls')) and 'soccer' not in text:text+=' soccer'
     return re.sub(r'[^a-z0-9]+',' ',text).strip()
 
 def similar(a,b):
@@ -147,6 +148,8 @@ def reconcile(existing,items,external=()):
     # Consolidate only untouched entries owned by this integration, newest notice wins.
     for older in sorted(list(events),key=lambda e:e.get('hermesReceived','')):
         if older not in events or older.get('hermesOwner')!='school-email' or older.get('hermesSnapshot')!=digest(event_view(older)):continue
+        if any(e.get('hermesOwner')!='school-email' and same_event(older,e) for e in events):
+            events.remove(older);changes.append({'action':'removed duplicate of manual event',**event_view(older)});continue
         newer=next((e for e in events if e is not older and e.get('id')!=older.get('id') and e.get('hermesOwner')=='school-email' and e.get('hermesReceived','')>older.get('hermesReceived','') and e.get('hermesSnapshot')==digest(event_view(e)) and same_event(older,e)),None)
         if newer:
             events.remove(older);changes.append({'action':'removed superseded duplicate',**event_view(older)})

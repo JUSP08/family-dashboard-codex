@@ -61,5 +61,11 @@ class HermesSchoolTests(unittest.TestCase):
         self.assertEqual(len(events),1);self.assertEqual(events[0]['startTime'],'14:00');self.assertFalse(changes)
     def test_confirmed_game_matches_older_conditional_game(self):
         self.assertTrue(h.similar('Bethel High School Froshmore football vs. Bullard Havens Tech','TENTATIVE — Bethel High School Football Froshmore vs Bullard Havens Tech (attendance-dependent)'))
+    def test_old_soccer_invitation_does_not_duplicate_manual_cancellation(self):
+        manual={'id':'manual','title':'CANCELED — Hannah: U15 soccer practice','date':'2026-11-10','startTime':'18:45','endTime':'20:15'}
+        old=self.item(title='U15 Bethel Girls Practice',date='2026-11-10',startTime='18:30',endTime='20:00')
+        owned,_,_=h.reconcile([],[old])
+        events,_,_=h.reconcile([manual]+owned,[old])
+        self.assertEqual(events,[manual])
 
 if __name__=='__main__':unittest.main()
