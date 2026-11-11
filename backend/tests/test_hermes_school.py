@@ -33,5 +33,12 @@ class HermesSchoolTests(unittest.TestCase):
         good={**self.item(title='BHS Wrestling preseason'),'evidence':message['text']}
         items,_=h.validate({'items':[good]},[message],date(2026,11,10))
         self.assertEqual(items[0]['kind'],'reminder');self.assertTrue(items[0]['title'].startswith('If participating:'))
+    def test_cached_weekend_closures_do_not_reappear(self):
+        item=self.item(title='Rockwell School closed - Holiday Recess',date='2026-12-26',startTime='',endTime='')
+        event={'id':'hermes-test','hermesOwner':'school-email',**{k:item[k] for k in ('title','date','startTime','endTime')}}
+        event['hermesSnapshot']=h.digest(h.event_view(event))
+        events,changes,_=h.reconcile([event],[item])
+        self.assertEqual(events,[]);self.assertEqual(len(changes),1)
+        self.assertEqual(h.reconcile(events,[item])[1],[])
 
 if __name__=='__main__':unittest.main()

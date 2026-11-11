@@ -98,6 +98,7 @@ def reconcile(existing,items,external=()):
             events.remove(e);changes.append({'action':'removed redundant weekend closure',**event_view(e)})
     for item in sorted(items,key=lambda i:i['source_received']):
         if item['kind']!='event':continue
+        if datetime.fromisoformat(item['date']).weekday()>=5 and re.search(r'no school|school.*closed',item['title'],re.I):continue
         title=('CANCELED — ' if item['cancelled'] else '')+item['title']
         same=[e for e in events if e.get('date')==item['date'] and similar(e.get('title',''),title)]
         if any(e.get('date')==item['date'] and similar(e.get('title',''),title) for e in external):
