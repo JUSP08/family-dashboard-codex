@@ -72,5 +72,9 @@ class HermesSchoolTests(unittest.TestCase):
         existing=[{'title':'BMS Musical Rehearsal','date':item['date'],'startTime':'15:00','endTime':'18:00'}]
         self.assertEqual(h.reconcile([],[item],existing)[0],[])
         self.assertFalse(h.same_event(item,{**existing[0],'title':'Flag Football Session 1'}))
+    def test_truncated_mail_cannot_be_marked_no_action(self):
+        message={'id':'abc','text':'Partial content','sent':'2026-11-10','subject':'Team update','source':'sportsyou.com','review_required':True}
+        result=h.outcomes_for({'dispositions':[{'source_id':'abc','status':'no_action','reason':'Nothing'}]},[message],[])
+        self.assertEqual(result['abc']['status'],'needs_review')
 
 if __name__=='__main__':unittest.main()

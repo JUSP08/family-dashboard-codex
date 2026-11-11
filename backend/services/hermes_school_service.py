@@ -60,6 +60,8 @@ def outcomes_for(raw,messages,items):
         # A renamed event called Moved does not establish its replacement date.
         if re.search(r'^Moved has been updated',message['subject'],re.I):
             status='needs_review';reason='Event renamed Moved: verify the replacement date; do not assume the listed old date is still valid.'
+        if message.get('review_required'):
+            status='needs_review';reason='Email content was unavailable or exceeded the reading limit; inspect the source email.'
         result[key]={'status':status,'reason':reason,'subject':message['subject'],'source':message['source'],
                      'received':message['sent'],'url':'https://mail.google.com/mail/u/0/#all/'+key}
         if re.search(r'^Moved has been updated',message['subject'],re.I):

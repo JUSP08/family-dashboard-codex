@@ -46,6 +46,13 @@ class SchoolEmailTests(unittest.TestCase):
         client.uid.side_effect=uid
         with patch.object(s.imaplib,'IMAP4_SSL',return_value=client):messages,partial=s.read_mail()
         self.assertEqual(len(messages),71);self.assertFalse(partial)
+    def test_html_only_team_notice_is_not_skipped(self):
+        (s.HOME/'credentials.json').write_text(json.dumps({'username':'test','app_password':'fake'}))
+        client=MagicMock();client.__enter__.return_value=client;client.select.return_value=('OK',[])
+        raw=b'From: Team <noreply@sportsyou.com>\r\nSubject: Practice\r\nDate: Mon, 09 Nov 2026 12:00:00 -0500\r\nContent-Type: text/html\r\n\r\n<script>bad()</script><p>Practice November 12 at 3 PM.</p>'
+        client.uid.side_effect=[('OK',[b'1']),('OK',[(b'1 (X-GM-MSGID 123)',raw)])]
+        with patch.object(s.imaplib,'IMAP4_SSL',return_value=client):messages,_=s.read_mail()
+        self.assertEqual(len(messages),1);self.assertIn('Practice November 12',messages[0]['text']);self.assertNotIn('bad()',messages[0]['text'])
     def test_local_dates_and_optional_participation(self):
         message={'id':'abc','source':'parentsquare.com','sent':'2026-11-09T18:00:00-05:00','subject':'School digest','text':'Ski Club Registration: November 13 Deadline\nBring costume by Monday\nPractice November 10-13\nMeeting January 25 at 6 PM'}
         result=s.extract_local([message],date(2026,11,10))
