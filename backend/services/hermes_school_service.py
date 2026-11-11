@@ -53,7 +53,7 @@ def outcomes_for(raw,messages,items):
         status=d.get('status');reason=str(d.get('reason',''))[:350]
         if status not in ('extracted','past_only','no_action','superseded','needs_review'):
             status='extracted' if extracted else 'needs_review';reason='No explicit outcome returned; check source email.'
-        if status=='extracted' and not extracted:status='needs_review';reason='Proposed details did not pass validation; check source email.'
+        if status=='extracted' and not extracted:status='needs_review';reason='No validated item was linked to this message; check source email.'
         # A renamed event called Moved does not establish its replacement date.
         if re.search(r'^Moved has been updated',message['subject'],re.I):
             status='needs_review';reason='Event renamed Moved: verify the replacement date; do not assume the listed old date is still valid.'
@@ -221,6 +221,10 @@ def run(apply=False):
             key=(normalized(item['title']),item['date'])
             if key in seen:continue
             seen.add(key);reminders.append({**item,'text':item['title']+' — '+item['date']+'.'})
+        for outcome in state.get('outcomes',{}).values():
+            if outcome['status']=='needs_review' and outcome['source']=='sportsyou.com' and (day-datetime.fromisoformat(outcome['received']).date()).days<=7:
+                reminders.append({'date':day.isoformat(),'source':'sportsyou.com','source_subject':outcome['subject'],
+                    'url':outcome['url'],'text':'Sports update needs review: '+outcome['subject']+'. Check the source email.'})
         warnings=[]
         if truncated or report['backlog']:warnings.append('School email scan is partial; more notices may be pending.')
         if review:warnings.append('Some school calendar changes need review in Hermes.')

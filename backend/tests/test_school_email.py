@@ -35,6 +35,17 @@ class SchoolEmailTests(unittest.TestCase):
         client.store.assert_not_called()
     def test_links_and_addresses_removed(self):
         self.assertEqual(s.clean_text('Visit https://private/link?token=secret or person@example.com'),'Visit [link] or [email]')
+        self.assertEqual(s.clean_text('We&#x27;re IN!'),"We're IN!")
+    def test_more_than_sixty_messages_are_scanned(self):
+        (s.HOME/'credentials.json').write_text(json.dumps({'username':'test','app_password':'fake'}))
+        client=MagicMock();client.__enter__.return_value=client;client.select.return_value=('OK',[])
+        raw=b'From: Team <noreply@sportsyou.com>\r\nSubject: Practice\r\nDate: Mon, 09 Nov 2026 12:00:00 -0500\r\nContent-Type: text/plain\r\n\r\nPractice November 12 at 3 PM.'
+        def uid(command,*args):
+            if command=='search':return 'OK',[b' '.join(str(i).encode() for i in range(1,72))]
+            return 'OK',[(b'1 (X-GM-MSGID '+args[0]+b')',raw)]
+        client.uid.side_effect=uid
+        with patch.object(s.imaplib,'IMAP4_SSL',return_value=client):messages,partial=s.read_mail()
+        self.assertEqual(len(messages),71);self.assertFalse(partial)
     def test_local_dates_and_optional_participation(self):
         message={'id':'abc','source':'parentsquare.com','sent':'2026-11-09T18:00:00-05:00','subject':'School digest','text':'Ski Club Registration: November 13 Deadline\nBring costume by Monday\nPractice November 10-13\nMeeting January 25 at 6 PM'}
         result=s.extract_local([message],date(2026,11,10))
