@@ -40,5 +40,19 @@ class HermesSchoolTests(unittest.TestCase):
         events,changes,_=h.reconcile([event],[item])
         self.assertEqual(events,[]);self.assertEqual(len(changes),1)
         self.assertEqual(h.reconcile(events,[item])[1],[])
+    def test_sports_preseason_is_event_and_tentative_retained(self):
+        message={'id':'abc','text':'Preseason November 12 from 2:30 to 4 PM.','sent':'2026-11-10T12:00:00-05:00','subject':'Invitation','source':'sportsyou.com'}
+        item={**self.item(title='BHS Wrestling preseason'),'evidence':message['text'],'tentative':True}
+        accepted,_=h.validate({'items':[item]},[message],date(2026,11,10))
+        self.assertEqual(accepted[0]['kind'],'event');self.assertTrue(accepted[0]['title'].startswith('TENTATIVE'))
+    def test_silent_model_omission_becomes_review(self):
+        message={'id':'abc','text':'Team update','sent':'2026-11-10','subject':'News','source':'sportsyou.com'}
+        result=h.outcomes_for({'items':[]},[message],[])
+        self.assertEqual(result['abc']['status'],'needs_review')
+    def test_moved_notice_blocks_old_commitment(self):
+        message={'id':'abc','text':'Date/Time: Wed Nov 11, 2026 2:30pm - 4:00pm','sent':'2026-11-10T12:00:00-05:00','subject':"Moved has been updated on BHS Wrestling's calendar",'source':'sportsyou.com'}
+        result=h.outcomes_for({'items':[]},[message],[])
+        item=self.item(title='BHS Wrestling Preseason',date='2026-11-11',source_received='2026-11-09T12:00:00-05:00')
+        self.assertEqual(h.suppress_ambiguous_moves([item],result),[])
 
 if __name__=='__main__':unittest.main()

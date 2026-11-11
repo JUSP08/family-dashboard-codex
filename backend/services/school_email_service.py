@@ -1,5 +1,6 @@
 """Read-only Gmail feed. Mail is untrusted data; extraction has no tools/actions."""
 import email
+import html
 import imaplib
 import json
 import os
@@ -21,6 +22,7 @@ _started = False
 
 
 def clean_text(text):
+    text = html.unescape(text)
     text = re.sub(r'https?://\S+', '[link]', text)
     text = re.sub(r'\b[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}\b', '[email]', text)
     return re.sub(r'[ \t]+', ' ', text).strip()
@@ -31,12 +33,12 @@ def read_mail():
     messages = []
     with imaplib.IMAP4_SSL('imap.gmail.com', 993, timeout=25) as client:
         client.login(credentials['username'], credentials['app_password'])
-        if client.select('INBOX', readonly=True)[0] != 'OK':
-            raise RuntimeError('Inbox unavailable')
+        if client.select('"[Gmail]/All Mail"', readonly=True)[0] != 'OK':
+            raise RuntimeError('Gmail All Mail unavailable')
         status, data = client.uid('search', None, 'X-GM-RAW', '"newer_than:14d {from:parentsquare.com from:bethel.k12.ct.us from:sportsyou.com} -in:spam -in:trash"')
         if status != 'OK': raise RuntimeError('Search unavailable')
         ids = data[0].split()
-        for uid in ids[-60:]:
+        for uid in ids:
             status, parts = client.uid('fetch', uid, '(X-GM-MSGID BODY.PEEK[]<0.200000>)')
             if status != 'OK': raise RuntimeError('Message unavailable')
             for part in parts:
@@ -58,7 +60,7 @@ def read_mail():
                 except (ValueError, TypeError): continue
                 messages.append({'id':format(int(match[1]), 'x'), 'source':domain,
                                  'sent':sent, 'subject':clean_text(subject), 'text':text[:14000]})
-    return messages, len(ids) > 60
+    return messages, False
 
 
 def validate_items(items, messages, day):

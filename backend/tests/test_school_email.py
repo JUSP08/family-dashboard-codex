@@ -29,7 +29,7 @@ class SchoolEmailTests(unittest.TestCase):
         client.uid.side_effect=[('OK',[b'1']),('OK',[(b'1 (X-GM-MSGID 123)',mail)])]
         with patch.object(s.imaplib,'IMAP4_SSL',return_value=client):
             messages,_=s.read_mail()
-        client.select.assert_called_once_with('INBOX',readonly=True)
+        client.select.assert_called_once_with('"[Gmail]/All Mail"',readonly=True)
         self.assertEqual(client.uid.call_args.args[2],'(X-GM-MSGID BODY.PEEK[]<0.200000>)')
         self.assertEqual(len(messages),1)
         client.store.assert_not_called()
