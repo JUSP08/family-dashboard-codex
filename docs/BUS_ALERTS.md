@@ -1,6 +1,10 @@
 # Bus alerts
 
-The School bus panel appears on every dashboard view. It observes the existing Home Assistant automation; it cannot send speech, change devices, or alter email.
+The Bus monitor icon beside the Home calendar controls opens status and history.
+Monitoring remains active on every dashboard view, and an approaching-bus banner
+still appears prominently without opening the icon. Warning status is marked on
+the icon. The monitor observes the existing Home Assistant automation; it cannot
+send speech, change devices, or alter email.
 
 - A matching, fresh weekday-morning email produces a ten-minute arrival banner, timed from the email date.
 - Status uses Home Assistant's saved automation traces and a live `imap_content` subscription. A completed TTS service action is labeled **Speech action completed**, never **Heard** or **Delivered to every room**.

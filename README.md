@@ -152,8 +152,10 @@ Child-facing screens use larger wall-screen text, high-contrast reading
 surfaces, and locally bundled Lexend and Atkinson Hyperlegible fonts alongside
 Verdana. Readable fonts rotate with the daily theme; the font selector and
 per-browser overrides have been removed. Home leaves open background space
-around readable, translucent sections and opens a two-day
-agenda with Week and Month still available. Coach supports an individual-child
+around readable, translucent sections and opens a three-day
+agenda with Week and Month still available. Bus monitoring and the daily digest
+open from icon buttons beside the calendar view controls; an active bus arrival
+still shows a prominent banner. Coach supports an individual-child
 filter and roomier scrollable task rows. Speaker buttons read tasks and Sparkle
 using the browser's available speech voices; voice availability depends on the
 device. Font license files are included under `frontend/public/fonts`.

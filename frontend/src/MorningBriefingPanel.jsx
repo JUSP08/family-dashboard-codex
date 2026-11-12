@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { Newspaper, AlertTriangle } from 'lucide-react';
+import UpdateDialog from './UpdateDialog';
 import './MorningBriefingPanel.css';
 
 const timeLabel = value => new Date(value).toLocaleTimeString('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit'});
@@ -9,7 +12,7 @@ function Events({ events, empty }) {
   </li>)}</ul> : <p>{empty}</p>;
 }
 
-export default function MorningBriefingPanel() {
+export default function MorningBriefingPanel({ toolbarTarget }) {
   const [data,setData]=useState(null);
   const [error,setError]=useState(false);
   const [open,setOpen]=useState(false);
@@ -29,11 +32,14 @@ export default function MorningBriefingPanel() {
     load();const timer=setInterval(load,300000);
     return()=>{alive=false;clearInterval(timer);controller?.abort();};
   },[]);
-  return <section className="morning-panel" aria-label="Morning briefing">
-    <button className="morning-toggle" onClick={()=>setOpen(!open)} aria-expanded={open} aria-controls="morning-briefing-content">
-      <span>☀ Morning briefing <small>{data?.schedule.enabled ? 'Weekdays · 7:30 AM Eastern · All Speakers' : 'Preview only · Scheduled playback disabled'}</small></span>
-      <span>{open?'Close preview ↑':'Read preview ↓'}</span>
-    </button>
+  const attention = error || Boolean(data?.warnings?.length || data?.school_email?.warning);
+  return <>
+    {toolbarTarget && createPortal(<button type="button" className={`calendar-update-button ${attention ? 'needs-attention' : ''}`}
+      aria-label="Daily digest" title={attention ? 'Daily digest: Needs attention' : 'Daily digest'} aria-haspopup="dialog" aria-expanded={open} onClick={()=>setOpen(true)}>
+      <Newspaper size={24} />{attention && <AlertTriangle className="update-status-mark" size={14} />}
+    </button>, toolbarTarget)}
+    <UpdateDialog open={open} onClose={()=>setOpen(false)} title="Daily digest">
+    <section className="morning-panel" aria-label="Morning briefing">
     {open && <div id="morning-briefing-content" className="morning-content">
       {error ? <p role="alert">The preview could not be refreshed. No announcement was sent.</p> : !data ? <p>Checking calendars and weather…</p> : <>
         <div className="morning-heading"><div><p className="morning-eyebrow">{data.schedule.enabled?'Morning briefing':'Awaiting your approval'}</p>
@@ -59,5 +65,7 @@ export default function MorningBriefingPanel() {
         <p className="morning-note">No audio plays from this preview. {!data.schedule.enabled && 'Playback remains disabled until you approve it in chat. '}Bus alerts take priority; a briefing will skip a busy speaker group instead of interrupting it.</p>
       </>}
     </div>}
-  </section>;
+  </section>
+  </UpdateDialog>
+  </>;
 }

@@ -595,7 +595,7 @@ const getEventEmoji = (sourceIcon, title = "", label = "") => {
 const DashboardView = ({
   theme, currentTime, calendarEvents, calendarErrors, getProgress, calendarView, setCalendarView,
   weather, calendarDate, onNavigateCalendar, masterTasks, completedTasks, calendarSources,
-  childrenData, addCustomEvent, updateCustomEvent, removeCalendarEvent
+  childrenData, addCustomEvent, updateCustomEvent, removeCalendarEvent, onToolsMount
 }) => {
 
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -846,13 +846,13 @@ const DashboardView = ({
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex items-center gap-3"><div className="p-2 bg-blue-500/20 rounded-xl text-xl leading-none">📅</div><h3 className="font-semibold text-slate-100 text-lg tracking-wide">{calendarView === "agenda" ? "Our days" : calendarView === "week" ? "Week" : "Month"}</h3></div>
               <div className="flex items-center gap-2 text-sm text-slate-400">
-                <button onClick={() => onNavigateCalendar("prev")} className="p-1.5 rounded-full hover:bg-white/10 text-white"><ChevronLeft className="w-5 h-5" /></button>
+                <button aria-label="Previous dates" onClick={() => onNavigateCalendar("prev")} className="p-1.5 rounded-full hover:bg-white/10 text-white"><ChevronLeft className="w-5 h-5" /></button>
                 <span className="font-medium text-white/90 min-w-[100px] text-center">{calendarView !== "month" ? calendarDate.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }) : calendarDate.toLocaleDateString([], { month: "long", year: "numeric" })}</span>
-                <button onClick={() => onNavigateCalendar("next")} className="p-1.5 rounded-full hover:bg-white/10 text-white"><ChevronRight className="w-5 h-5" /></button>
+                <button aria-label="Next dates" onClick={() => onNavigateCalendar("next")} className="p-1.5 rounded-full hover:bg-white/10 text-white"><ChevronRight className="w-5 h-5" /></button>
               </div>
             </div>
-            <div className="flex items-center gap-4">
-              {calendarView !== "agenda" && <div className="hidden xl:flex gap-2 text-[10px] font-bold tracking-wider uppercase">{calendarSources.map((s) => (<span key={s.id} className={`px-2 py-1 rounded-md border ${s.color} text-slate-300 bg-slate-900/50`}>{s.label}</span>))}</div>}
+            <div className="calendar-toolbar-actions">
+              <div ref={onToolsMount} className="calendar-update-tools" aria-label="Family updates" />
               <div className="inline-flex rounded-full bg-black/40 p-1 border border-white/10">
                 <button onClick={() => setCalendarView("agenda")} className={`px-3 py-1 text-xs rounded-full transition-all ${calendarView === "agenda" ? "bg-blue-600 text-white shadow-lg" : "text-slate-400 hover:text-white"}`}>Agenda</button>
                 <button onClick={() => setCalendarView("week")} className={`px-3 py-1 text-xs rounded-full transition-all ${calendarView === "week" ? "bg-blue-600 text-white shadow-lg" : "text-slate-400 hover:text-white"}`}>Week</button>
@@ -864,7 +864,7 @@ const DashboardView = ({
 
           {calendarView === "agenda" ? (
             <div className="agenda-days">
-              {[0, 1].map(offset => {
+              {[0, 1, 2].map(offset => {
                 const day = new Date(calendarDate);
                 day.setDate(day.getDate() + offset);
                 const tomorrow = new Date(currentTime);
@@ -3709,6 +3709,7 @@ const BalancesView = ({ theme, childrenData, wallet, setWallet, dailyRewards = {
 -------------------------------------------------- */
 
 function FamilyDashboard() {
+  const [calendarTools, setCalendarTools] = useState(null);
   const [view, setView] = useState("dashboard");
   const [currentTime, setCurrentTime] = useState(new Date());
   const [generatedTheme, setGeneratedTheme] = useState(null);
@@ -4383,14 +4384,15 @@ function FamilyDashboard() {
 
         {/* Main Content Area */}
         <div className="dashboard-notices" aria-label="Family updates">
-          <BusAlertPanel />
-          {view === "dashboard" && <MorningBriefingPanel />}
+          <BusAlertPanel toolbarTarget={calendarTools} />
+          <MorningBriefingPanel toolbarTarget={calendarTools} />
         </div>
         <main data-view={view} className="reading-view flex-1 min-h-0 overflow-y-auto px-6 pb-6 custom-scrollbar">
 
           {/* 1. DASHBOARD */}
           {view === "dashboard" && (
             <DashboardView
+              onToolsMount={setCalendarTools}
               theme={theme}
               currentTime={currentTime}
               calendarEvents={calendarEvents}
@@ -4404,7 +4406,7 @@ function FamilyDashboard() {
               onNavigateCalendar={(d) => {
                 setCalendarDate((prev) => {
                   const n = new Date(prev);
-                  if (calendarView === "agenda") n.setDate(n.getDate() + (d === "next" ? 2 : -2));
+                  if (calendarView === "agenda") n.setDate(n.getDate() + (d === "next" ? 3 : -3));
                   else if (calendarView === "week") n.setDate(n.getDate() + (d === "next" ? 7 : -7));
                   else n.setMonth(n.getMonth() + (d === "next" ? 1 : -1));
                   return n;
