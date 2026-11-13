@@ -1,6 +1,6 @@
 # Bus alerts
 
-The Bus monitor icon beside the Home calendar controls opens status and history.
+The Bus monitor button in System Config opens status and history.
 Monitoring remains active on every dashboard view, and an approaching-bus banner
 still appears prominently without opening the icon. Warning status is marked on
 the icon. The monitor observes the existing Home Assistant automation; it cannot

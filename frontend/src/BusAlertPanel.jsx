@@ -10,7 +10,7 @@ const dateTime = value => value ? new Date(value * 1000).toLocaleString('en-US',
   timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit'
 }) : 'Not available';
 
-export default function BusAlertPanel({ toolbarTarget }) {
+export default function BusAlertPanel({ toolbarTarget, showLabel = false }) {
   const [data, setData] = useState(null);
   const [failed, setFailed] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -41,7 +41,7 @@ export default function BusAlertPanel({ toolbarTarget }) {
   return <>
     {toolbarTarget && createPortal(<button type="button" className={`calendar-update-button ${warnings.length ? 'needs-attention' : ''} ${active ? 'bus-active' : ''}`}
       aria-label="Bus monitor" title={`Bus monitor: ${status}`} aria-haspopup="dialog" aria-expanded={expanded} onClick={() => setExpanded(true)}>
-      <Bus size={24} />{warnings.length > 0 && <AlertTriangle className="update-status-mark" size={14} />}
+      <Bus size={24} />{showLabel && <span>Bus monitor</span>}{warnings.length > 0 && <AlertTriangle className="update-status-mark" size={14} />}
     </button>, toolbarTarget)}
     {active && <div className="bus-arrival" role="alert">
       <span aria-hidden="true">🚌</span><div><strong>Bus approaching — leave now</strong>

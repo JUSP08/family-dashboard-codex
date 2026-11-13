@@ -12,7 +12,7 @@ function Events({ events, empty }) {
   </li>)}</ul> : <p>{empty}</p>;
 }
 
-export default function MorningBriefingPanel({ toolbarTarget }) {
+export default function MorningBriefingPanel({ toolbarTarget, showLabel = false }) {
   const [data,setData]=useState(null);
   const [error,setError]=useState(false);
   const [open,setOpen]=useState(false);
@@ -36,7 +36,7 @@ export default function MorningBriefingPanel({ toolbarTarget }) {
   return <>
     {toolbarTarget && createPortal(<button type="button" className={`calendar-update-button ${attention ? 'needs-attention' : ''}`}
       aria-label="Daily digest" title={attention ? 'Daily digest: Needs attention' : 'Daily digest'} aria-haspopup="dialog" aria-expanded={open} onClick={()=>setOpen(true)}>
-      <Newspaper size={24} />{attention && <AlertTriangle className="update-status-mark" size={14} />}
+      <Newspaper size={24} />{showLabel && <span>Daily digest</span>}{attention && <AlertTriangle className="update-status-mark" size={14} />}
     </button>, toolbarTarget)}
     <UpdateDialog open={open} onClose={()=>setOpen(false)} title="Daily digest">
     <section className="morning-panel" aria-label="Morning briefing">

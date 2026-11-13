@@ -595,7 +595,7 @@ const getEventEmoji = (sourceIcon, title = "", label = "") => {
 const DashboardView = ({
   theme, currentTime, calendarEvents, calendarErrors, getProgress, calendarView, setCalendarView,
   weather, calendarDate, onNavigateCalendar, masterTasks, completedTasks, calendarSources,
-  childrenData, addCustomEvent, updateCustomEvent, removeCalendarEvent, onToolsMount
+  childrenData, addCustomEvent, updateCustomEvent, removeCalendarEvent
 }) => {
 
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -852,7 +852,6 @@ const DashboardView = ({
               </div>
             </div>
             <div className="calendar-toolbar-actions">
-              <div ref={onToolsMount} className="calendar-update-tools" aria-label="Family updates" />
               <div className="inline-flex rounded-full bg-black/40 p-1 border border-white/10">
                 <button onClick={() => setCalendarView("agenda")} className={`px-3 py-1 text-xs rounded-full transition-all ${calendarView === "agenda" ? "bg-blue-600 text-white shadow-lg" : "text-slate-400 hover:text-white"}`}>Agenda</button>
                 <button onClick={() => setCalendarView("week")} className={`px-3 py-1 text-xs rounded-full transition-all ${calendarView === "week" ? "bg-blue-600 text-white shadow-lg" : "text-slate-400 hover:text-white"}`}>Week</button>
@@ -885,23 +884,30 @@ const DashboardView = ({
               })}
             </div>
           ) : calendarView === "week" ? (
-            <div className="flex-1 grid grid-cols-7 border-t border-white/5 min-h-[260px] overflow-hidden">
+            <div className="week-viewport">
+            <div className="week-grid">
               {weekDays.map((date, i) => {
                 const isToday = date.toDateString() === currentTime.toDateString(); const dayOfWeek = date.getDay(); const isWeekend = dayOfWeek === 0 || dayOfWeek === 6; const bgClass = isToday ? "bg-blue-500/10" : isWeekend ? "bg-white/[0.03]" : "bg-transparent"; const evts = calendarEvents.filter((e) => eventOccursOnDate(e, date)).sort((a, b) => a.rawDate - b.rawDate);
                 return (
-                  <div key={i} onClick={() => openAddModal(date)} className={`flex flex-col h-full border-r border-white/5 last:border-r-0 ${bgClass} cursor-pointer hover:bg-white/5 transition-colors`}>
-                    <div className={`p-3 text-center border-b border-white/5 ${isToday ? "text-blue-400" : "text-slate-400"}`}><div className="text-[10px] uppercase font-bold tracking-widest opacity-70">{date.toLocaleDateString("en-US", { weekday: "short" })}</div><div className="text-xl font-light mt-1 text-slate-200">{date.getDate()}</div></div>
-                    <div className="flex-1 p-2 space-y-2 overflow-y-auto custom-scrollbar">
+                  <section key={i} className={`week-day ${bgClass}`}>
+                    <header className={isToday ? "text-blue-300" : "text-slate-200"}>
+                      <button type="button" onClick={() => openAddModal(date)} aria-label={`Add event on ${date.toDateString()}`} title="Add event">
+                        <span>{date.toLocaleDateString("en-US", { weekday: "short" })}</span><strong>{date.getDate()}</strong>
+                      </button>
+                      <span className="week-event-count">{evts.length} {evts.length === 1 ? 'event' : 'events'}</span>
+                    </header>
+                    <div className="week-events" tabIndex={0} role="region" aria-label={`${date.toDateString()} events`}>
                       {evts.map((e, idx) => (
-                        <div key={`${e.id}-${idx}`} onClick={(evt) => { evt.stopPropagation(); setSelectedEvent(e); }} className={`px-2.5 py-2.5 rounded-lg text-xs border-l-[3px] shadow-sm backdrop-blur-sm cursor-pointer hover:brightness-125 transition-all active:scale-95 ${e.colorClass} ${e.isChildEvent ? "bg-blue-900/30" : "bg-slate-800/60"}`}>
-                          <div className="flex items-center justify-between gap-1 mb-1"><div className="font-bold text-slate-200 opacity-80 text-xs">{e.time}</div><div className="text-base leading-none" title={e.calendarLabel}>{getEventEmoji(e.sourceIcon, e.title, e.calendarLabel)}</div></div>
-                          <div className="text-base font-bold text-slate-100 leading-tight line-clamp-2">{e.title}</div>
-                        </div>
+                        <button type="button" key={`${e.id}-${idx}`} onClick={() => setSelectedEvent(e)} className={`week-event ${e.colorClass}`}>
+                          <span className="week-event-time">{e.time}</span>
+                          <span className="week-event-title">{e.title}</span>
+                        </button>
                       ))}
                     </div>
-                  </div>
+                  </section>
                 );
               })}
+            </div>
             </div>
           ) : (
             <div className="flex-1 flex flex-col">
@@ -2207,7 +2213,7 @@ const SettingsView = ({
   wallet, setWallet,
   hiddenEventIds, setHiddenEventIds,
   gigRequests, setGigRequests,
-  householdSuggestions, setHouseholdSuggestions
+  householdSuggestions, setHouseholdSuggestions, onToolsMount
 }) => {
 
   // --- ADMIN LOCK STATE ---
@@ -2597,6 +2603,7 @@ const SettingsView = ({
 
   return (
     <div className="pb-24 max-w-6xl mx-auto space-y-8">
+      <div ref={onToolsMount} className="admin-update-tools" aria-label="Dashboard monitoring" />
       {/* HEADER WITH LOCK TOGGLE */}
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -3709,7 +3716,7 @@ const BalancesView = ({ theme, childrenData, wallet, setWallet, dailyRewards = {
 -------------------------------------------------- */
 
 function FamilyDashboard() {
-  const [calendarTools, setCalendarTools] = useState(null);
+  const [adminTools, setAdminTools] = useState(null);
   const [view, setView] = useState("dashboard");
   const [currentTime, setCurrentTime] = useState(new Date());
   const [generatedTheme, setGeneratedTheme] = useState(null);
@@ -4384,15 +4391,14 @@ function FamilyDashboard() {
 
         {/* Main Content Area */}
         <div className="dashboard-notices" aria-label="Family updates">
-          <BusAlertPanel toolbarTarget={calendarTools} />
-          <MorningBriefingPanel toolbarTarget={calendarTools} />
+          <BusAlertPanel toolbarTarget={adminTools} showLabel />
+          <MorningBriefingPanel toolbarTarget={adminTools} showLabel />
         </div>
         <main data-view={view} className="reading-view flex-1 min-h-0 overflow-y-auto px-6 pb-6 custom-scrollbar">
 
           {/* 1. DASHBOARD */}
           {view === "dashboard" && (
             <DashboardView
-              onToolsMount={setCalendarTools}
               theme={theme}
               currentTime={currentTime}
               calendarEvents={calendarEvents}
@@ -4466,6 +4472,7 @@ function FamilyDashboard() {
           {/* 5. CONFIG / SETTINGS */}
           {view === "settings" && (
             <SettingsView
+              onToolsMount={setAdminTools}
               // 1. Theme & Basic Data
               theme={theme}
               childrenData={childrenData}

@@ -153,8 +153,11 @@ surfaces, and locally bundled Lexend and Atkinson Hyperlegible fonts alongside
 Verdana. Readable fonts rotate with the daily theme; the font selector and
 per-browser overrides have been removed. Home leaves open background space
 around readable, translucent sections and opens a three-day
-agenda with Week and Month still available. Bus monitoring and the daily digest
-open from icon buttons beside the calendar view controls; an active bus arrival
+agenda with Week and Month still available. Desktop uses left navigation, a wide
+center calendar, and a right weather/Sparkle pane. Week event titles wrap fully;
+busy days scroll independently with visible scrollbars and keyboard access.
+Bus monitoring and the daily digest open from labeled buttons in System Config;
+an active bus arrival
 still shows a prominent banner. Coach supports an individual-child
 filter and roomier scrollable task rows. Speaker buttons read tasks and Sparkle
 using the browser's available speech voices; voice availability depends on the
