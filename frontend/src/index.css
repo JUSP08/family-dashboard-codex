@@ -311,3 +311,34 @@ body {
   .week-grid { min-width: 980px; }
 }
 
+/* Colorful Edges: translucent surfaces, opaque text, and playful day accents. */
+.family-shell .calendar-toolbar,
+.family-shell .agenda-day,
+.family-shell .week-day,
+.family-shell .home-sidebar .reading-surface {
+  background: rgb(24 29 39 / 78%);
+  border-color: rgb(255 255 255 / 24%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 8%);
+}
+.family-shell :is(.week-day, .agenda-day) { --day-accent: #34ddc5; border-top: 6px solid var(--day-accent); }
+.family-shell :is(.week-day, .agenda-day):nth-child(7n + 2) { --day-accent: #ff8294; }
+.family-shell :is(.week-day, .agenda-day):nth-child(7n + 3) { --day-accent: #f9d568; }
+.family-shell :is(.week-day, .agenda-day):nth-child(7n + 4) { --day-accent: #86e4b3; }
+.family-shell :is(.week-day, .agenda-day):nth-child(7n + 5) { --day-accent: #ef8bc3; }
+.family-shell :is(.week-day, .agenda-day):nth-child(7n + 6) { --day-accent: #65d5e2; }
+.family-shell :is(.week-day, .agenda-day):nth-child(7n + 7) { --day-accent: #ffa08a; }
+.family-shell .week-day > header { background: rgb(24 29 39 / 24%); }
+.family-shell .week-day > header button { font-weight: 600; }
+.family-shell .home-sidebar .reading-surface { border-top: 3px solid #65d5e2; }
+.family-shell .home-sidebar .reading-surface:nth-child(2) { border-top-color: #f9d568; }
+.family-shell .home-sidebar .reading-surface:nth-child(3) { border-top-color: #86e4b3; }
+.family-shell .week-event { background: rgb(39 58 80 / 88%); }
+.family-shell .agenda-event { background: rgb(34 48 68 / 88%); }
+.family-shell :is(.week-event, .agenda-event):hover { background: #354f68; }
+@media (prefers-contrast: more), (prefers-reduced-transparency: reduce) {
+  .family-shell .calendar-toolbar,
+  .family-shell .agenda-day,
+  .family-shell .week-day,
+  .family-shell .home-sidebar .reading-surface { background: #0d1826; }
+  .family-shell :is(.week-event, .agenda-event) { background: #273a50; }
+}
