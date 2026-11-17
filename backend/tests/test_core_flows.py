@@ -37,6 +37,13 @@ from services.theme_service import ensure_daily_theme, get_daily_theme  # noqa: 
 class CoreFlowTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        # Other test modules may have imported settings before our environment setup.
+        # Refuse destructive setup unless the configured DB is in a temporary folder.
+        from config import settings
+        configured = Path(settings.sqlite_path).resolve()
+        allowed = (Path(tempfile.gettempdir()).resolve(), Path(_temp_dir.name).resolve())
+        if not any(configured.is_relative_to(root) for root in allowed):
+            raise RuntimeError('Refusing core-flow tests against a non-temporary database')
         init_db()
         cls.app = create_app()
         cls.app.config.update(TESTING=True)

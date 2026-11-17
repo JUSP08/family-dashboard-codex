@@ -13,3 +13,19 @@ Set `SCHOOL_EMAIL_OWNER=hermes` in backend .env to stop the dashboard's previous
 Rollback: pause the Hermes cron job first; restore backend .env and source from the recorded deployment backup, then restart only the dashboard backend. Existing event snapshots allow recovery of calendar content separately. Never restore the entire database over concurrent user changes without reconciling them.
 
 Coverage repair (2026-11-10): scans all matching Gmail All Mail messages in the 14-day window, with no shared 60-message cap. sportsYou is prioritized; a versioned fingerprint reprocesses earlier sports messages once. Every interpreted email receives an explicit disposition; omitted or invalid proposals become review items. Dated conditional holds are tentative events. sportsYou preseason invitations remain events. Ambiguous Moved notices suppress older same-team/date proposals and remain in the review list. Human review is still required for ambiguous changes; delivery and semantic interpretation cannot be guaranteed.
+
+Ubuntu changes reviewed (2026-11-17): related move resolution requires an explicit
+same-team move statement, a matching dated invitation, and a validated extracted
+replacement. The old calendar slot is removed only after the exact replacement
+exists in the reconciled or connected calendar, and only for a single untouched
+owned slot. Ambiguous, manually edited, recurring, or location-annotated slots
+are preserved. Legacy resolutions without a recorded replacement end time do
+not trigger automatic removal. Duplicate consolidation compares times as well
+as dates and titles; separate sessions receive distinct IDs. A reviewed overlap
+remains acknowledged only while its supporting calendar fingerprint exists.
+
+Validation uses `backend/scripts/run_tests.py`, which selects isolated temporary
+storage before importing services. The core-flow suite additionally refuses a
+non-temporary configured database. Pure Hermes validation is importable on
+Windows; POSIX locking is loaded only when the Ubuntu scheduler runs. These
+tests do not run live inference, read Gmail, or modify production calendars.

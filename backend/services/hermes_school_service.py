@@ -75,6 +75,54 @@ def suppress_ambiguous_moves(items,outcomes):
     moves=[o for o in outcomes.values() if o.get('blocked_date')]
     return [i for i in items if not any(i['date']==o['blocked_date'] and i['source_received']<=o['received'] and normalized(o['team']) in normalized(i['title']) for o in moves)]
 
+def resolve_related_moves(messages,items,outcomes):
+    """Require an explicit move statement AND a matching dated team invitation.
+
+    Use the entire read window, not just this inference batch. Unsupported wording,
+    conflicting targets and incomplete messages remain for human review.
+    """
+    weekdays=['monday','tuesday','wednesday','thursday','friday','saturday','sunday']
+    for key,outcome in outcomes.items():
+        if outcome.get('status')!='needs_review' or not outcome.get('blocked_date'):continue
+        team=outcome['team'];received=datetime.fromisoformat(outcome['received'])
+        related=[m for m in messages if m['source']=='sportsyou.com' and not m.get('review_required')
+                 and abs((datetime.fromisoformat(m['sent'])-received).total_seconds())<=86400]
+        targets=[]
+        for post in related:
+            if not post['subject'].lower().endswith(' posted in '+team.lower()):continue
+            for match in re.finditer(r'(?im)^\s*([a-z][a-z ]{1,50}?)\s+(?:will move|has moved|is moved|has been moved) to\s+(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+at\s+(\d{1,2}(?::\d{2})?\s*[ap]m)\s*[.!]?\s*$',post['text']):
+                activity,weekday,clock=match.groups()
+                try:
+                    clock=datetime.strptime(clock.replace(' ','').lower(),'%I:%M%p' if ':' in clock else '%I%p').strftime('%H:%M')
+                except ValueError:continue
+                sent=datetime.fromisoformat(post['sent']).astimezone(LOCAL).date()
+                day=sent+timedelta(days=(weekdays.index(weekday.lower())-sent.weekday())%7)
+                targets.append((day.isoformat(),clock,normalized(activity),post['id']))
+        if len({t[:3] for t in targets})!=1:continue
+        day,clock,activity,post_id=targets[0]
+        if day==outcome['blocked_date']:continue
+        candidates=[]
+        for invitation in related:
+            if invitation['subject'].lower()!='an event has been added to '+team.lower():continue
+            event=re.search(r'Event:\s*([^\r\n]+)',invitation['text'])
+            stamp=re.search(r'Date/Time:\s*(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+(\w{3} \d{1,2}, \d{4})\s+(\d{1,2}:\d{2}[ap]m)\s*-\s*(\d{1,2}:\d{2}[ap]m)\s+Eastern Time',invitation['text'])
+            if not event or not stamp or normalized(event[1])!=activity:continue
+            try:
+                date=datetime.strptime(stamp[1],'%b %d, %Y').date().isoformat()
+                start=datetime.strptime(stamp[2],'%I:%M%p').strftime('%H:%M')
+                end=datetime.strptime(stamp[3],'%I:%M%p').strftime('%H:%M')
+            except ValueError:continue
+            if (date,start)==(day,clock) and end>start:candidates.append((invitation,end))
+        if len(candidates)!=1:continue
+        invitation,end=candidates[0]
+        # Extraction alone is not publication; removal also checks the final calendar.
+        matching=[i for i in items if i['source_id']==invitation['id'] and i['kind']=='event'
+                  and not i.get('cancelled') and (i['date'],i['startTime'],i['endTime'])==(day,clock,end)]
+        if len(matching)!=1:continue
+        outcome.update(status='superseded',resolved_source_ids=[post_id,invitation['id']],
+            replacement_date=day,replacement_start=clock,replacement_end=end,replacement_title=matching[0]['title'],
+            reason=f'Resolved from explicit team move message and matching invitation: {day}, {clock}-{end} Eastern.')
+
 def validate(raw,messages,today):
     byid={m['id']:m for m in messages};accepted=[];rejected=0
     for item in raw.get('items',[])[:60]:
@@ -134,6 +182,24 @@ EVENTS: concrete school-wide events, closures, early dismissal, and actual team 
 def event_view(event):
     return {k:event.get(k,'') for k in ('title','date','startTime','endTime')}
 
+def untouched_owned(event):
+    # These fields are not authored by Hermes; preserve later user additions too.
+    return (event.get('hermesOwner')=='school-email'
+            and event.get('hermesSnapshot')==digest(event_view(event))
+            and event.get('recurrence') in (None,'','none')
+            and not event.get('location'))
+
+def unresolved_calendar_reviews(reviews,resolutions,existing):
+    """A reviewed overlap stays resolved only while its exact supporting entry exists."""
+    current={digest(event_view(e)) for e in existing}
+    pending=[]
+    for review in reviews:
+        item=review.get('item')
+        resolution=resolutions.get(digest(item)) if item else None
+        if resolution and resolution.get('target_fingerprint') in current:continue
+        pending.append(review)
+    return pending
+
 def same_event(a,b):
     if a.get('date')!=b.get('date'):return False
     if similar(a.get('title',''),b.get('title','')):return True
@@ -153,28 +219,41 @@ def same_event(a,b):
         except (KeyError,ValueError):pass
     return False
 
+def duplicate_occurrence(a,b):
+    # A title match alone is not enough: separate sessions and recurrence dates survive.
+    if (a.get('startTime') or '',a.get('endTime') or '')!=(b.get('startTime') or '',b.get('endTime') or ''):return False
+    if a.get('recurrence') not in (None,'','none') or b.get('recurrence') not in (None,'','none'):return False
+    if a.get('location') and b.get('location') and normalized(a['location'])!=normalized(b['location']):return False
+    if re.search(r'\barriv|warmup|bring|wear',a.get('title',''),re.I) or re.search(r'\barriv|warmup|bring|wear',b.get('title',''),re.I):
+        return a.get('date')==b.get('date') and normalized(a.get('title',''))==normalized(b.get('title',''))
+    return same_event(a,b)
+
 def reconcile(existing,items,external=()):
     events=[dict(e) for e in existing];changes=[];review=[]
     # Consolidate only untouched entries owned by this integration, newest notice wins.
     for older in sorted(list(events),key=lambda e:e.get('hermesReceived','')):
-        if older not in events or older.get('hermesOwner')!='school-email' or older.get('hermesSnapshot')!=digest(event_view(older)):continue
-        if any(e.get('hermesOwner')!='school-email' and same_event(older,e) for e in events):
+        if older not in events or not untouched_owned(older):continue
+        if any(e.get('hermesOwner')!='school-email' and (duplicate_occurrence(older,e) or (e.get('title','').upper().startswith('CANCELED') and same_event(older,e))) for e in events):
             events.remove(older);changes.append({'action':'removed duplicate of manual event',**event_view(older)});continue
-        if any(same_event(older,e) for e in external):
+        if any(duplicate_occurrence(older,e) for e in external):
             events.remove(older);changes.append({'action':'removed duplicate of connected calendar',**event_view(older)});continue
-        newer=next((e for e in events if e is not older and e.get('id')!=older.get('id') and e.get('hermesOwner')=='school-email' and e.get('hermesReceived','')>older.get('hermesReceived','') and e.get('hermesSnapshot')==digest(event_view(e)) and same_event(older,e)),None)
+        newer=next((e for e in events if e is not older and e.get('id')!=older.get('id') and e.get('hermesOwner')=='school-email' and (e.get('hermesReceived',''),e.get('id',''))>(older.get('hermesReceived',''),older.get('id','')) and e.get('hermesSnapshot')==digest(event_view(e)) and duplicate_occurrence(older,e)),None)
         if newer:
             events.remove(older);changes.append({'action':'removed superseded duplicate',**event_view(older)})
     for e in list(events):
-        if e.get('hermesOwner')=='school-email' and e.get('hermesSnapshot')==digest(event_view(e)) and re.search(r'no school|school.*closed',e.get('title',''),re.I) and datetime.fromisoformat(e['date']).weekday()>=5:
+        if untouched_owned(e) and re.search(r'no school|school.*closed',e.get('title',''),re.I) and datetime.fromisoformat(e['date']).weekday()>=5:
             events.remove(e);changes.append({'action':'removed redundant weekend closure',**event_view(e)})
     for item in sorted(items,key=lambda i:i['source_received']):
         if item['kind']!='event':continue
         if datetime.fromisoformat(item['date']).weekday()>=5 and re.search(r'no school|school.*closed',item['title'],re.I):continue
         title=('CANCELED — ' if item['cancelled'] else '')+item['title']
-        same=[e for e in events if same_event(e,{**item,'title':title})]
+        protected=[e for e in events if not untouched_owned(e) and same_event(e,{**item,'title':title})]
+        if protected:
+            review.append({'reason':'Existing manual or edited event preserved; possible overlap needs review','item':item});continue
+        same=[e for e in events if duplicate_occurrence(e,{**item,'title':title}) or
+              (e.get('hermesOwner')=='school-email' and e.get('hermesReceived','')!=item['source_received'] and same_event(e,{**item,'title':title}))]
         if any(same_event(e,{**item,'title':title}) for e in external):
-            if item['cancelled']:review.append({'reason':'Cancellation overlaps a connected calendar; review source','item':item})
+            if item['cancelled'] or not any(duplicate_occurrence(e,{**item,'title':title}) for e in external):review.append({'reason':'Possible connected-calendar overlap; review differing details','item':item})
             continue
         if len(same)>1:review.append({'reason':'Multiple matching events','item':item});continue
         old=same[0] if same else None
@@ -185,7 +264,7 @@ def reconcile(existing,items,external=()):
         if old and old.get('hermesSnapshot')!=digest(event_view(old)):
             review.append({'reason':'User edited Hermes event; preserved','item':item});continue
         if old and old.get('hermesReceived','')>item['source_received']:continue
-        event={**(old or {}),'id':old['id'] if old else 'hermes-school-'+digest([normalized(title),item['date']])[:20],
+        event={**(old or {}),'id':old['id'] if old else 'hermes-school-'+digest([normalized(title),item['date'],item['startTime'],item['endTime']])[:20],
             'title':title,'date':item['date'],'startTime':item['startTime'],'endTime':item['endTime'],'type':'school',
             'hermesOwner':'school-email','hermesSource':item['url'],'hermesReceived':item['source_received']}
         event['hermesSnapshot']=digest(event_view(event))
@@ -211,10 +290,29 @@ def external_events(state,today):
             events.append({'title':e.get('summary',''),'date':stamp,'startTime':clock,'endTime':end_clock})
     return events
 
-def run(apply=False):
-    # The scheduler runs on Ubuntu; pure validation remains importable on Windows.
-    import fcntl
+def remove_confirmed_moved_slots(events,outcomes,external=()):
+    """Remove a single untouched old slot only with its replacement on the calendar."""
+    events=list(events);changes=[]
+    for outcome in outcomes.values():
+        if outcome.get('status')!='superseded' or not outcome.get('replacement_end'):continue
+        replacement={'title':outcome['replacement_title'],'date':outcome['replacement_date'],
+                     'startTime':outcome['replacement_start'],'endTime':outcome['replacement_end']}
+        if not any(event_view(e)==replacement for e in events+list(external)):continue
+        candidates=[e for e in events if e.get('hermesOwner')=='school-email'
+                    and e.get('hermesSnapshot')==digest(event_view(e))
+                    and e.get('recurrence') in (None,'','none')
+                    and not e.get('location')
+                    and e.get('date')==outcome.get('blocked_date')
+                    and normalized(e.get('title',''))==normalized(replacement['title'])
+                    and e.get('hermesReceived','')<=outcome['received']]
+        if len(candidates)!=1:continue
+        old=candidates[0];events.remove(old)
+        changes.append({'action':'removed confirmed moved slot',**event_view(old)})
+    return events,changes
 
+def run(apply=False):
+    # Only the Ubuntu scheduler needs the POSIX lock implementation.
+    import fcntl
     HOME.mkdir(mode=0o700,parents=True,exist_ok=True)
     with open(HOME/'hermes.lock','w') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
@@ -235,10 +333,15 @@ def run(apply=False):
             state.setdefault('outcomes',{}).update(outcomes)
             old=[i for i in state['items'] if i['source_id'] not in {m['id'] for m in batch} and i['date']>=today.isoformat()]
             state['items']=old+items
+        resolve_related_moves(messages,state['items'],state.get('outcomes',{}))
         state['items']=suppress_ambiguous_moves(state['items'],state.get('outcomes',{}))
         snapshot=get_full_state()
         external=external_events(snapshot,today)
-        events,changes,review=reconcile(snapshot.get('customEvents',[]),state['items'],external)
+        existing=snapshot.get('customEvents',[])
+        events,changes,review=reconcile(existing,state['items'],external)
+        events,move_changes=remove_confirmed_moved_slots(events,state.get('outcomes',{}),external)
+        changes+=move_changes
+        review=unresolved_calendar_reviews(review,state.get('reviewed_overlaps',{}),events+external)
         for key,outcome in state.get('outcomes',{}).items():
             if outcome['status']=='needs_review':review.append({'source_id':key,**outcome})
         report={'checked_at':time.time(),'mode':'apply' if apply else 'preview','messages_checked':len(messages),
